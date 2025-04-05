@@ -49,10 +49,21 @@ public class AuthController {
     @Value("${kakao.client-id}")
     private String kakaoClientId;
 
-    @Operation(summary = "카카오 로그인", description = "인가코드와 redirectUri를 전달받아 JWT를 발급합니다.")
+    @Operation(summary = "카카오 로그인", description = "인가코드와 리다이렉트 URI를 전달받아 JWT를 발급합니다.")
     @PostMapping("/kakao")
     public ResponseEntity<?> kakaoLogin(@RequestBody @Valid KakaoAuthRequest request) {
         log.info("카카오 로그인 요청: redirectUri={}", request.getRedirectUri());
+
+        // 허용된 리다이렉트 URI인지 검증
+        List<String> allowedUris = List.of(
+                "http://localhost:3000/login/oauth2/code/kakao",
+                "https://ckok.kr/login/oauth2/code/kakao"
+        );
+
+        if (!allowedUris.contains(request.getRedirectUri())) {
+            log.warn("허용되지 않은 redirectUri: {}", request.getRedirectUri());
+            return ResponseEntity.badRequest().body(ApiResponse.fail("허용되지 않은 redirectUri입니다."));
+        }
 
         KakaoTokenResponse kakaoToken = kakaoService.requestToken(request.getAuthorizationCode(), request.getRedirectUri());
         KakaoUserInfo userInfo = kakaoService.requestUserInfo(kakaoToken.accessToken());

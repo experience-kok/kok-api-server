@@ -26,4 +26,8 @@ public class ApiResponse<T> {
     public static <T> ApiResponse<T> fail(String message, int status) {
         return new ApiResponse<>(false, message, status, null);
     }
+    public static <T> ApiResponse<T> error(String message, int status) {
+        return new ApiResponse<>(false, message, status, null);
+    }
+
 }

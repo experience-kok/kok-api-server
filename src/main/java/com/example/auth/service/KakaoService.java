@@ -28,7 +28,7 @@ public class KakaoService {
         log.debug("카카오 토큰 요청: code={}, redirectUri={}", code, redirectUri);
 
         try {
-            KakaoTokenResponse response = webClient.post()
+            return webClient.post()
                     .uri("https://kauth.kakao.com/oauth/token")
                     .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_FORM_URLENCODED_VALUE)
                     .body(BodyInserters.fromFormData("grant_type", "authorization_code")
@@ -38,15 +38,15 @@ public class KakaoService {
                     .retrieve()
                     .bodyToMono(KakaoTokenResponse.class)
                     .block(Duration.ofSeconds(10));
-
-            log.debug("카카오 토큰 응답 성공");
-            return response;
+        } catch (org.springframework.web.reactive.function.client.WebClientResponseException e) {
+            log.error("카카오 토큰 요청 실패: {} - 응답 코드: {} - 응답 본문: {}",
+                    e.getMessage(), e.getStatusCode(), e.getResponseBodyAsString());
+            throw new RuntimeException("카카오 인증 서버 연결 중 오류가 발생했습니다: " + e.getResponseBodyAsString(), e);
         } catch (Exception e) {
-            log.error("카카오 토큰 요청 실패: {}", e.getMessage(), e);
+            log.error("카카오 토큰 요청 중 예외 발생: {}", e.getMessage(), e);
             throw new RuntimeException("카카오 인증 서버 연결 중 오류가 발생했습니다.", e);
         }
     }
-
     // 액세스 토큰으로 사용자 정보 요청
     public KakaoUserInfo requestUserInfo(String accessToken) {
         log.debug("카카오 사용자 정보 요청");

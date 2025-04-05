@@ -3,12 +3,14 @@ package com.example.auth.dto;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.ToString;
 
 /**
  * 카카오 로그인 요청 DTO
  */
 @Getter
 @Setter
+@ToString
 public class KakaoAuthRequest {
 
     @NotBlank(message = "인가 코드는 필수 입력값입니다.")
