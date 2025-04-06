@@ -2,13 +2,14 @@ package com.example.auth.controller;
 
 import com.example.auth.common.ApiResponse;
 import com.example.auth.domain.User;
+import com.example.auth.dto.UserUpdateRequest;
 import com.example.auth.repository.UserRepository;
 import com.example.auth.security.JwtUtil;
 import com.example.auth.service.TokenService;
 import com.example.auth.util.TokenUtils;
-import io.jsonwebtoken.Claims;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -23,7 +24,7 @@ public class UserController {
 
     private final UserRepository userRepository;
     private final TokenUtils tokenUtils;
-    private final TokenService tokenService;  // 추가: TokenService 주입
+    private final TokenService tokenService;
     private final JwtUtil jwtUtil;
 
     @Operation(summary = "내 정보 조회", description = "accessToken으로 로그인한 유저 정보를 가져옵니다.")
@@ -38,51 +39,82 @@ public class UserController {
 
         return ResponseEntity.ok(
                 ApiResponse.success(
-                        new ProfileResponse(user.getId(), user.getEmail(), user.getNickname(), user.getProfileImg(), user.getRole()),
+                        new ProfileResponse(
+                                user.getId(),
+                                user.getEmail(),             // 이메일은 읽기 전용
+                                user.getNickname(),
+                                user.getProfileImg(),
+                                user.getPhone(),
+                                user.getGender(),
+                                user.getAge()
+                        ),
                         "사용자 정보를 성공적으로 불러왔습니다."
                 )
         );
     }
 
-    @Operation(summary = "회원 탈퇴", description = "accessToken으로 로그인한 유저를 탈퇴 처리합니다.")
-    @DeleteMapping("/exit")
-    public ResponseEntity<?> deleteUser(@RequestHeader("Authorization") String bearerToken) {
+    @Operation(summary = "내 정보 수정", description = "사용자 정보를 수정합니다. 소셜 로그인으로 제공된 이메일은 수정할 수 없습니다.")
+    @PutMapping("/profile")
+    public ResponseEntity<?> updateProfile(
+            @RequestHeader("Authorization") String bearerToken,
+            @RequestBody @Valid UserUpdateRequest request
+    ) {
         Long userId = tokenUtils.getUserIdFromToken(bearerToken);
-        String token = bearerToken.replace("Bearer ", "");
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("사용자 정보를 찾을 수 없습니다."));
 
-        // Redis에서 토큰 정보 삭제
-        tokenService.deleteRefreshToken(userId);
-
-        // 현재 토큰을 블랙리스트에 추가
-        try {
-            Claims claims = jwtUtil.getClaims(token);
-            long remainTime = claims.getExpiration().getTime() - System.currentTimeMillis();
-            tokenService.blacklistAccessToken(token, remainTime);
-        } catch (Exception e) {
-            log.warn("토큰 블랙리스트 등록 중 오류: {}", e.getMessage());
-            // 토큰 처리 실패해도 회원 탈퇴는 진행
+        // 수정 가능한 필드만 반영
+        if (request.getNickname() != null) {
+            user.updateNickname(request.getNickname());
         }
 
-        // DB에서 사용자 정보 삭제
-        userRepository.delete(user);
-        log.info("회원 탈퇴 완료: userId={}", userId);
+        if (request.getProfileImg() != null) {
+            user.updateProfileImg(request.getProfileImg());
+        }
+
+        if (request.getPhone() != null) {
+            user.updatePhone(request.getPhone());
+        }
+
+        if (request.getGender() != null) {
+            user.updateGender(request.getGender());
+        }
+
+        if (request.getAge() != null) {
+            user.updateAge(request.getAge());
+        }
+
+        // 이메일은 수정하지 않음 (소셜 로그인에서 받은 정보)
+        // role도 수정 불가하며 응답에서도 제외
+
+        User updatedUser = userRepository.save(user);
+        log.info("사용자 정보 수정 완료: userId={}", userId);
 
         return ResponseEntity.ok(
                 ApiResponse.success(
-                        null,
-                        "회원 탈퇴가 완료되었습니다."
+                        new ProfileResponse(
+                                updatedUser.getId(),
+                                updatedUser.getEmail(),             // 읽기 전용 필드
+                                updatedUser.getNickname(),
+                                updatedUser.getProfileImg(),
+                                updatedUser.getPhone(),
+                                updatedUser.getGender(),
+                                updatedUser.getAge()
+                        ),
+                        "사용자 정보가 성공적으로 수정되었습니다."
                 )
         );
     }
 
+    // 응답용 DTO - role은 제외, email은 읽기 전용
     public record ProfileResponse(
             Long id,
             String email,
             String nickname,
             String profileImage,
-            String role
+            String phone,
+            String gender,
+            Integer age
     ) {}
 }

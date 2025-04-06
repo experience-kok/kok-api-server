@@ -48,7 +48,7 @@ public class JwtUtil {
                 .compact();
     }
 
-    // 🔐 토큰 유효성 검증 + 예외 구분
+    // 토큰 유효성 검증 + 예외 구분
     public Claims validateToken(String token) {
         try {
             return Jwts.parserBuilder().setSigningKey(key).build()
@@ -62,7 +62,7 @@ public class JwtUtil {
         }
     }
 
-    // 🔁 재발급 용: 만료된 토큰도 claims 추출
+    // 재발급 용: 만료된 토큰도 claims 추출
     public Claims getClaimsIgnoreExpiration(String token) {
         return Jwts.parserBuilder().setSigningKey(key)
                 .build()
@@ -70,7 +70,7 @@ public class JwtUtil {
                 .getBody();
     }
 
-    // 🔎 단순 claims 파싱 (사용자 ID 등 추출용)
+    // 단순 claims 파싱 (사용자 ID 등 추출용)
     public Claims getClaims(String token) {
         return Jwts.parserBuilder().setSigningKey(key)
                 .build()

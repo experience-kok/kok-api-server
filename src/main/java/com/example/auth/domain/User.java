@@ -34,14 +34,50 @@ public class User {
     private String gender;
     private Integer age;
 
-    @Column(name = "blog_url")
-    private String blogUrl;
-
     private String role;
 
-    @Column(name = "created_at")
+    @Builder.Default
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    @Column(name = "updated_at")
+    @Builder.Default
+    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt = LocalDateTime.now();
+
+    @PrePersist
+    public void prePersist() {
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    // 수정 메서드들
+    public void updateNickname(String nickname) {
+        this.nickname = nickname;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void updateProfileImg(String profileImg) {
+        this.profileImg = profileImg;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void updatePhone(String phone) {
+        this.phone = phone;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void updateGender(String gender) {
+        this.gender = gender;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void updateAge(Integer age) {
+        this.age = age;
+        this.updatedAt = LocalDateTime.now();
+    }
 }
