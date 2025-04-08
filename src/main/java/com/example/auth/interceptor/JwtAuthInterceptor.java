@@ -1,5 +1,7 @@
 package com.example.auth.interceptor;
 
+import com.example.auth.exception.TokenErrorType;
+import com.example.auth.exception.JwtValidationException;
 import com.example.auth.exception.UnauthorizedException;
 import com.example.auth.security.JwtUtil;
 import com.example.auth.service.TokenService;
@@ -34,12 +36,12 @@ public class JwtAuthInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         String path = request.getRequestURI();
 
-        // 공개 API인 경우 인증 처리를 건너뜀
+        // 공개 API 건너뜀
         if (isPublicApi(path)) {
             return true;
         }
 
-        // API가 아닌 경우 (정적 자원 등) 처리를 건너뜀
+        // API가 아닌 경우 건너뜀
         if (!(handler instanceof HandlerMethod)) {
             return true;
         }
@@ -50,24 +52,26 @@ public class JwtAuthInterceptor implements HandlerInterceptor {
             throw new UnauthorizedException("인증 토큰이 필요합니다.");
         }
 
-        if (tokenService.isBlacklisted(token)) {
-            log.warn("블랙리스트된 토큰입니다: {}", path);
-            throw new UnauthorizedException("로그아웃된 토큰입니다.");
-        }
-
         try {
+            // 만료 여부 먼저 확인 (ExpiredJwtException 발생 가능)
             jwtUtil.validateToken(token);
+
+            // 만료되지 않았다면 블랙리스트 확인
+            if (tokenService.isBlacklisted(token)) {
+                log.warn("블랙리스트된 토큰입니다: {}", path);
+                throw new UnauthorizedException("로그아웃된 토큰입니다.");
+            }
+
             log.debug("인증 성공: {}", path);
             return true;
         } catch (ExpiredJwtException e) {
             log.warn("만료된 토큰입니다: {}", path);
-            throw new UnauthorizedException("토큰이 만료되었습니다.");
+            throw new JwtValidationException("토큰이 만료되었습니다.", TokenErrorType.EXPIRED);
         } catch (Exception e) {
             log.error("토큰 검증 중 오류 발생: {}", e.getMessage());
             throw new UnauthorizedException("유효하지 않은 토큰입니다.");
         }
     }
-
     private boolean isPublicApi(String path) {
         return publicApis.stream().anyMatch(path::startsWith);
     }

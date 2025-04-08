@@ -2,6 +2,8 @@ package com.example.auth.config;
 
 import com.example.auth.interceptor.JwtAuthInterceptor;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.*;
 
@@ -10,6 +12,7 @@ import org.springframework.web.servlet.config.annotation.*;
 public class WebConfig implements WebMvcConfigurer {
 
     private final JwtAuthInterceptor jwtAuthInterceptor;
+    private final ResponseLoggingFilter responseLoggingFilter;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
@@ -37,5 +40,15 @@ public class WebConfig implements WebMvcConfigurer {
                 )
                 .allowCredentials(true)
                 .maxAge(3600);
+    }
+
+    @Bean
+    public FilterRegistrationBean<ResponseLoggingFilter> responseLoggingFilterRegistration() {
+        FilterRegistrationBean<ResponseLoggingFilter> registration = new FilterRegistrationBean<>();
+        registration.setFilter(responseLoggingFilter);
+        registration.addUrlPatterns("/api/*");
+        registration.setName("responseLoggingFilter");
+        registration.setOrder(2);
+        return registration;
     }
 }

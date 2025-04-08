@@ -1,14 +1,16 @@
-package com.example.auth.exception;
+    package com.example.auth.exception;
 
-public class JwtValidationException extends RuntimeException {
-    private final TokenErrorType errorType;
+    import com.example.auth.exception.TokenErrorType;
 
-    public JwtValidationException(String message, TokenErrorType errorType) {
-        super(message);
-        this.errorType = errorType;
+    public class JwtValidationException extends RuntimeException {
+        private final TokenErrorType errorType;
+
+        public JwtValidationException(String message, TokenErrorType errorType) {
+            super(message);
+            this.errorType = errorType;
+        }
+
+        public TokenErrorType getErrorType() {
+            return errorType;
+        }
     }
-
-    public TokenErrorType getErrorType() {
-        return errorType;
-    }
-}

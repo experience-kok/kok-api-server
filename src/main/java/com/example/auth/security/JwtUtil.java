@@ -4,12 +4,14 @@ import com.example.auth.exception.JwtValidationException;
 import com.example.auth.exception.TokenErrorType;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.security.SignatureException;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
+import java.time.Instant;
 import java.util.Date;
 
 @Component
@@ -40,19 +42,24 @@ public class JwtUtil {
     }
 
     private String createToken(Long userId, long expiration) {
+        Instant now = Instant.now();
+        Instant expiry = now.plusMillis(expiration);
+
         return Jwts.builder()
                 .setSubject(String.valueOf(userId))
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + expiration))
-                .signWith(key)
+                .setIssuedAt(Date.from(now))
+                .setExpiration(Date.from(expiry))
+                .signWith(key)  // 수정된 부분: SignatureAlgorithm 매개변수 제거
                 .compact();
     }
 
-    // 토큰 유효성 검증 + 예외 구분
     public Claims validateToken(String token) {
         try {
-            return Jwts.parserBuilder().setSigningKey(key).build()
-                    .parseClaimsJws(token).getBody();
+            return Jwts.parserBuilder()  // 수정된 부분: parser() 대신 parserBuilder() 사용
+                    .setSigningKey(key)
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
         } catch (ExpiredJwtException e) {
             throw new JwtValidationException("토큰이 만료되었습니다.", TokenErrorType.EXPIRED);
         } catch (UnsupportedJwtException | MalformedJwtException | SignatureException e) {
@@ -62,19 +69,22 @@ public class JwtUtil {
         }
     }
 
-    // 재발급 용: 만료된 토큰도 claims 추출
     public Claims getClaimsIgnoreExpiration(String token) {
-        return Jwts.parserBuilder().setSigningKey(key)
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
+        try {
+            return Jwts.parserBuilder()  // 수정된 부분: parser() 대신 parserBuilder() 사용
+                    .setSigningKey(key)
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+        } catch (ExpiredJwtException e) {
+            // 만료된 토큰이어도 클레임 반환
+            return e.getClaims();
+        } catch (JwtException e) {
+            throw new JwtValidationException("토큰 파싱 실패", TokenErrorType.INVALID);
+        }
     }
 
-    // 단순 claims 파싱 (사용자 ID 등 추출용)
     public Claims getClaims(String token) {
-        return Jwts.parserBuilder().setSigningKey(key)
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
+        return validateToken(token); // 중복 제거용 리팩토링
     }
 }
