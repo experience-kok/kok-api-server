@@ -3,7 +3,7 @@ package com.example.auth.common;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.http.HttpStatus;
 
-public class ApiResponse {
+public class BaseResponse {
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public static class Success<T> {

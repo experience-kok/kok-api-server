@@ -1,14 +1,22 @@
 package com.example.auth.controller;
 
-import com.example.auth.common.ApiResponse;
+import com.example.auth.common.BaseResponse;
 import com.example.auth.domain.User;
+import com.example.auth.dto.UserDTO;
 import com.example.auth.dto.UserUpdateRequest;
+import com.example.auth.common.ErrorResponseDTO;
+import com.example.auth.common.UserProfileResponseDTO;
 import com.example.auth.exception.JwtValidationException;
 import com.example.auth.repository.UserRepository;
 import com.example.auth.security.JwtUtil;
 import com.example.auth.service.TokenService;
 import com.example.auth.util.TokenUtils;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +24,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @Slf4j
 @Tag(name = "유저 API", description = "회원 정보 관련 API")
@@ -30,8 +40,21 @@ public class UserController {
     private final JwtUtil jwtUtil;
 
     @Operation(summary = "내 정보 조회", description = "accessToken으로 로그인한 유저 정보를 가져옵니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "프로필 조회 성공",
+                    content = @Content(schema = @Schema(implementation = UserProfileResponseDTO.class))),
+            @ApiResponse(responseCode = "401", description = "JWT 인증 실패 (만료, 위조 등)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
+    })
+
+
     @GetMapping("/profile")
-    public ResponseEntity<?> getProfile(@RequestHeader("Authorization") String bearerToken) {
+    public ResponseEntity<?> getProfile(
+            @Parameter(description = "Bearer 토큰", required = true)
+            @RequestHeader("Authorization") String bearerToken
+    ) {
         try {
             Long userId = tokenUtils.getUserIdFromToken(bearerToken);
 
@@ -40,35 +63,47 @@ public class UserController {
 
             log.info("사용자 프로필 조회: userId={}", userId);
 
+            // UserDTO 사용하여 일관된 응답 형식 제공
+            UserDTO userDTO = UserDTO.fromEntity(user);
+
+            // user 객체를 data 아래에 중첩해서 응답 구조 통일
+            Map<String, Object> responseData = Map.of("user", userDTO);
+
             return ResponseEntity.ok(
-                    ApiResponse.success(
-                            new ProfileResponse(
-                                    user.getId(),
-                                    user.getEmail(),             // 이메일은 읽기 전용
-                                    user.getNickname(),
-                                    user.getProfileImg(),
-                                    user.getPhone(),
-                                    user.getGender(),
-                                    user.getAge()
-                            ),
+                    BaseResponse.success(
+                            responseData,
                             "사용자 정보를 성공적으로 불러왔습니다."
                     )
             );
         } catch (JwtValidationException e) {
             log.warn("인증 오류 - 프로필 조회: {}, 타입: {}", e.getMessage(), e.getErrorType());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ApiResponse.fail(e.getMessage(), e.getErrorType().name(), HttpStatus.UNAUTHORIZED.value()));
+                    .body(BaseResponse.fail(e.getMessage(), e.getErrorType().name(), HttpStatus.UNAUTHORIZED.value()));
         } catch (Exception e) {
             log.error("프로필 조회 중 오류 발생: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.fail("서버 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
+                    .body(BaseResponse.fail("서버 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
         }
     }
 
     @Operation(summary = "내 정보 수정", description = "사용자 정보를 수정합니다. 소셜 로그인으로 제공된 이메일은 수정할 수 없습니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "프로필 수정 성공",
+                    content = @Content(schema = @Schema(implementation = UserProfileResponseDTO.class))),
+            @ApiResponse(responseCode = "400", description = "유효하지 않은 요청 (검증 실패 등)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(responseCode = "401", description = "JWT 인증 실패",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
+    })
+
+
     @PutMapping("/profile")
     public ResponseEntity<?> updateProfile(
+            @Parameter(description = "Bearer 토큰", required = true)
             @RequestHeader("Authorization") String bearerToken,
+            @Parameter(description = "수정할 사용자 정보", required = true)
             @RequestBody @Valid UserUpdateRequest request
     ) {
         try {
@@ -99,40 +134,49 @@ public class UserController {
             }
 
             // 이메일은 수정하지 않음 (소셜 로그인에서 받은 정보)
-            // role도 수정 불가하며 응답에서도 제외
+            // role도 수정 불가
 
             User updatedUser = userRepository.save(user);
             log.info("사용자 정보 수정 완료: userId={}", userId);
 
+            // UserDTO 사용하여 일관된 응답 형식 제공
+            UserDTO userDTO = UserDTO.fromEntity(updatedUser);
+
+            // user 객체를 data 아래에 중첩해서 응답 구조 통일
+            Map<String, Object> responseData = Map.of("user", userDTO);
+
             return ResponseEntity.ok(
-                    ApiResponse.success(
-                            new ProfileResponse(
-                                    updatedUser.getId(),
-                                    updatedUser.getEmail(),             // 읽기 전용 필드
-                                    updatedUser.getNickname(),
-                                    updatedUser.getProfileImg(),
-                                    updatedUser.getPhone(),
-                                    updatedUser.getGender(),
-                                    updatedUser.getAge()
-                            ),
+                    BaseResponse.success(
+                            responseData,
                             "사용자 정보가 성공적으로 수정되었습니다."
                     )
             );
         } catch (JwtValidationException e) {
             log.warn("인증 오류 - 프로필 수정: {}, 타입: {}", e.getMessage(), e.getErrorType());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ApiResponse.fail(e.getMessage(), e.getErrorType().name(), HttpStatus.UNAUTHORIZED.value()));
+                    .body(BaseResponse.fail(e.getMessage(), e.getErrorType().name(), HttpStatus.UNAUTHORIZED.value()));
         } catch (Exception e) {
             log.error("프로필 수정 중 오류 발생: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.fail("서버 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
+                    .body(BaseResponse.fail("서버 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
         }
     }
-
-    // 추가: 회원 탈퇴 API
     @Operation(summary = "회원 탈퇴", description = "사용자 계정을 삭제합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "회원 탈퇴 성공",
+                    content = @Content(schema = @Schema(implementation = BaseResponse.Success.class))),
+            @ApiResponse(responseCode = "401", description = "인증 실패",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
+    })
+
+
     @DeleteMapping("/exit")
-    public ResponseEntity<?> deleteAccount(@RequestHeader("Authorization") String bearerToken) {
+    public ResponseEntity<?> deleteAccount(
+            @Parameter(description = "Bearer 토큰", required = true)
+            @RequestHeader("Authorization") String bearerToken
+    ) {
         try {
             Long userId = tokenUtils.getUserIdFromToken(bearerToken);
 
@@ -156,26 +200,15 @@ public class UserController {
 
             log.info("회원 탈퇴 완료: userId={}", userId);
 
-            return ResponseEntity.ok(ApiResponse.success(null, "회원 탈퇴가 완료되었습니다."));
+            return ResponseEntity.ok(BaseResponse.success(null, "회원 탈퇴가 완료되었습니다."));
         } catch (JwtValidationException e) {
             log.warn("인증 오류 - 회원 탈퇴: {}, 타입: {}", e.getMessage(), e.getErrorType());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ApiResponse.fail(e.getMessage(), e.getErrorType().name(), HttpStatus.UNAUTHORIZED.value()));
+                    .body(BaseResponse.fail(e.getMessage(), e.getErrorType().name(), HttpStatus.UNAUTHORIZED.value()));
         } catch (Exception e) {
             log.error("회원 탈퇴 중 오류 발생: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.fail("서버 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
+                    .body(BaseResponse.fail("서버 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
         }
     }
-
-    // 응답용 DTO - role은 제외, email은 읽기 전용
-    public record ProfileResponse(
-            Long id,
-            String email,
-            String nickname,
-            String profileImage,
-            String phone,
-            String gender,
-            Integer age
-    ) {}
 }

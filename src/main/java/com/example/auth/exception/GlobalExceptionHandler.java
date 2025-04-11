@@ -1,6 +1,6 @@
 package com.example.auth.exception;
 
-import com.example.auth.common.ApiResponse;
+import com.example.auth.common.BaseResponse;
 import io.jsonwebtoken.ExpiredJwtException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -18,9 +18,9 @@ import java.util.stream.Collectors;
 public class GlobalExceptionHandler {
 
     // ✅ 401 전용 헬퍼
-    private ResponseEntity<ApiResponse.Error> unauthorized(String message, String code) {
+    private ResponseEntity<BaseResponse.Error> unauthorized(String message, String code) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(ApiResponse.fail(message, code, HttpStatus.UNAUTHORIZED.value()));
+                .body(BaseResponse.fail(message, code, HttpStatus.UNAUTHORIZED.value()));
     }
 
     // ✅ 토큰 관련 예외
@@ -61,7 +61,7 @@ public class GlobalExceptionHandler {
         }
 
         return ResponseEntity.status(status)
-                .body(ApiResponse.fail(ex.getMessage(), ex.getErrorCode(), status.value()));
+                .body(BaseResponse.fail(ex.getMessage(), ex.getErrorCode(), status.value()));
     }
 
     // ✅ 유효성 검증
@@ -74,7 +74,7 @@ public class GlobalExceptionHandler {
 
         log.warn("유효성 검증 오류: {}", errorMessage);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.fail(errorMessage, "VALIDATION_ERROR", HttpStatus.BAD_REQUEST.value()));
+                .body(BaseResponse.fail(errorMessage, "VALIDATION_ERROR", HttpStatus.BAD_REQUEST.value()));
     }
 
     // ✅ 기타 예외
@@ -82,6 +82,6 @@ public class GlobalExceptionHandler {
     public ResponseEntity<?> handleOther(Exception ex) {
         log.error("서버 오류: {}", ex.getMessage(), ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.fail("서버 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
+                .body(BaseResponse.fail("서버 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
     }
 }
