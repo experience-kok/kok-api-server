@@ -23,15 +23,4 @@ public class SnsPlatformRequest {
             nullable = false)
     @NotBlank(message = "계정 URL은 필수입니다")
     private String accountUrl;
-
-    @Schema(description = "계정 이름", example = "나의 블로그",
-            requiredMode = Schema.RequiredMode.REQUIRED,
-            nullable = false)
-    @NotBlank(message = "계정 이름은 필수입니다")
-    private String accountName;
-
-    @Schema(description = "인증 여부 (무시됨, 항상 false로 설정됨)", example = "false",
-            hidden = true,
-            nullable = true)
-    private Boolean verified;
 }

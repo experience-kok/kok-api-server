@@ -11,6 +11,7 @@ import com.example.auth.repository.UserRepository;
 import com.example.auth.security.JwtUtil;
 import com.example.auth.service.TokenService;
 import com.example.auth.util.TokenUtils;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -75,7 +76,11 @@ public class UserController {
                             "사용자 정보를 성공적으로 불러왔습니다."
                     )
             );
-        } catch (JwtValidationException e) {
+        } catch (ExpiredJwtException e) {
+            log.warn("만료된 토큰 입니다: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(BaseResponse.fail("만료된 토큰입니다.", "TOKEN_EXPIRED", HttpStatus.UNAUTHORIZED.value()));
+        }catch (JwtValidationException e) {
             log.warn("인증 오류 - 프로필 조회: {}, 타입: {}", e.getMessage(), e.getErrorType());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(BaseResponse.fail(e.getMessage(), e.getErrorType().name(), HttpStatus.UNAUTHORIZED.value()));
@@ -151,6 +156,10 @@ public class UserController {
                             "사용자 정보가 성공적으로 수정되었습니다."
                     )
             );
+        }catch (ExpiredJwtException e) {
+            log.warn("만료된 토큰으로 로그아웃 시도: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(BaseResponse.fail("만료된 토큰입니다.", "TOKEN_EXPIRED", HttpStatus.UNAUTHORIZED.value()));
         } catch (JwtValidationException e) {
             log.warn("인증 오류 - 프로필 수정: {}, 타입: {}", e.getMessage(), e.getErrorType());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -201,7 +210,11 @@ public class UserController {
             log.info("회원 탈퇴 완료: userId={}", userId);
 
             return ResponseEntity.ok(BaseResponse.success(null, "회원 탈퇴가 완료되었습니다."));
-        } catch (JwtValidationException e) {
+        }  catch (ExpiredJwtException e) {
+            log.warn("만료된 토큰으로 로그아웃 시도: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(BaseResponse.fail("만료된 토큰입니다.", "TOKEN_EXPIRED", HttpStatus.UNAUTHORIZED.value()));
+        }catch (JwtValidationException e) {
             log.warn("인증 오류 - 회원 탈퇴: {}, 타입: {}", e.getMessage(), e.getErrorType());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(BaseResponse.fail(e.getMessage(), e.getErrorType().name(), HttpStatus.UNAUTHORIZED.value()));

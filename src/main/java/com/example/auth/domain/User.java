@@ -30,6 +30,20 @@ public class User {
     @Column(name = "profile_img")
     private String profileImg;
 
+    @Column(nullable = true)
+    private String password;
+
+    @Column(name = "account_type", nullable = false)
+    @Builder.Default
+    private String accountType = "SOCIAL";
+
+    @Column(name = "email_verified")
+    @Builder.Default
+    private Boolean emailVerified = false;
+
+    @Column
+    @Builder.Default
+    private Boolean active = true;
     private String phone;
     private String gender;
     private Integer age;
@@ -78,6 +92,25 @@ public class User {
 
     public void updateAge(Integer age) {
         this.age = age;
+        this.updatedAt = LocalDateTime.now();
+    }
+    public void updatePassword(String encodedPassword) {
+        this.password = encodedPassword;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void verifyEmail() {
+        this.emailVerified = true;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void deactivate() {
+        this.active = false;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void activate() {
+        this.active = true;
         this.updatedAt = LocalDateTime.now();
     }
 }

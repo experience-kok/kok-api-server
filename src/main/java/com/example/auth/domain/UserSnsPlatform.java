@@ -11,8 +11,8 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Setter
 public class UserSnsPlatform {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -21,18 +21,18 @@ public class UserSnsPlatform {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    // platformType_id 참조 대신 직접 String으로 저장
     @Column(name = "platform_type", nullable = false)
     private String platformType;
 
     @Column(name = "account_url", nullable = false)
     private String accountUrl;
 
-    @Column(name = "account_name", nullable = false)
-    private String accountName;
+    @Column(name = "follower_count")
+    private Integer followerCount;
 
-    @Builder.Default
-    @Column(name = "verified")
-    private Boolean verified = false;
+    @Column(name = "last_crawled_at")
+    private LocalDateTime lastCrawledAt;
 
     @Builder.Default
     @Column(name = "created_at", nullable = false)
@@ -54,18 +54,18 @@ public class UserSnsPlatform {
     }
 
     // 수정 메서드들
-    public void updateAccountName(String accountName) {
-        this.accountName = accountName;
-        this.updatedAt = LocalDateTime.now();
-    }
-
     public void updateAccountUrl(String accountUrl) {
         this.accountUrl = accountUrl;
         this.updatedAt = LocalDateTime.now();
     }
 
-    public void updateVerified(Boolean verified) {
-        this.verified = verified;
+    public void updateFollowerCount(Integer followerCount) {
+        this.followerCount = followerCount;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void updateLastCrawledAt(LocalDateTime lastCrawledAt) {
+        this.lastCrawledAt = lastCrawledAt;
         this.updatedAt = LocalDateTime.now();
     }
 }

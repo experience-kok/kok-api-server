@@ -17,13 +17,13 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    // ✅ 401 전용 헬퍼
+    // 401 전용 헬퍼
     private ResponseEntity<BaseResponse.Error> unauthorized(String message, String code) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(BaseResponse.fail(message, code, HttpStatus.UNAUTHORIZED.value()));
     }
 
-    // ✅ 토큰 관련 예외
+    //  토큰 관련 예외
     @ExceptionHandler(JwtValidationException.class)
     public ResponseEntity<?> handleJwtValidation(JwtValidationException ex) {
         log.warn("JWT 검증 오류: {}, 타입: {}", ex.getMessage(), ex.getErrorType());
@@ -64,7 +64,7 @@ public class GlobalExceptionHandler {
                 .body(BaseResponse.fail(ex.getMessage(), ex.getErrorCode(), status.value()));
     }
 
-    // ✅ 유효성 검증
+    // 유효성 검증
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<?> handleValidation(MethodArgumentNotValidException ex) {
         BindingResult result = ex.getBindingResult();
@@ -77,7 +77,7 @@ public class GlobalExceptionHandler {
                 .body(BaseResponse.fail(errorMessage, "VALIDATION_ERROR", HttpStatus.BAD_REQUEST.value()));
     }
 
-    // ✅ 기타 예외
+    //  기타 예외
     @ExceptionHandler(Exception.class)
     public ResponseEntity<?> handleOther(Exception ex) {
         log.error("서버 오류: {}", ex.getMessage(), ex);
