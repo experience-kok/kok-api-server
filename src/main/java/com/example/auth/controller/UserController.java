@@ -7,6 +7,7 @@ import com.example.auth.dto.UserUpdateRequest;
 import com.example.auth.common.ErrorResponseDTO;
 import com.example.auth.common.UserProfileResponseDTO;
 import com.example.auth.exception.JwtValidationException;
+import com.example.auth.exception.TokenErrorType;
 import com.example.auth.repository.UserRepository;
 import com.example.auth.security.JwtUtil;
 import com.example.auth.service.TokenService;
@@ -49,13 +50,14 @@ public class UserController {
             @ApiResponse(responseCode = "500", description = "서버 오류",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-
-
     @GetMapping("/profile")
     public ResponseEntity<?> getProfile(
             @Parameter(description = "Bearer 토큰", required = true)
             @RequestHeader("Authorization") String bearerToken
     ) {
+        // 토큰 로깅
+        log.info("프로필 조회 요청 받음 - 토큰: {}", maskToken(bearerToken));
+
         try {
             Long userId = tokenUtils.getUserIdFromToken(bearerToken);
 
@@ -77,13 +79,19 @@ public class UserController {
                     )
             );
         } catch (ExpiredJwtException e) {
-            log.warn("만료된 토큰 입니다: {}", e.getMessage());
+            log.warn("만료된 토큰으로 프로필 조회 시도: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(BaseResponse.fail("만료된 토큰입니다.", "TOKEN_EXPIRED", HttpStatus.UNAUTHORIZED.value()));
-        }catch (JwtValidationException e) {
-            log.warn("인증 오류 - 프로필 조회: {}, 타입: {}", e.getMessage(), e.getErrorType());
+        } catch (JwtValidationException e) {
+            log.warn("JWT 검증 오류 - 프로필 조회: {}, 타입: {}", e.getMessage(), e.getErrorType());
+
+            String errorCode = "UNAUTHORIZED";
+            if (e.getErrorType() == TokenErrorType.EXPIRED) {
+                errorCode = "TOKEN_EXPIRED";
+            }
+
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(BaseResponse.fail(e.getMessage(), e.getErrorType().name(), HttpStatus.UNAUTHORIZED.value()));
+                    .body(BaseResponse.fail(e.getMessage(), errorCode, HttpStatus.UNAUTHORIZED.value()));
         } catch (Exception e) {
             log.error("프로필 조회 중 오류 발생: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -102,8 +110,6 @@ public class UserController {
             @ApiResponse(responseCode = "500", description = "서버 오류",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-
-
     @PutMapping("/profile")
     public ResponseEntity<?> updateProfile(
             @Parameter(description = "Bearer 토큰", required = true)
@@ -111,6 +117,9 @@ public class UserController {
             @Parameter(description = "수정할 사용자 정보", required = true)
             @RequestBody @Valid UserUpdateRequest request
     ) {
+        // 토큰 로깅
+        log.info("프로필 수정 요청 받음 - 토큰: {}", maskToken(bearerToken));
+
         try {
             Long userId = tokenUtils.getUserIdFromToken(bearerToken);
 
@@ -156,20 +165,27 @@ public class UserController {
                             "사용자 정보가 성공적으로 수정되었습니다."
                     )
             );
-        }catch (ExpiredJwtException e) {
-            log.warn("만료된 토큰으로 로그아웃 시도: {}", e.getMessage());
+        } catch (ExpiredJwtException e) {
+            log.warn("만료된 토큰으로 프로필 수정 시도: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(BaseResponse.fail("만료된 토큰입니다.", "TOKEN_EXPIRED", HttpStatus.UNAUTHORIZED.value()));
         } catch (JwtValidationException e) {
-            log.warn("인증 오류 - 프로필 수정: {}, 타입: {}", e.getMessage(), e.getErrorType());
+            log.warn("JWT 검증 오류 - 프로필 수정: {}, 타입: {}", e.getMessage(), e.getErrorType());
+
+            String errorCode = "UNAUTHORIZED";
+            if (e.getErrorType() == TokenErrorType.EXPIRED) {
+                errorCode = "TOKEN_EXPIRED";
+            }
+
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(BaseResponse.fail(e.getMessage(), e.getErrorType().name(), HttpStatus.UNAUTHORIZED.value()));
+                    .body(BaseResponse.fail(e.getMessage(), errorCode, HttpStatus.UNAUTHORIZED.value()));
         } catch (Exception e) {
             log.error("프로필 수정 중 오류 발생: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(BaseResponse.fail("서버 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
         }
     }
+
     @Operation(summary = "회원 탈퇴", description = "사용자 계정을 삭제합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "회원 탈퇴 성공",
@@ -179,13 +195,14 @@ public class UserController {
             @ApiResponse(responseCode = "500", description = "서버 오류",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-
-
     @DeleteMapping("/exit")
     public ResponseEntity<?> deleteAccount(
             @Parameter(description = "Bearer 토큰", required = true)
             @RequestHeader("Authorization") String bearerToken
     ) {
+        // 토큰 로깅
+        log.info("회원 탈퇴 요청 받음 - 토큰: {}", maskToken(bearerToken));
+
         try {
             Long userId = tokenUtils.getUserIdFromToken(bearerToken);
 
@@ -210,18 +227,38 @@ public class UserController {
             log.info("회원 탈퇴 완료: userId={}", userId);
 
             return ResponseEntity.ok(BaseResponse.success(null, "회원 탈퇴가 완료되었습니다."));
-        }  catch (ExpiredJwtException e) {
-            log.warn("만료된 토큰으로 로그아웃 시도: {}", e.getMessage());
+        } catch (ExpiredJwtException e) {
+            log.warn("만료된 토큰으로 회원 탈퇴 시도: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(BaseResponse.fail("만료된 토큰입니다.", "TOKEN_EXPIRED", HttpStatus.UNAUTHORIZED.value()));
-        }catch (JwtValidationException e) {
-            log.warn("인증 오류 - 회원 탈퇴: {}, 타입: {}", e.getMessage(), e.getErrorType());
+        } catch (JwtValidationException e) {
+            log.warn("JWT 검증 오류 - 회원 탈퇴: {}, 타입: {}", e.getMessage(), e.getErrorType());
+
+            String errorCode = "UNAUTHORIZED";
+            if (e.getErrorType() == TokenErrorType.EXPIRED) {
+                errorCode = "TOKEN_EXPIRED";
+            }
+
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(BaseResponse.fail(e.getMessage(), e.getErrorType().name(), HttpStatus.UNAUTHORIZED.value()));
+                    .body(BaseResponse.fail(e.getMessage(), errorCode, HttpStatus.UNAUTHORIZED.value()));
         } catch (Exception e) {
             log.error("회원 탈퇴 중 오류 발생: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(BaseResponse.fail("서버 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
         }
+    }
+
+    /**
+     * 토큰을 마스킹하여 로그에 안전하게 출력
+     * @param token 원본 토큰
+     * @return 마스킹된 토큰
+     */
+    private String maskToken(String token) {
+        if (token == null || token.length() < 20) {
+            return "invalid-token";
+        }
+        // Bearer 접두사 제거 후 토큰의 처음 10자와 마지막 5자만 표시
+        token = token.replace("Bearer ", "");
+        return token.substring(0, 10) + "..." + token.substring(token.length() - 5);
     }
 }

@@ -64,6 +64,10 @@ public class JwtAuthInterceptor implements HandlerInterceptor {
 
             log.debug("인증 성공: {}", path);
             return true;
+        } catch (JwtValidationException e) {
+            // JwtValidationException이 이미 발생한 경우 그대로 던짐
+            log.warn("JWT 검증 오류 - 인터셉터: {}, 타입: {}", e.getMessage(), e.getErrorType());
+            throw e;
         } catch (ExpiredJwtException e) {
             log.warn("만료된 토큰입니다: {}", path);
             throw new JwtValidationException("토큰이 만료되었습니다.", TokenErrorType.EXPIRED);
