@@ -11,11 +11,11 @@ import lombok.ToString;
 public class SnsPlatformRequest {
 
     @Schema(description = "플랫폼 유형", example = "BLOG",
-            allowableValues = {"BLOG", "INSTAGRAM", "YOUTUBE"},
+            allowableValues = {"BLOG", "FACEBOOK", "INSTAGRAM", "YOUTUBE"},
             requiredMode = Schema.RequiredMode.REQUIRED,
             nullable = false)
     @NotBlank(message = "플랫폼 타입은 필수입니다")
-    @Pattern(regexp = "^(BLOG|INSTAGRAM|YOUTUBE)$", message = "플랫폼 타입은 BLOG, INSTAGRAM, YOUTUBE 중 하나여야 합니다")
+    @Pattern(regexp = "^(BLOG|FACEBOOK|INSTAGRAM|YOUTUBE)$", message = "플랫폼 타입은 BLOG, FACEBOOK, INSTAGRAM, YOUTUBE 중 하나여야 합니다")
     private String platformType;
 
     @Schema(description = "계정 URL", example = "https://myblog.com",

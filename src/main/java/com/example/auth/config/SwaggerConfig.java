@@ -35,7 +35,11 @@ public class SwaggerConfig {
                 .info(new Info()
                         .title("My Project API")
                         .version("v1.0.0")
-                        .description("Springdoc 기반 Swagger 문서"));
+                        .description("Springdoc 기반 Swagger 문서"))
+                .servers(List.of(
+                        new io.swagger.v3.oas.models.servers.Server().url("https://ckok.kr").description("운영 서버"),
+                        new io.swagger.v3.oas.models.servers.Server().url("http://localhost:8080").description("로컬 서버")
+                ));
     }
 
     @Bean

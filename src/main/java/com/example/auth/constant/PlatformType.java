@@ -7,6 +7,9 @@ public enum PlatformType {
     @Schema(description = "네이버 블로그")
     BLOG("blog", "네이버 블로그"),
 
+    @Schema(description = "페이스북")
+    FACEBOOK("facebook", "페이스북"),
+
     @Schema(description = "인스타그램")
     INSTAGRAM("instagram", "인스타그램"),
 

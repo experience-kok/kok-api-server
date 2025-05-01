@@ -15,6 +15,9 @@ public interface UserSnsPlatformRepository extends JpaRepository<UserSnsPlatform
     Optional<UserSnsPlatform> findByUserIdAndId(Long userId, Long platformId);
 
     Optional<UserSnsPlatform> findByUserIdAndPlatformTypeAndAccountUrl(Long userId, String platformType, String accountUrl);
+    
+    // 특정 플랫폼 타입과 계정 URL로 조회 (사용자 무관)
+    Optional<UserSnsPlatform> findByPlatformTypeAndAccountUrl(String platformType, String accountUrl);
 
     void deleteByUserIdAndId(Long userId, Long platformId);
 
