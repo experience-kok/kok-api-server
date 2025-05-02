@@ -6,6 +6,10 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * @deprecated 대신 {@link PlatformConnectRequest}를 사용하세요.
+ */
+@Deprecated
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor

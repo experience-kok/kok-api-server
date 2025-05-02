@@ -4,9 +4,7 @@ import com.example.auth.common.BaseResponse;
 import com.example.auth.domain.UserSnsPlatform;
 import com.example.auth.dto.ApiResponseSchema;
 import com.example.auth.dto.FollowerCountUpdateRequest;
-import com.example.auth.dto.InstagramConnectRequest;
-import com.example.auth.dto.NaverBlogConnectRequest;
-import com.example.auth.dto.YouTubeConnectRequest;
+import com.example.auth.dto.PlatformConnectRequest;
 import com.example.auth.repository.UserSnsPlatformRepository;
 import com.example.auth.service.InstagramConnectService;
 import com.example.auth.service.NaverBlogConnectService;
@@ -140,8 +138,65 @@ public class UserSnsPlatformController {
         }
     }
 
-    // 네이버 블로그 연동 API
-    @Operation(summary = "네이버 블로그 연동", description = "네이버 블로그 URL을 입력받아 연동합니다. (팔로워 수는 자동으로 수집되지 않으며 수동 업데이트가 필요합니다.)")
+    // 통합 플랫폼 연동 API
+    @Operation(summary = "SNS 플랫폼 연동", description = "플랫폼 타입(BLOG, INSTAGRAM, YOUTUBE)과 URL을 입력받아 연동합니다. (팔로워 수는 자동으로 수집되지 않으며 수동 업데이트가 필요합니다.)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "SNS 플랫폼 연동 성공",
+                    content = @Content(schema = @Schema(implementation = BaseResponse.Success.class))),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 (잘못된 URL 형식 등)",
+                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class))),
+            @ApiResponse(responseCode = "401", description = "인증 실패",
+                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류",
+                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class)))
+    })
+    @PostMapping("/connect")
+    public ResponseEntity<?> connectPlatform(
+            @Parameter(description = "Bearer 토큰", required = true)
+            @RequestHeader("Authorization") String bearerToken,
+            @Parameter(description = "SNS 플랫폼 연동 요청", required = true)
+            @RequestBody @Valid PlatformConnectRequest request
+    ) {
+        try {
+            Long userId = tokenUtils.getUserIdFromToken(bearerToken);
+            Long platformId;
+            String platformName;
+            
+            switch (request.getType()) {
+                case "BLOG":
+                    platformId = naverBlogConnectService.connect(userId, request.getUrl());
+                    platformName = "네이버 블로그";
+                    break;
+                case "INSTAGRAM":
+                    platformId = instagramConnectService.connect(userId, request.getUrl());
+                    platformName = "인스타그램";
+                    break;
+                case "YOUTUBE":
+                    platformId = youtubeConnectService.connect(userId, request.getUrl());
+                    platformName = "유튜브 채널";
+                    break;
+                default:
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                            .body(BaseResponse.fail("지원하지 않는 플랫폼 타입입니다.", "UNSUPPORTED_PLATFORM", HttpStatus.BAD_REQUEST.value()));
+            }
+            
+            Map<String, Object> responseData = Map.of(
+                    "platformId", platformId,
+                    "platformType", request.getType(),
+                    "message", platformName + " 연동이 완료되었습니다. (팔로워 수는 수동 업데이트가 필요합니다.)"
+            );
+            
+            return ResponseEntity.ok(BaseResponse.success(responseData, platformName + " 연동 성공"));
+        } catch (Exception e) {
+            log.error("SNS 플랫폼 연동 중 오류 발생: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(BaseResponse.fail(e.getMessage(), "PLATFORM_CONNECT_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
+        }
+    }
+    
+    // 네이버 블로그 연동 API (Deprecated)
+    @Deprecated
+    @Operation(summary = "네이버 블로그 연동 (Deprecated)", description = "네이버 블로그 URL을 입력받아 연동합니다. 대신 /api/platforms/connect API를 사용하세요.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "네이버 블로그 연동 성공",
                     content = @Content(schema = @Schema(implementation = BaseResponse.Success.class))),
@@ -157,12 +212,12 @@ public class UserSnsPlatformController {
             @Parameter(description = "Bearer 토큰", required = true)
             @RequestHeader("Authorization") String bearerToken,
             @Parameter(description = "네이버 블로그 연동 요청", required = true)
-            @RequestBody @Valid NaverBlogConnectRequest request
+            @RequestBody @Valid PlatformConnectRequest request
     ) {
         try {
             Long userId = tokenUtils.getUserIdFromToken(bearerToken);
             
-            Long platformId = naverBlogConnectService.connect(userId, request.getBlogUrl());
+            Long platformId = naverBlogConnectService.connect(userId, request.getUrl());
             
             Map<String, Object> responseData = Map.of(
                     "platformId", platformId,
@@ -177,8 +232,66 @@ public class UserSnsPlatformController {
         }
     }
     
-    // 네이버 블로그 연동 해제 API
-    @Operation(summary = "네이버 블로그 연동 해제", description = "연동된 네이버 블로그를 해제합니다.")
+    // 통합 플랫폼 연동 해제 API
+    @Operation(summary = "SNS 플랫폼 연동 해제", description = "연동된 SNS 플랫폼을 해제합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "SNS 플랫폼 연동 해제 성공",
+                    content = @Content(schema = @Schema(implementation = BaseResponse.Success.class))),
+            @ApiResponse(responseCode = "401", description = "인증 실패",
+                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class))),
+            @ApiResponse(responseCode = "404", description = "연동된 플랫폼을 찾을 수 없음",
+                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류",
+                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class)))
+    })
+    @DeleteMapping("/{platformId}")
+    public ResponseEntity<?> disconnectPlatform(
+            @Parameter(description = "Bearer 토큰", required = true)
+            @RequestHeader("Authorization") String bearerToken,
+            @Parameter(description = "플랫폼 ID", required = true, example = "1")
+            @PathVariable Long platformId
+    ) {
+        try {
+            Long userId = tokenUtils.getUserIdFromToken(bearerToken);
+            
+            // 플랫폼 정보 조회
+            UserSnsPlatform platform = userSnsPlatformRepository.findByUserIdAndId(userId, platformId)
+                    .orElseThrow(() -> new RuntimeException("연동된 플랫폼을 찾을 수 없습니다."));
+            
+            String platformType = platform.getPlatformType();
+            String platformName;
+            
+            // 플랫폼 타입에 따라 적절한 서비스로 연동 해제 처리
+            switch (platformType) {
+                case "BLOG":
+                    naverBlogConnectService.disconnect(userId, platformId);
+                    platformName = "네이버 블로그";
+                    break;
+                case "INSTAGRAM":
+                    instagramConnectService.disconnect(userId, platformId);
+                    platformName = "인스타그램";
+                    break;
+                case "YOUTUBE":
+                    youtubeConnectService.disconnect(userId, platformId);
+                    platformName = "유튜브 채널";
+                    break;
+                default:
+                    // 알 수 없는 플랫폼 타입인 경우 기본 삭제 처리
+                    userSnsPlatformRepository.deleteById(platformId);
+                    platformName = "SNS 플랫폼";
+            }
+            
+            return ResponseEntity.ok(BaseResponse.success(null, platformName + " 연동이 해제되었습니다."));
+        } catch (Exception e) {
+            log.error("SNS 플랫폼 연동 해제 중 오류 발생: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(BaseResponse.fail(e.getMessage(), "PLATFORM_DISCONNECT_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
+        }
+    }
+    
+    // 네이버 블로그 연동 해제 API (Deprecated)
+    @Deprecated
+    @Operation(summary = "네이버 블로그 연동 해제 (Deprecated)", description = "연동된 네이버 블로그를 해제합니다. 대신 /api/platforms/{platformId} API를 사용하세요.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "네이버 블로그 연동 해제 성공",
                     content = @Content(schema = @Schema(implementation = BaseResponse.Success.class))),
@@ -209,8 +322,9 @@ public class UserSnsPlatformController {
         }
     }
     
-    // 인스타그램 연동 API
-    @Operation(summary = "인스타그램 연동", description = "인스타그램 프로필 URL을 입력받아 연동합니다. (팔로워 수는 자동으로 수집되지 않으며 수동 업데이트가 필요합니다.)")
+    // 인스타그램 연동 API (Deprecated)
+    @Deprecated
+    @Operation(summary = "인스타그램 연동 (Deprecated)", description = "인스타그램 프로필 URL을 입력받아 연동합니다. 대신 /api/platforms/connect API를 사용하세요.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "인스타그램 연동 성공",
                     content = @Content(schema = @Schema(implementation = BaseResponse.Success.class))),
@@ -226,12 +340,12 @@ public class UserSnsPlatformController {
             @Parameter(description = "Bearer 토큰", required = true)
             @RequestHeader("Authorization") String bearerToken,
             @Parameter(description = "인스타그램 연동 요청", required = true)
-            @RequestBody @Valid InstagramConnectRequest request
+            @RequestBody @Valid PlatformConnectRequest request
     ) {
         try {
             Long userId = tokenUtils.getUserIdFromToken(bearerToken);
             
-            Long platformId = instagramConnectService.connect(userId, request.getInstagramUrl());
+            Long platformId = instagramConnectService.connect(userId, request.getUrl());
             
             Map<String, Object> responseData = Map.of(
                     "platformId", platformId,
@@ -246,8 +360,9 @@ public class UserSnsPlatformController {
         }
     }
     
-    // 인스타그램 연동 해제 API
-    @Operation(summary = "인스타그램 연동 해제", description = "연동된 인스타그램을 해제합니다.")
+    // 인스타그램 연동 해제 API (Deprecated)
+    @Deprecated
+    @Operation(summary = "인스타그램 연동 해제 (Deprecated)", description = "연동된 인스타그램을 해제합니다. 대신 /api/platforms/{platformId} API를 사용하세요.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "인스타그램 연동 해제 성공",
                     content = @Content(schema = @Schema(implementation = BaseResponse.Success.class))),
@@ -278,8 +393,9 @@ public class UserSnsPlatformController {
         }
     }
     
-    // 유튜브 연동 API
-    @Operation(summary = "유튜브 채널 연동", description = "유튜브 채널 URL을 입력받아 연동합니다. (구독자 수는 자동으로 수집되지 않으며 수동 업데이트가 필요합니다.)")
+    // 유튜브 연동 API (Deprecated)
+    @Deprecated
+    @Operation(summary = "유튜브 채널 연동 (Deprecated)", description = "유튜브 채널 URL을 입력받아 연동합니다. 대신 /api/platforms/connect API를 사용하세요.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "유튜브 채널 연동 성공",
                     content = @Content(schema = @Schema(implementation = BaseResponse.Success.class))),
@@ -295,12 +411,12 @@ public class UserSnsPlatformController {
             @Parameter(description = "Bearer 토큰", required = true)
             @RequestHeader("Authorization") String bearerToken,
             @Parameter(description = "유튜브 채널 연동 요청", required = true)
-            @RequestBody @Valid YouTubeConnectRequest request
+            @RequestBody @Valid PlatformConnectRequest request
     ) {
         try {
             Long userId = tokenUtils.getUserIdFromToken(bearerToken);
             
-            Long platformId = youtubeConnectService.connect(userId, request.getYoutubeUrl());
+            Long platformId = youtubeConnectService.connect(userId, request.getUrl());
             
             Map<String, Object> responseData = Map.of(
                     "platformId", platformId,
@@ -315,8 +431,9 @@ public class UserSnsPlatformController {
         }
     }
     
-    // 유튜브 연동 해제 API
-    @Operation(summary = "유튜브 채널 연동 해제", description = "연동된 유튜브 채널을 해제합니다.")
+    // 유튜브 연동 해제 API (Deprecated)
+    @Deprecated
+    @Operation(summary = "유튜브 채널 연동 해제 (Deprecated)", description = "연동된 유튜브 채널을 해제합니다. 대신 /api/platforms/{platformId} API를 사용하세요.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "유튜브 채널 연동 해제 성공",
                     content = @Content(schema = @Schema(implementation = BaseResponse.Success.class))),
