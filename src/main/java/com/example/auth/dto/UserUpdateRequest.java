@@ -14,9 +14,7 @@ public class UserUpdateRequest {
     @Size(min = 2, max = 100, message = "닉네임은 2자 이상 100자 이하로 입력해주세요")
     private String nickname;
 
-    @Schema(description = "프로필 이미지 URL", example = "https://example.com/profile.jpg", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true, 
-            deprecated = true)
-    @Deprecated // 별도의 PATCH API로 대체됨
+    @Schema(description = "프로필 이미지 URL", example = "https://example.com/profile.jpg", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
     private String profileImg;
 
     @Schema(description = "전화번호", example = "010-1234-5678", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)

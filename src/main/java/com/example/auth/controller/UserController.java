@@ -132,10 +132,10 @@ public class UserController {
                 user.updateNickname(request.getNickname());
             }
 
-            // 프로필 이미지 필드는 더 이상 이 API에서 권장되지 않음
+            // 프로필 이미지 처리
             if (request.getProfileImg() != null) {
-                log.warn("프로필 이미지 변경은 PATCH /api/users/profile/image API 사용을 권장합니다. userId={}", userId);
                 user.updateProfileImg(request.getProfileImg());
+                log.info("사용자 프로필 이미지 수정: userId={}", userId);
             }
 
             if (request.getPhone() != null) {
@@ -189,7 +189,7 @@ public class UserController {
         }
     }
 
-    @Operation(summary = "프로필 이미지 수정", description = "사용자의 프로필 이미지만 수정합니다.")
+    @Operation(summary = "프로필 이미지 수정", description = "사용자의 프로필 이미지만 수정합니다. 참고: PUT /api/users/profile API에서도 프로필 이미지를 수정할 수 있으며, 이 API는 하위 호환성을 위해 유지됩니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "프로필 이미지 수정 성공",
                     content = @Content(schema = @Schema(implementation = BaseResponse.Success.class))),

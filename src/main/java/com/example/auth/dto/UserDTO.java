@@ -44,17 +44,36 @@ public class UserDTO {
 
     /**
      * User 엔티티로부터 UserDTO 생성
+     * enum 타입은 대문자로 변환하여 반환
      */
     public static UserDTO fromEntity(User user) {
+        // 성별 값이 있는 경우 대문자로 변환
+        String genderUpperCase = null;
+        if (user.getGender() != null) {
+            try {
+                // Gender enum으로 변환 후 name()을 사용하여 대문자 이름 가져오기
+                genderUpperCase = Gender.fromString(user.getGender()).name();
+            } catch (Exception e) {
+                // 변환 중 오류 발생 시 원본 값 유지
+                genderUpperCase = user.getGender().toUpperCase();
+            }
+        }
+        
+        // 역할 값이 있는 경우 항상 대문자로 반환
+        String roleUpperCase = user.getRole();
+        if (roleUpperCase != null && !roleUpperCase.equals(roleUpperCase.toUpperCase())) {
+            roleUpperCase = roleUpperCase.toUpperCase();
+        }
+        
         return new UserDTO(
                 user.getId(),
                 user.getEmail(),
                 user.getNickname(),
                 user.getProfileImg(),
                 user.getPhone(),
-                user.getGender(),
+                genderUpperCase,
                 user.getAge(),
-                user.getRole()
+                roleUpperCase
         );
     }
 }

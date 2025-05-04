@@ -80,4 +80,33 @@ public class SwaggerConfig {
             schemas.put("UserRole", userRoleSchema);
         };
     }
+    
+    @Bean
+    public OpenApiCustomizer responseCustomizer() {
+        return openApi -> {
+            Map<String, Schema> schemas = openApi.getComponents().getSchemas();
+            if (schemas == null) {
+                schemas = new TreeMap<>();
+                openApi.getComponents().setSchemas(schemas);
+            }
+
+            // BaseResponse.Success Schema
+            Schema successResponseSchema = new Schema<>()
+                    .type("object")
+                    .addProperty("success", new Schema<>().type("boolean").example(true))
+                    .addProperty("message", new Schema<>().type("string").example("요청이 성공적으로 처리되었습니다."))
+                    .addProperty("code", new Schema<>().type("integer").example(200))
+                    .addProperty("data", new Schema<>().type("object"));
+            schemas.put("BaseResponseSuccess", successResponseSchema);
+
+            // BaseResponse.Error Schema
+            Schema errorResponseSchema = new Schema<>()
+                    .type("object")
+                    .addProperty("success", new Schema<>().type("boolean").example(false))
+                    .addProperty("message", new Schema<>().type("string").example("요청 처리 중 오류가 발생했습니다."))
+                    .addProperty("code", new Schema<>().type("integer").example(400))
+                    .addProperty("error", new Schema<>().type("string").example("ERROR_CODE"));
+            schemas.put("BaseResponseError", errorResponseSchema);
+        };
+    }
 }

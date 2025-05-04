@@ -1,6 +1,7 @@
 package com.example.auth.controller;
 
 import com.example.auth.common.BaseResponse;
+import com.example.auth.constant.PlatformType;
 import com.example.auth.domain.UserSnsPlatform;
 import com.example.auth.dto.ApiResponseSchema;
 import com.example.auth.dto.FollowerCountUpdateRequest;
@@ -18,6 +19,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -50,11 +52,11 @@ public class UserSnsPlatformController {
     @Operation(summary = "연동된 SNS 플랫폼 목록 조회", description = "사용자가 연동한 모든 SNS 플랫폼 목록을 조회합니다. 팔로워 수는 수동으로 업데이트해야 합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "플랫폼 목록 조회 성공",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Success.class))),
+                    content = @Content(schema = @Schema(ref = "#/components/schemas/BaseResponseSuccess"))),
             @ApiResponse(responseCode = "401", description = "인증 실패",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class))),
+                    content = @Content(schema = @Schema(ref = "#/components/schemas/BaseResponseError"))),
             @ApiResponse(responseCode = "500", description = "서버 오류",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class)))
+                    content = @Content(schema = @Schema(ref = "#/components/schemas/BaseResponseError")))
     })
     @GetMapping
     public ResponseEntity<?> getUserPlatforms(
@@ -71,7 +73,15 @@ public class UserSnsPlatformController {
                     .map(platform -> {
                         Map<String, Object> map = new HashMap<>();
                         map.put("id", platform.getId());
-                        map.put("platformType", platform.getPlatformType());
+                        // platformType을 대문자로 변환하여 반환
+                        String platformType = platform.getPlatformType();
+                        try {
+                            // PlatformType enum으로 변환 후 name()을 사용하여 대문자 이름 가져오기
+                            map.put("platformType", PlatformType.fromString(platformType).name());
+                        } catch (Exception e) {
+                            // 변환 중 오류 발생 시 원본 값 대문자로 변환하여 반환
+                            map.put("platformType", platformType != null ? platformType.toUpperCase() : null);
+                        }
                         map.put("accountUrl", platform.getAccountUrl());
                         map.put("followerCount", platform.getFollowerCount() != null ? platform.getFollowerCount() : 0);
                         map.put("lastCrawledAt", platform.getLastCrawledAt() != null ?
@@ -196,6 +206,7 @@ public class UserSnsPlatformController {
     
     // 네이버 블로그 연동 API (Deprecated)
     @Deprecated
+    @Hidden
     @Operation(summary = "네이버 블로그 연동 (Deprecated)", description = "네이버 블로그 URL을 입력받아 연동합니다. 대신 /api/platforms/connect API를 사용하세요.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "네이버 블로그 연동 성공",
@@ -291,6 +302,7 @@ public class UserSnsPlatformController {
     
     // 네이버 블로그 연동 해제 API (Deprecated)
     @Deprecated
+    @Hidden
     @Operation(summary = "네이버 블로그 연동 해제 (Deprecated)", description = "연동된 네이버 블로그를 해제합니다. 대신 /api/platforms/{platformId} API를 사용하세요.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "네이버 블로그 연동 해제 성공",
@@ -324,6 +336,7 @@ public class UserSnsPlatformController {
     
     // 인스타그램 연동 API (Deprecated)
     @Deprecated
+    @Hidden
     @Operation(summary = "인스타그램 연동 (Deprecated)", description = "인스타그램 프로필 URL을 입력받아 연동합니다. 대신 /api/platforms/connect API를 사용하세요.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "인스타그램 연동 성공",
@@ -362,6 +375,7 @@ public class UserSnsPlatformController {
     
     // 인스타그램 연동 해제 API (Deprecated)
     @Deprecated
+    @Hidden
     @Operation(summary = "인스타그램 연동 해제 (Deprecated)", description = "연동된 인스타그램을 해제합니다. 대신 /api/platforms/{platformId} API를 사용하세요.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "인스타그램 연동 해제 성공",
@@ -395,6 +409,7 @@ public class UserSnsPlatformController {
     
     // 유튜브 연동 API (Deprecated)
     @Deprecated
+    @Hidden
     @Operation(summary = "유튜브 채널 연동 (Deprecated)", description = "유튜브 채널 URL을 입력받아 연동합니다. 대신 /api/platforms/connect API를 사용하세요.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "유튜브 채널 연동 성공",
@@ -433,6 +448,7 @@ public class UserSnsPlatformController {
     
     // 유튜브 연동 해제 API (Deprecated)
     @Deprecated
+    @Hidden
     @Operation(summary = "유튜브 채널 연동 해제 (Deprecated)", description = "연동된 유튜브 채널을 해제합니다. 대신 /api/platforms/{platformId} API를 사용하세요.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "유튜브 채널 연동 해제 성공",
