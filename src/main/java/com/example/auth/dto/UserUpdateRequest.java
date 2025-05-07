@@ -10,8 +10,8 @@ import lombok.ToString;
 @ToString
 public class UserUpdateRequest {
 
-    @Schema(description = "닉네임 (2~100자)", example = "홍길동", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
-    @Size(min = 2, max = 100, message = "닉네임은 2자 이상 100자 이하로 입력해주세요")
+    @Schema(description = "닉네임 (2~8자)", example = "홍길동", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
+    @Size(min = 2, max = 8, message = "닉네임은 2자 이상 8자 이하로 입력해주세요")
     private String nickname;
 
     @Schema(description = "프로필 이미지 URL", example = "https://example.com/profile.jpg", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
