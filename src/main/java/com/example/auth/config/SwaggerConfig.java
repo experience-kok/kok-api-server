@@ -95,7 +95,7 @@ public class SwaggerConfig {
                     .type("object")
                     .addProperty("success", new Schema<Boolean>().type("boolean").example(true))
                     .addProperty("message", new Schema<String>().type("string").example("요청이 성공적으로 처리되었습니다."))
-                    .addProperty("code", new Schema<Integer>().type("integer").example(200))
+                    .addProperty("status", new Schema<Integer>().type("integer").example(200))
                     .addProperty("data", new Schema<Object>().type("object"));
             schemas.put("BaseResponseSuccess", successResponseSchema);
 
@@ -104,8 +104,8 @@ public class SwaggerConfig {
                     .type("object")
                     .addProperty("success", new Schema<Boolean>().type("boolean").example(false))
                     .addProperty("message", new Schema<String>().type("string").example("요청 처리 중 오류가 발생했습니다."))
-                    .addProperty("code", new Schema<Integer>().type("integer").example(400))
-                    .addProperty("error", new Schema<String>().type("string").example("ERROR_CODE"));
+                    .addProperty("status", new Schema<Integer>().type("integer").example(400))
+                    .addProperty("errorCode", new Schema<String>().type("string").example("ERROR_CODE"));
             schemas.put("BaseResponseError", errorResponseSchema);
         };
     }
