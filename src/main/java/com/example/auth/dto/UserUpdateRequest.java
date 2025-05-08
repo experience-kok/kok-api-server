@@ -15,7 +15,8 @@ public class UserUpdateRequest {
     private String nickname;
 
     @Schema(description = "프로필 이미지 URL", example = "https://example.com/profile.jpg", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
-    private String profileImg;
+    @Pattern(regexp = "^(https?://.*)?$", message = "올바른 URL 형식이어야 합니다")
+    private String profileImage;
 
     @Schema(description = "전화번호", example = "010-1234-5678", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
     private String phone;

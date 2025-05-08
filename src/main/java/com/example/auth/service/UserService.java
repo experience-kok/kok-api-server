@@ -66,4 +66,20 @@ public class UserService {
     public boolean isNicknameExists(String nickname) {
         return userRepository.findByNickname(nickname).isPresent();
     }
+    
+    /**
+     * 사용자 프로필 이미지 업데이트
+     * @param userId 사용자 ID
+     * @param imageUrl S3에 업로드된 이미지 URL
+     * @return 업데이트된 사용자 객체
+     * @throws RuntimeException 사용자를 찾을 수 없는 경우
+     */
+    @Transactional
+    public User updateUserProfileImage(Long userId, String imageUrl) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("사용자 정보를 찾을 수 없습니다."));
+        
+        user.updateProfileImg(imageUrl);
+        return userRepository.save(user);
+    }
 }

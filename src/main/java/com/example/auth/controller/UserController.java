@@ -2,6 +2,7 @@ package com.example.auth.controller;
 
 import com.example.auth.common.BaseResponse;
 import com.example.auth.domain.User;
+import com.example.auth.dto.ImageUpdateRequest;
 import com.example.auth.dto.NicknameUpdateRequest;
 import com.example.auth.dto.ProfileImageUpdateRequest;
 import com.example.auth.dto.UserDTO;
@@ -126,22 +127,32 @@ public class UserController {
     ) {
         // 토큰 로깅
         log.info("프로필 수정 요청 받음 - 토큰: {}", maskToken(bearerToken));
+        log.info("수정 요청 데이터: {}", request.toString());
 
         try {
             Long userId = tokenUtils.getUserIdFromToken(bearerToken);
 
             User user = userRepository.findById(userId)
                     .orElseThrow(() -> new RuntimeException("사용자 정보를 찾을 수 없습니다."));
+                    
+            log.info("수정 전 사용자 정보 - 닉네임: {}, 프로필 이미지: {}", user.getNickname(), user.getProfileImg());
 
             // 수정 가능한 필드만 반영
             if (request.getNickname() != null) {
                 user.updateNickname(request.getNickname());
+                log.info("닉네임 수정: {} -> {}", user.getNickname(), request.getNickname());
             }
 
             // 프로필 이미지 처리
-            if (request.getProfileImg() != null) {
-                user.updateProfileImg(request.getProfileImg());
-                log.info("사용자 프로필 이미지 수정: userId={}", userId);
+            if (request.getProfileImage() != null) {
+                log.info("프로필 이미지 수정 요청 - 이전: {}, 새 이미지: {}", user.getProfileImg(), request.getProfileImage());
+                // S3 URL 형식 검증 (옵션)
+                if (!request.getProfileImage().startsWith("http")) {
+                    return ResponseEntity.badRequest()
+                            .body(BaseResponse.fail("유효한 이미지 URL이 아닙니다.", "INVALID_IMAGE_URL", HttpStatus.BAD_REQUEST.value()));
+                }
+                user.updateProfileImg(request.getProfileImage());
+                log.info("사용자 프로필 이미지 수정: userId={}, 새 이미지 URL: {}", userId, request.getProfileImage());
             }
 
             if (request.getPhone() != null) {
@@ -161,6 +172,7 @@ public class UserController {
 
             User updatedUser = userRepository.save(user);
             log.info("사용자 정보 수정 완료: userId={}", userId);
+            log.info("수정 후 사용자 정보 - 닉네임: {}, 프로필 이미지: {}", updatedUser.getNickname(), updatedUser.getProfileImg());
 
             // UserDTO 사용하여 일관된 응답 형식 제공
             UserDTO userDTO = UserDTO.fromEntity(updatedUser);
@@ -195,7 +207,7 @@ public class UserController {
         }
     }
 
-    @Operation(summary = "프로필 이미지 수정", description = "사용자의 프로필 이미지만 수정합니다. 참고: PUT /api/users/profile API에서도 프로필 이미지를 수정할 수 있으며, 이 API는 하위 호환성을 위해 유지됩니다.")
+    @Operation(summary = "프로필 이미지 수정", description = "사용자의 프로필 이미지만 수정합니다. S3에 업로드된 이미지 URL을 전달받아 프로필을 업데이트합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "프로필 이미지 수정 성공",
                     content = @Content(schema = @Schema(implementation = BaseResponse.Success.class))),
@@ -210,28 +222,24 @@ public class UserController {
     public ResponseEntity<?> updateProfileImage(
             @Parameter(description = "Bearer 토큰", required = true)
             @RequestHeader("Authorization") String bearerToken,
-            @Parameter(description = "수정할 프로필 이미지", required = true)
+            @Parameter(description = "수정할 프로필 이미지 URL (S3 객체 URL)", required = true)
             @RequestBody @Valid ProfileImageUpdateRequest request
     ) {
         // 토큰 로깅
         log.info("프로필 이미지 수정 요청 받음 - 토큰: {}", maskToken(bearerToken));
+        log.info("전달받은 이미지 URL: {}", request.getProfileImage());
 
         try {
             Long userId = tokenUtils.getUserIdFromToken(bearerToken);
 
-            User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new RuntimeException("사용자 정보를 찾을 수 없습니다."));
-
-            // 프로필 이미지만 업데이트
-            user.updateProfileImg(request.getProfileImage());
-
-            User updatedUser = userRepository.save(user);
-            log.info("사용자 프로필 이미지 수정 완료: userId={}", userId);
+            // UserService를 통해 이미지 업데이트
+            User updatedUser = userService.updateUserProfileImage(userId, request.getProfileImage());
+            log.info("사용자 프로필 이미지 수정 완료: userId={}, 업데이트된 이미지: {}", userId, updatedUser.getProfileImg());
 
             // 응답 데이터 구성 - data 내에 user 객체 중첩
             Map<String, Object> userData = Map.of(
                     "id", updatedUser.getId(),
-                    "profileImage", updatedUser.getProfileImg()
+                    "profileImage", updatedUser.getProfileImg() // 응답에서는 profileImage로 변환
             );
             
             Map<String, Object> responseData = Map.of("user", userData);

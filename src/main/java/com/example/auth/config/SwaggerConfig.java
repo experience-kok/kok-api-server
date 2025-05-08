@@ -53,7 +53,7 @@ public class SwaggerConfig {
             }
 
             // Gender enum 처리
-            Schema genderSchema = new Schema<>();
+            Schema<String> genderSchema = new Schema<>();
             genderSchema.setType("string");
             genderSchema.setEnum(Arrays.stream(Gender.values())
                     .map(Gender::getValue)
@@ -62,7 +62,7 @@ public class SwaggerConfig {
             schemas.put("Gender", genderSchema);
 
             // PlatformType enum 처리
-            Schema platformTypeSchema = new Schema<>();
+            Schema<String> platformTypeSchema = new Schema<>();
             platformTypeSchema.setType("string");
             platformTypeSchema.setEnum(Arrays.stream(PlatformType.values())
                     .map(PlatformType::getValue)
@@ -71,7 +71,7 @@ public class SwaggerConfig {
             schemas.put("PlatformType", platformTypeSchema);
 
             // UserRole enum 처리
-            Schema userRoleSchema = new Schema<>();
+            Schema<String> userRoleSchema = new Schema<>();
             userRoleSchema.setType("string");
             userRoleSchema.setEnum(Arrays.stream(UserRole.values())
                     .map(UserRole::getValue)
@@ -91,21 +91,21 @@ public class SwaggerConfig {
             }
 
             // BaseResponse.Success Schema
-            Schema successResponseSchema = new Schema<>()
+            Schema<Object> successResponseSchema = new Schema<Object>()
                     .type("object")
-                    .addProperty("success", new Schema<>().type("boolean").example(true))
-                    .addProperty("message", new Schema<>().type("string").example("요청이 성공적으로 처리되었습니다."))
-                    .addProperty("code", new Schema<>().type("integer").example(200))
-                    .addProperty("data", new Schema<>().type("object"));
+                    .addProperty("success", new Schema<Boolean>().type("boolean").example(true))
+                    .addProperty("message", new Schema<String>().type("string").example("요청이 성공적으로 처리되었습니다."))
+                    .addProperty("code", new Schema<Integer>().type("integer").example(200))
+                    .addProperty("data", new Schema<Object>().type("object"));
             schemas.put("BaseResponseSuccess", successResponseSchema);
 
             // BaseResponse.Error Schema
-            Schema errorResponseSchema = new Schema<>()
+            Schema<Object> errorResponseSchema = new Schema<Object>()
                     .type("object")
-                    .addProperty("success", new Schema<>().type("boolean").example(false))
-                    .addProperty("message", new Schema<>().type("string").example("요청 처리 중 오류가 발생했습니다."))
-                    .addProperty("code", new Schema<>().type("integer").example(400))
-                    .addProperty("error", new Schema<>().type("string").example("ERROR_CODE"));
+                    .addProperty("success", new Schema<Boolean>().type("boolean").example(false))
+                    .addProperty("message", new Schema<String>().type("string").example("요청 처리 중 오류가 발생했습니다."))
+                    .addProperty("code", new Schema<Integer>().type("integer").example(400))
+                    .addProperty("error", new Schema<String>().type("string").example("ERROR_CODE"));
             schemas.put("BaseResponseError", errorResponseSchema);
         };
     }
