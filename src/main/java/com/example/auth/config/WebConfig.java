@@ -28,7 +28,7 @@ public class WebConfig implements WebMvcConfigurer {
                         "http://localhost:3000",
                         "https://ckok.kr"
                 )
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
                 .allowedHeaders(
                         "Authorization",
                         "Content-Type",
