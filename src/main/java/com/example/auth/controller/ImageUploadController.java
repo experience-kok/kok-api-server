@@ -2,7 +2,6 @@ package com.example.auth.controller;
 
 import com.example.auth.common.BaseResponse;
 import com.example.auth.service.S3Service;
-import com.example.auth.service.S3Service.PresignedUrlResponse;
 import com.example.auth.util.TokenUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -50,20 +49,17 @@ public class ImageUploadController {
             // 토큰에서 사용자 ID 추출 (인증)
             Long userId = tokenUtils.getUserIdFromToken(bearerToken);
             log.info("Presigned URL 요청: userId={}, fileExtension={}", userId, request.getFileExtension());
-            
-            // S3 Presigned URL 생성 (최소 버전 - 확장자만 사용)
-            PresignedUrlResponse presignedUrlResponse = s3Service.generatePresignedUrl(
-                request.getFileExtension()
-            );
-            
-            log.info("Presigned URL 생성 완료: userId={}, objectKey={}", userId, presignedUrlResponse.objectKey());
-            
-            // 응답 데이터 구성 (objectKey 제외)
+
+            // S3 Presigned URL 생성
+            String presignedUrl = s3Service.generatePresignedUrl(request.getFileExtension());
+
+            log.info("Presigned URL 생성 완료: userId={}", userId);
+
+            // 응답 데이터 구성 - presignedUrl만 포함
             Map<String, Object> responseData = Map.of(
-                    "presignedUrl", presignedUrlResponse.presignedUrl(),
-                    "objectUrl", presignedUrlResponse.objectUrl()
+                    "presignedUrl", presignedUrl
             );
-            
+
             return ResponseEntity.ok(
                     BaseResponse.success(
                             responseData,

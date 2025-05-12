@@ -41,10 +41,8 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-webflux'
 	implementation 'org.springdoc:springdoc-openapi-starter-common:2.3.0'
 	
-	// AWS SDK for Java v2
-	implementation platform('software.amazon.awssdk:bom:2.20.56')
-	implementation 'software.amazon.awssdk:s3'
-	implementation 'software.amazon.awssdk:url-connection-client'
+	// AWS SDK for Java
+	implementation 'io.awspring.cloud:spring-cloud-starter-aws:2.4.4'
 }
 
 tasks.named('test') {
