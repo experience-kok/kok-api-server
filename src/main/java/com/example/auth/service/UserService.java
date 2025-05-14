@@ -15,6 +15,7 @@ import java.util.Optional;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final S3Service s3Service;
 
     // UserService.java
     public UserLoginResult findOrCreateUser(String provider, KakaoUserInfo info) {
@@ -79,7 +80,10 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("사용자 정보를 찾을 수 없습니다."));
         
-        user.updateProfileImg(imageUrl);
+        // CloudFront URL로 변환 (또는 S3 URL 그대로 사용)
+        String cloudFrontUrl = s3Service.getImageUrl(imageUrl);
+        
+        user.updateProfileImg(cloudFrontUrl);
         return userRepository.save(user);
     }
     

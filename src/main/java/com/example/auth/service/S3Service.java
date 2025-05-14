@@ -126,15 +126,65 @@ public class S3Service {
      * CloudFront가 활성화된 경우 CloudFront URL을 사용하고,
      * 그렇지 않은 경우 S3 URL을 사용합니다.
      *
-     * @param objectKey S3 객체 키
+     * @param objectKeyOrUrl S3 객체 키 또는 S3 URL
      * @return 이미지 URL
      */
-    public String getImageUrl(String objectKey) {
+    public String getImageUrl(String objectKeyOrUrl) {
+        // URL에서 객체 키 추출 (S3 URL이 입력된 경우)
+        String objectKey = extractObjectKeyFromUrl(objectKeyOrUrl);
+        
+        log.info("getImageUrl 호출됨 - 입력값: {}, 추출된 객체 키: {}", objectKeyOrUrl, objectKey);
+        log.info("CloudFront 설정 - enabled: {}, domain: {}", cloudfrontEnabled, cloudfrontDomain);
+        
+        String resultUrl;
         if (cloudfrontEnabled && cloudfrontDomain != null && !cloudfrontDomain.isEmpty()) {
-            return "https://" + cloudfrontDomain + "/" + objectKey;
+            resultUrl = "https://" + cloudfrontDomain + "/" + objectKey;
+            log.info("CloudFront URL 생성됨: {}", resultUrl);
         } else {
-            return amazonS3Client.getUrl(bucketName, objectKey).toString();
+            resultUrl = amazonS3Client.getUrl(bucketName, objectKey).toString();
+            log.info("S3 URL 생성됨: {}", resultUrl);
         }
+        
+        return resultUrl;
+    }
+    
+    /**
+     * URL에서 객체 키를 추출합니다.
+     * URL 형식이 아니면 그대로 반환합니다.
+     *
+     * @param urlOrKey S3 URL 또는 객체 키
+     * @return 추출된 객체 키
+     */
+    private String extractObjectKeyFromUrl(String urlOrKey) {
+        // null이거나 빈 문자열이면 그대로 반환
+        if (urlOrKey == null || urlOrKey.isEmpty()) {
+            return urlOrKey;
+        }
+        
+        // URL 형식인지 확인
+        if (urlOrKey.startsWith("http://") || urlOrKey.startsWith("https://")) {
+            try {
+                java.net.URL url = new java.net.URL(urlOrKey);
+                String path = url.getPath();
+                
+                // 버킷 이름이 경로에 포함된 경우 처리 (일부 S3 URL 형식)
+                if (path.contains(bucketName)) {
+                    int bucketEndIndex = path.indexOf(bucketName) + bucketName.length();
+                    if (bucketEndIndex < path.length()) {
+                        path = path.substring(bucketEndIndex);
+                    }
+                }
+                
+                // 첫 번째 '/'를 제거
+                return path.startsWith("/") ? path.substring(1) : path;
+            } catch (Exception e) {
+                log.warn("URL 파싱 중 오류 발생, 원본 값 반환: {}", e.getMessage());
+                return urlOrKey;
+            }
+        }
+        
+        // URL 형식이 아니면 그대로 반환 (이미 객체 키인 경우)
+        return urlOrKey;
     }
 
     /**

@@ -1,18 +1,22 @@
 package com.example.auth.dto;
 
+import com.example.auth.config.UserDtoConfig;
 import com.example.auth.constant.Gender;
 import com.example.auth.constant.UserRole;
 import com.example.auth.domain.User;
+import com.example.auth.service.S3Service;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * 사용자 데이터 공통 응답 DTO
  * 로그인 및 프로필 조회 시 일관된 응답 구조 제공
  */
+@Slf4j
 @Getter
 @Setter
 @NoArgsConstructor
@@ -65,11 +69,25 @@ public class UserDTO {
             roleUpperCase = roleUpperCase.toUpperCase();
         }
         
+        // 프로필 이미지 URL을 CloudFront URL로 변환
+        String profileImageUrl = user.getProfileImg();
+        try {
+            // S3Service 인스턴스 가져오기
+            S3Service s3Service = UserDtoConfig.UserDtoHelper.getS3Service();
+            if (s3Service != null && profileImageUrl != null) {
+                profileImageUrl = s3Service.getImageUrl(profileImageUrl);
+                log.debug("프로필 이미지 URL 변환: {} -> {}", user.getProfileImg(), profileImageUrl);
+            }
+        } catch (Exception e) {
+            log.warn("프로필 이미지 URL 변환 중 오류 발생: {}", e.getMessage());
+            // 오류 발생 시 원본 URL 사용
+        }
+        
         return new UserDTO(
                 user.getId(),
                 user.getEmail(),
                 user.getNickname(),
-                user.getProfileImg(), // DB 필드는 profileImg이지만 응답은 profileImage로 매핑
+                profileImageUrl, // CloudFront URL로 변환된 이미지 URL
                 user.getPhone(),
                 genderUpperCase,
                 user.getAge(),

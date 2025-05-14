@@ -13,6 +13,7 @@ import com.example.auth.exception.JwtValidationException;
 import com.example.auth.exception.TokenErrorType;
 import com.example.auth.repository.UserRepository;
 import com.example.auth.security.JwtUtil;
+import com.example.auth.service.S3Service;
 import com.example.auth.service.TokenService;
 import com.example.auth.service.UserService;
 import com.example.auth.util.TokenUtils;
@@ -48,6 +49,7 @@ public class UserController {
     private final TokenService tokenService;
     private final JwtUtil jwtUtil;
     private final UserService userService;
+    private final S3Service s3Service;
 
     @Operation(summary = "내 정보 조회", description = "accessToken으로 로그인한 유저 정보를 가져옵니다.")
     @ApiResponses(value = {
@@ -239,7 +241,7 @@ public class UserController {
             // 응답 데이터 구성 - data 내에 user 객체 중첩
             Map<String, Object> userData = Map.of(
                     "id", updatedUser.getId(),
-                    "profileImage", updatedUser.getProfileImg() // 응답에서는 profileImage로 변환
+                    "profileImage", s3Service.getImageUrl(updatedUser.getProfileImg()) // CloudFront URL로 변환
             );
             
             Map<String, Object> responseData = Map.of("user", userData);
@@ -247,7 +249,7 @@ public class UserController {
             return ResponseEntity.ok(
                     BaseResponse.success(
                             responseData,
-                            "프로필 이미지가 성공적으로 수정되었습니다. (이미지 URL: " + updatedUser.getProfileImg() + ")"
+                            "프로필 이미지가 성공적으로 수정되었습니다. (이미지 URL: " + s3Service.getImageUrl(updatedUser.getProfileImg()) + ")"
                     )
             );
         } catch (ExpiredJwtException e) {
