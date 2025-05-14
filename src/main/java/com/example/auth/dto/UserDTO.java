@@ -69,7 +69,7 @@ public class UserDTO {
                 user.getId(),
                 user.getEmail(),
                 user.getNickname(),
-                user.getProfileImg(), // 엔티티의 필드명은 그대로 사용
+                user.getProfileImg(), // DB 필드는 profileImg이지만 응답은 profileImage로 매핑
                 user.getPhone(),
                 genderUpperCase,
                 user.getAge(),

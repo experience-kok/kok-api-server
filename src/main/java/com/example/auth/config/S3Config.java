@@ -24,14 +24,23 @@ public class S3Config {
 
     @Value("${aws.secretKey}")
     private String secretKey;
+    
+    @Value("${aws.s3.accelerate.enabled:false}")
+    private boolean accelerateEnabled;
 
     @Bean
     @Primary
     public AmazonS3Client amazonS3Client() {
         BasicAWSCredentials awsCredentials = new BasicAWSCredentials(accessKey, secretKey);
-        return (AmazonS3Client) AmazonS3ClientBuilder.standard()
+        AmazonS3ClientBuilder builder = AmazonS3ClientBuilder.standard()
                 .withCredentials(new AWSStaticCredentialsProvider(awsCredentials))
-                .withRegion(region)
-                .build();
+                .withRegion(region);
+                
+        // S3 Transfer Acceleration 활성화 (옵션)
+        if (accelerateEnabled) {
+            builder.enableAccelerateMode();
+        }
+        
+        return (AmazonS3Client) builder.build();
     }
 }

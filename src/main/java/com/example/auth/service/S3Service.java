@@ -26,6 +26,12 @@ public class S3Service {
 
     @Value("${aws.s3.presigned-url.expiration}")
     private int presignedUrlExpirationSeconds;
+    
+    @Value("${aws.cloudfront.domain:}")
+    private String cloudfrontDomain;
+    
+    @Value("${aws.cloudfront.enabled:false}")
+    private boolean cloudfrontEnabled;
 
     /**
      * 이미지 업로드를 위한 presigned URL을 생성합니다.
@@ -35,11 +41,32 @@ public class S3Service {
      * @return 업로드용 presigned URL 문자열
      */
     public String generatePresignedUrl(String fileExtension) {
+        return generatePresignedUrlWithOptions(fileExtension, null, null, null);
+    }
+    
+    /**
+     * 이미지 업로드를 위한 presigned URL을 생성합니다.
+     * 이미지 최적화 옵션 지원 버전
+     *
+     * @param fileExtension 파일 확장자 (예: jpg, png, webp)
+     * @param width 이미지 너비 (null이면 원본 크기 유지)
+     * @param height 이미지 높이 (null이면 원본 크기 유지)
+     * @param quality 이미지 품질 (null이면 기본값 사용)
+     * @return 업로드용 presigned URL 문자열
+     */
+    public String generatePresignedUrlWithOptions(String fileExtension, Integer width, Integer height, String quality) {
         // 고유한 키 생성
         String uuid = UUID.randomUUID().toString();
         String timestamp = String.valueOf(System.currentTimeMillis());
         String directory = "profile-images";
-        String objectKey = String.format("%s/%s-%s.%s", directory, timestamp, uuid, fileExtension);
+        
+        // 이미지 최적화 옵션 포함한 객체 키 생성
+        String objectKey;
+        if (width != null && height != null) {
+            objectKey = String.format("%s/%s-%s-%dx%d.%s", directory, timestamp, uuid, width, height, fileExtension);
+        } else {
+            objectKey = String.format("%s/%s-%s.%s", directory, timestamp, uuid, fileExtension);
+        }
 
         try {
             // S3 Presigned URL 요청 생성
@@ -47,13 +74,20 @@ public class S3Service {
                     .withMethod(HttpMethod.PUT)
                     .withExpiration(new Date(System.currentTimeMillis() + (presignedUrlExpirationSeconds * 1000)));
 
-            // 공개 읽기 권한 설정
-            generatePresignedUrlRequest.addRequestParameter(
-                    Headers.S3_CANNED_ACL,
-                    CannedAccessControlList.PublicRead.toString());
-
             // 콘텐츠 타입 설정
             generatePresignedUrlRequest.setContentType(determineContentType(fileExtension));
+            
+            // 캐싱 헤더 추가 (1년 캐싱)
+            generatePresignedUrlRequest.addRequestParameter(
+                    Headers.CACHE_CONTROL,
+                    "max-age=31536000, immutable");
+            
+            // 콘텐츠 인코딩 추가 (이미지 최적화)
+            if ("webp".equalsIgnoreCase(fileExtension) || "avif".equalsIgnoreCase(fileExtension)) {
+                generatePresignedUrlRequest.addRequestParameter(
+                        Headers.CONTENT_ENCODING,
+                        "br"); // Brotli 압축
+            }
 
             // Presigned URL 생성 및 반환
             String presignedUrl = amazonS3Client.generatePresignedUrl(generatePresignedUrlRequest).toString();
@@ -81,9 +115,26 @@ public class S3Service {
             case "gif" -> "image/gif";
             case "bmp" -> "image/bmp";
             case "webp" -> "image/webp";
+            case "avif" -> "image/avif";  // AVIF 형식 추가
             case "svg" -> "image/svg+xml";
             default -> "application/octet-stream";
         };
+    }
+    
+    /**
+     * 이미지 URL을 생성합니다.
+     * CloudFront가 활성화된 경우 CloudFront URL을 사용하고,
+     * 그렇지 않은 경우 S3 URL을 사용합니다.
+     *
+     * @param objectKey S3 객체 키
+     * @return 이미지 URL
+     */
+    public String getImageUrl(String objectKey) {
+        if (cloudfrontEnabled && cloudfrontDomain != null && !cloudfrontDomain.isEmpty()) {
+            return "https://" + cloudfrontDomain + "/" + objectKey;
+        } else {
+            return amazonS3Client.getUrl(bucketName, objectKey).toString();
+        }
     }
 
     /**

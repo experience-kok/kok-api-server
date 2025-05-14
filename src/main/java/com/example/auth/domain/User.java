@@ -113,4 +113,9 @@ public class User {
         this.active = true;
         this.updatedAt = LocalDateTime.now();
     }
+    
+    public void updateRole(String role) {
+        this.role = role;
+        this.updatedAt = LocalDateTime.now();
+    }
 }

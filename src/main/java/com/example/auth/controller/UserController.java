@@ -247,7 +247,7 @@ public class UserController {
             return ResponseEntity.ok(
                     BaseResponse.success(
                             responseData,
-                            "프로필 이미지가 성공적으로 수정되었습니다."
+                            "프로필 이미지가 성공적으로 수정되었습니다. (이미지 URL: " + updatedUser.getProfileImg() + ")"
                     )
             );
         } catch (ExpiredJwtException e) {
@@ -400,7 +400,7 @@ public class UserController {
             return ResponseEntity.ok(
                     BaseResponse.success(
                             responseData,
-                            "닉네임이 성공적으로 수정되었습니다."
+                            "닉네임이 성공적으로 수정되었습니다. (새 닉네임: " + updatedUser.getNickname() + ")"
                     )
             );
         } catch (ExpiredJwtException e) {

@@ -82,4 +82,6 @@ public class UserService {
         user.updateProfileImg(imageUrl);
         return userRepository.save(user);
     }
+    
+    // 사용자 역할 관리 메서드는 다른 프로젝트에서 관리합니다.
 }

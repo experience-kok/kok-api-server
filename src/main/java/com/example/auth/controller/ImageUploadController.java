@@ -19,6 +19,8 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import java.util.Map;
 
 @Slf4j
@@ -38,7 +40,7 @@ public class ImageUploadController {
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
-    @PostMapping("/presigned-url")
+    @RequestMapping(value = "/presigned-url", method = RequestMethod.POST)
     public ResponseEntity<?> generatePresignedUrl(
             @Parameter(description = "Bearer 토큰", required = true)
             @RequestHeader("Authorization") String bearerToken,
@@ -73,13 +75,35 @@ public class ImageUploadController {
         }
     }
 
+
     /**
-     * Presigned URL 요청을 위한 DTO
+     * 기본 Presigned URL 요청을 위한 DTO
      */
     @Data
     public static class PresignedUrlRequest {
         @NotBlank(message = "파일 확장자는 필수입니다")
-        @Pattern(regexp = "^(jpg|jpeg|png|gif|bmp|webp|svg)$", message = "지원하지 않는 파일 형식입니다")
+        @Pattern(regexp = "^(jpg|jpeg|png)$", message = "지원하지 않는 파일 형식입니다")
         private String fileExtension;
+    }
+    
+    /**
+     * 최적화된 Presigned URL 요청을 위한 DTO
+     */
+    @Data
+    public static class OptimizedPresignedUrlRequest {
+        @NotBlank(message = "파일 확장자는 필수입니다")
+        @Pattern(regexp = "^(jpg|jpeg|png)$", message = "지원하지 않는 파일 형식입니다")
+        private String fileExtension;
+        
+        @Min(value = 10, message = "너비는 최소 10 픽셀 이상이어야 합니다")
+        @Max(value = 4000, message = "너비는 최대 4000 픽셀 이하여야 합니다")
+        private Integer width;
+        
+        @Min(value = 10, message = "높이는 최소 10 픽셀 이상이어야 합니다")
+        @Max(value = 4000, message = "높이는 최대 4000 픽셀 이하여야 합니다")
+        private Integer height;
+        
+        @Pattern(regexp = "^(high|medium|low)$", message = "품질은 high, medium, low 중 하나여야 합니다")
+        private String quality;
     }
 }
