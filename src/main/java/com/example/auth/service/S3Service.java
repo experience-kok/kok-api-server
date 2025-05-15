@@ -43,7 +43,7 @@ public class S3Service {
     }
     
     /**
-     * 프로필 이미지 업로드를 위한 presigned URL을 생성합니다.
+     * 프로필 이미지 업로드를 위한 presigned URL을 생성합니다. (내부 메소드)
      * 프로필 이미지는 480px x 480px 크기로 리사이징됩니다.
      *
      * @param fileExtension 파일 확장자 (예: jpg, png)
@@ -54,7 +54,7 @@ public class S3Service {
     }
     
     /**
-     * 커버 이미지 업로드를 위한 presigned URL을 생성합니다.
+     * 커버 이미지 업로드를 위한 presigned URL을 생성합니다. (내부 메소드)
      * 커버 이미지는 720px 너비로 리사이징됩니다. (높이는 비율에 맞게 자동 조정)
      *
      * @param fileExtension 파일 확장자 (예: jpg, png)
@@ -74,7 +74,7 @@ public class S3Service {
      * @param quality 이미지 품질 (null이면 기본값 "90" 사용)
      * @return 업로드용 presigned URL 문자열
      */
-    private String generatePresignedUrlWithOptions(String fileExtension, Integer width, Integer height, String quality) {
+    public String generatePresignedUrlWithOptions(String fileExtension, Integer width, Integer height, String quality) {
         // 기본 이미지 품질 설정
         if (quality == null) {
             quality = "90";

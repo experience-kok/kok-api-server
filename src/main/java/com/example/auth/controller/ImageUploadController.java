@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -74,8 +75,8 @@ public class ImageUploadController {
         }
     }
 
-    @Operation(summary = "특정 크기의 이미지 업로드용 Presigned URL 생성", 
-               description = "S3에 특정 크기(480px 또는 720px)의 이미지를 업로드하기 위한 presigned URL을 생성합니다.")
+    @Operation(summary = "정사각형 이미지 업로드용 Presigned URL 생성", 
+               description = "URL 경로 파라미터로 지정한 크기의 정사각형 이미지를 업로드하기 위한 presigned URL을 생성합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Presigned URL 생성 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),
@@ -83,40 +84,35 @@ public class ImageUploadController {
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     @PostMapping("/presigned-url/{size}")
-    public ResponseEntity<?> generateSizedPresignedUrl(
+    public ResponseEntity<?> generateSquarePresignedUrl(
             @Parameter(description = "Bearer 토큰", required = true)
             @RequestHeader("Authorization") String bearerToken,
-            @Parameter(description = "이미지 크기 (480 또는 720)", required = true)
+            @Parameter(description = "이미지 크기 (가로세로 동일)", required = true, example = "480")
             @PathVariable Integer size,
             @Parameter(description = "파일 정보", required = true)
             @Valid @RequestBody PresignedUrlRequest request
     ) {
         try {
+            // 크기 유효성 검사
+            if (size < 10 || size > 3000) {
+                return ResponseEntity.badRequest()
+                        .body(BaseResponse.fail("이미지 크기는 10 ~ 3000 픽셀 범위여야 합니다.", "INVALID_IMAGE_SIZE", 400));
+            }
+            
             // 토큰에서 사용자 ID 추출 (인증)
             Long userId = tokenUtils.getUserIdFromToken(bearerToken);
-            
-            // 지원하는 크기 검증
-            if (size != 480 && size != 720) {
-                return ResponseEntity.badRequest()
-                        .body(BaseResponse.fail("지원하지 않는 이미지 크기입니다. 480 또는 720만 지원합니다.", 
-                                "INVALID_SIZE", 400));
-            }
-            
-            log.info("이미지 Presigned URL 요청: userId={}, size={}, fileExtension={}", 
-                    userId, size, request.getFileExtension());
+            log.info("정사각형 이미지 Presigned URL 요청: userId={}, 크기: {}x{}, fileExtension={}", 
+                    userId, size, size, request.getFileExtension());
 
-            // 크기에 따른 Presigned URL 생성
-            String presignedUrl;
-            
-            if (size == 480) {
-                // 프로필 이미지 (480x480)
-                presignedUrl = s3Service.generateProfileImagePresignedUrl(request.getFileExtension());
-                log.info("프로필 이미지(480x480) Presigned URL 생성 완료: userId={}", userId);
-            } else {
-                // 커버 이미지 (720px 너비)
-                presignedUrl = s3Service.generateCoverImagePresignedUrl(request.getFileExtension());
-                log.info("커버 이미지(720px 너비) Presigned URL 생성 완료: userId={}", userId);
-            }
+            // S3 Presigned URL 생성 (정사각형 - 가로세로 크기 동일)
+            String presignedUrl = s3Service.generatePresignedUrlWithOptions(
+                    request.getFileExtension(), 
+                    size, 
+                    size, 
+                    "85" // 기본 품질
+            );
+
+            log.info("정사각형 이미지 Presigned URL 생성 완료: userId={}, 크기: {}x{}", userId, size, size);
 
             // 응답 데이터 구성 - presignedUrl만 포함
             Map<String, Object> responseData = Map.of(
@@ -126,13 +122,13 @@ public class ImageUploadController {
             return ResponseEntity.ok(
                     BaseResponse.success(
                             responseData,
-                            size + "px 이미지 업로드용 URL이 성공적으로 생성되었습니다."
+                            String.format("%dx%d 크기 이미지 업로드용 URL이 성공적으로 생성되었습니다.", size, size)
                     )
             );
         } catch (Exception e) {
             log.error("Presigned URL 생성 중 오류 발생: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest()
-                    .body(BaseResponse.fail("Presigned URL 생성에 실패했습니다.", "URL_GENERATION_FAILED", 400));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(BaseResponse.fail("Presigned URL 생성에 실패했습니다.", "URL_GENERATION_FAILED", 500));
         }
     }
 
