@@ -212,7 +212,20 @@ public class UserController {
     @Operation(summary = "프로필 이미지 수정", description = "사용자의 프로필 이미지만 수정합니다. S3에 업로드된 이미지 URL을 전달받아 프로필을 업데이트합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "프로필 이미지 수정 성공",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Success.class))),
+                    content = @Content(mediaType = "application/json", 
+                            schema = @Schema(implementation = BaseResponse.Success.class),
+                            examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
+                                    value = "{\n" +
+                                    "  \"success\": true,\n" +
+                                    "  \"message\": \"프로필 이미지가 성공적으로 수정되었습니다.\",\n" +
+                                    "  \"status\": 200,\n" +
+                                    "  \"data\": {\n" +
+                                    "    \"user\": {\n" +
+                                    "      \"id\": 123,\n" +
+                                    "      \"profileImage\": \"https://크아아아.jpg\"\n" +
+                                    "    }\n" +
+                                    "  }\n" +
+                                    "}"))),
             @ApiResponse(responseCode = "400", description = "유효하지 않은 요청 (검증 실패 등)",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(responseCode = "401", description = "JWT 인증 실패",
@@ -224,7 +237,13 @@ public class UserController {
     public ResponseEntity<?> updateProfileImage(
             @Parameter(description = "Bearer 토큰", required = true)
             @RequestHeader("Authorization") String bearerToken,
-            @Parameter(description = "수정할 프로필 이미지 URL (S3 객체 URL)", required = true)
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "수정할 프로필 이미지 URL (S3 객체 URL)", 
+                    required = true,
+                    content = @Content(
+                            schema = @Schema(implementation = ProfileImageUpdateRequest.class),
+                            examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
+                                    value = "{\n  \"profileImage\": \"https://example.com/profile-images/1715673421325-550e8400-e29b-41d4-a716-446655440000.jpg\"\n}")))
             @RequestBody @Valid ProfileImageUpdateRequest request
     ) {
         // 토큰 로깅
@@ -249,7 +268,7 @@ public class UserController {
             return ResponseEntity.ok(
                     BaseResponse.success(
                             responseData,
-                            "프로필 이미지가 성공적으로 수정되었습니다. (이미지 URL: " + s3Service.getImageUrl(updatedUser.getProfileImg()) + ")"
+                            "프로필 이미지가 성공적으로 수정되었습니다."
                     )
             );
         } catch (ExpiredJwtException e) {
@@ -352,9 +371,30 @@ public class UserController {
     @Operation(summary = "닉네임 수정", description = "사용자의 닉네임만 수정합니다. 닉네임 중복 검사가 이루어집니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "닉네임 수정 성공",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Success.class))),
+                    content = @Content(mediaType = "application/json", 
+                            schema = @Schema(implementation = BaseResponse.Success.class),
+                            examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
+                                    value = "{\n" +
+                                    "  \"success\": true,\n" +
+                                    "  \"message\": \"닉네임이 성공적으로 수정되었습니다.\",\n" +
+                                    "  \"status\": 200,\n" +
+                                    "  \"data\": {\n" +
+                                    "    \"user\": {\n" +
+                                    "      \"id\": 123,\n" +
+                                    "      \"nickname\": \"새닉네임\"\n" +
+                                    "    }\n" +
+                                    "  }\n" +
+                                    "}"))),
             @ApiResponse(responseCode = "400", description = "유효하지 않은 요청 (검증 실패, 닉네임 중복 등)",
-                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+                    content = @Content(mediaType = "application/json", 
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
+                                    value = "{\n" +
+                                    "  \"success\": false,\n" +
+                                    "  \"message\": \"이미 사용 중인 닉네임입니다.\",\n" +
+                                    "  \"errorCode\": \"NICKNAME_DUPLICATE\",\n" +
+                                    "  \"status\": 400\n" +
+                                    "}"))),
             @ApiResponse(responseCode = "401", description = "JWT 인증 실패",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류",
@@ -364,7 +404,13 @@ public class UserController {
     public ResponseEntity<?> updateNickname(
             @Parameter(description = "Bearer 토큰", required = true)
             @RequestHeader("Authorization") String bearerToken,
-            @Parameter(description = "수정할 닉네임", required = true)
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "수정할 닉네임", 
+                    required = true,
+                    content = @Content(
+                            schema = @Schema(implementation = NicknameUpdateRequest.class),
+                            examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
+                                    value = "{\n  \"nickname\": \"새닉네임\"\n}")))
             @RequestBody @Valid NicknameUpdateRequest request
     ) {
         // 토큰 로깅
@@ -402,7 +448,7 @@ public class UserController {
             return ResponseEntity.ok(
                     BaseResponse.success(
                             responseData,
-                            "닉네임이 성공적으로 수정되었습니다. (새 닉네임: " + updatedUser.getNickname() + ")"
+                            "닉네임이 성공적으로 수정되었습니다."
                     )
             );
         } catch (ExpiredJwtException e) {
