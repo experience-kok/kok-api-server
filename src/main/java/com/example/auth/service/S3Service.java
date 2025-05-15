@@ -3,7 +3,6 @@ package com.example.auth.service;
 import com.amazonaws.HttpMethod;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.Headers;
-import com.amazonaws.services.s3.model.CannedAccessControlList;
 import com.amazonaws.services.s3.model.GeneratePresignedUrlRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,8 +33,7 @@ public class S3Service {
     private boolean cloudfrontEnabled;
 
     /**
-     * 이미지 업로드를 위한 presigned URL을 생성합니다.
-     * 단순화된 버전 - presigned URL만 반환
+     * 원본 이미지 업로드를 위한 presigned URL을 생성합니다.
      *
      * @param fileExtension 파일 확장자 (예: jpg, png)
      * @return 업로드용 presigned URL 문자열
@@ -45,30 +43,85 @@ public class S3Service {
     }
     
     /**
+     * 프로필 이미지 업로드를 위한 presigned URL을 생성합니다.
+     * 프로필 이미지는 480px x 480px 크기로 리사이징됩니다.
+     *
+     * @param fileExtension 파일 확장자 (예: jpg, png)
+     * @return 업로드용 presigned URL 문자열
+     */
+    public String generateProfileImagePresignedUrl(String fileExtension) {
+        return generatePresignedUrlWithOptions(fileExtension, 480, 480, "85");
+    }
+    
+    /**
+     * 커버 이미지 업로드를 위한 presigned URL을 생성합니다.
+     * 커버 이미지는 720px 너비로 리사이징됩니다. (높이는 비율에 맞게 자동 조정)
+     *
+     * @param fileExtension 파일 확장자 (예: jpg, png)
+     * @return 업로드용 presigned URL 문자열
+     */
+    public String generateCoverImagePresignedUrl(String fileExtension) {
+        return generatePresignedUrlWithOptions(fileExtension, 720, null, "85");
+    }
+    
+    /**
      * 이미지 업로드를 위한 presigned URL을 생성합니다.
      * 이미지 최적화 옵션 지원 버전
      *
-     * @param fileExtension 파일 확장자 (예: jpg, png, webp)
+     * @param fileExtension 파일 확장자 (예: jpg, png)
      * @param width 이미지 너비 (null이면 원본 크기 유지)
-     * @param height 이미지 높이 (null이면 원본 크기 유지)
-     * @param quality 이미지 품질 (null이면 기본값 사용)
+     * @param height 이미지 높이 (null이면 원본 크기 유지 또는 너비에 맞춰 자동 조정)
+     * @param quality 이미지 품질 (null이면 기본값 "90" 사용)
      * @return 업로드용 presigned URL 문자열
      */
-    public String generatePresignedUrlWithOptions(String fileExtension, Integer width, Integer height, String quality) {
+    private String generatePresignedUrlWithOptions(String fileExtension, Integer width, Integer height, String quality) {
+        // 기본 이미지 품질 설정
+        if (quality == null) {
+            quality = "90";
+        }
+        
         // 고유한 키 생성
         String uuid = UUID.randomUUID().toString();
         String timestamp = String.valueOf(System.currentTimeMillis());
-        String directory = "profile-images";
         
-        // 이미지 최적화 옵션 포함한 객체 키 생성
-        String objectKey;
-        if (width != null && height != null) {
-            objectKey = String.format("%s/%s-%s-%dx%d.%s", directory, timestamp, uuid, width, height, fileExtension);
+        // 경로 및 파일명 생성
+        String directory;
+        String filename;
+        
+        if (width != null || height != null) {
+            // 리사이징이 요청된 경우 별도 경로 사용
+            if (width != null && height != null && width.equals(height) && width == 480) {
+                // 480x480 이미지는 프로필 이미지로 간주
+                directory = "profile-images";
+                filename = String.format("%s-%s-%dx%d", timestamp, uuid, width, height);
+            } else if (width != null && width == 720) {
+                // 720px 너비는 커버 이미지로 간주
+                directory = "cover-images";
+                filename = String.format("%s-%s-%dw", timestamp, uuid, width);
+            } else {
+                // 기타 리사이징 이미지 - 일반적으로 사용하지 않음
+                directory = "resized-images";
+                if (width != null && height != null) {
+                    filename = String.format("%s-%s-%dx%d", timestamp, uuid, width, height);
+                } else if (width != null) {
+                    filename = String.format("%s-%s-%dw", timestamp, uuid, width);
+                } else {
+                    filename = String.format("%s-%s-%dh", timestamp, uuid, height);
+                }
+            }
         } else {
-            objectKey = String.format("%s/%s-%s.%s", directory, timestamp, uuid, fileExtension);
+            // 원본 이미지
+            directory = "original-images";
+            filename = String.format("%s-%s", timestamp, uuid);
         }
+        
+        // 최종 객체 키 생성
+        String objectKey = String.format("%s/%s.%s", directory, filename, fileExtension);
 
         try {
+            log.info("이미지 Presigned URL 생성 - 경로: {}, 크기: {}x{}, 품질: {}", 
+                    directory, width, height, quality);
+            
             // S3 Presigned URL 요청 생성
             GeneratePresignedUrlRequest generatePresignedUrlRequest = new GeneratePresignedUrlRequest(bucketName, objectKey)
                     .withMethod(HttpMethod.PUT)
@@ -82,17 +135,32 @@ public class S3Service {
                     Headers.CACHE_CONTROL,
                     "max-age=31536000, immutable");
             
-            // 콘텐츠 인코딩 추가 (이미지 최적화)
-            if ("webp".equalsIgnoreCase(fileExtension) || "avif".equalsIgnoreCase(fileExtension)) {
+            // 리사이징 헤더 추가 (필요한 경우)
+            if (width != null || height != null) {
+                // x-amz-meta-resize-dimensions 헤더에 크기 정보 추가
+                String dimensions = "";
+                if (width != null && height != null) {
+                    dimensions = width + "x" + height;
+                } else if (width != null) {
+                    dimensions = width + "xAUTO";
+                } else if (height != null) {
+                    dimensions = "AUTOx" + height;
+                }
+                
                 generatePresignedUrlRequest.addRequestParameter(
-                        Headers.CONTENT_ENCODING,
-                        "br"); // Brotli 압축
+                        "x-amz-meta-resize-dimensions", 
+                        dimensions);
+                
+                // 이미지 품질 설정
+                generatePresignedUrlRequest.addRequestParameter(
+                        "x-amz-meta-image-quality", 
+                        quality);
             }
 
             // Presigned URL 생성 및 반환
             String presignedUrl = amazonS3Client.generatePresignedUrl(generatePresignedUrlRequest).toString();
 
-            log.info("Presigned URL generated for key: {}", objectKey);
+            log.info("Presigned URL 생성 완료 - 객체 키: {}", objectKey);
 
             return presignedUrl;
         } catch (Exception e) {
@@ -114,8 +182,6 @@ public class S3Service {
             case "png" -> "image/png";
             case "gif" -> "image/gif";
             case "bmp" -> "image/bmp";
-            case "webp" -> "image/webp";
-            case "avif" -> "image/avif";  // AVIF 형식 추가
             case "svg" -> "image/svg+xml";
             default -> "application/octet-stream";
         };
