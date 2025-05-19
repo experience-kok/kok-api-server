@@ -1,0 +1,95 @@
+package com.example.auth.repository;
+
+import com.example.auth.domain.Campaign;
+import com.example.auth.domain.CampaignApplication;
+import com.example.auth.domain.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+public interface CampaignApplicationRepository extends JpaRepository<CampaignApplication, Long> {
+
+    /**
+     * 특정 캠페인의 모든 신청 정보를 조회합니다.
+     * @param campaign 조회할 캠페인
+     * @return 신청 목록
+     */
+    List<CampaignApplication> findByCampaign(Campaign campaign);
+
+    /**
+     * 특정 캠페인의 모든 신청 정보를 페이징하여 조회합니다.
+     * @param campaign 조회할 캠페인
+     * @param pageable 페이징 정보
+     * @return 페이징된 신청 목록
+     */
+    Page<CampaignApplication> findByCampaign(Campaign campaign, Pageable pageable);
+
+    /**
+     * 특정 사용자의 모든 신청 정보를 조회합니다.
+     * @param user 조회할 사용자
+     * @return 신청 목록
+     */
+    List<CampaignApplication> findByUser(User user);
+
+    /**
+     * 특정 사용자의 모든 신청 정보를 페이징하여 조회합니다.
+     * @param user 조회할 사용자
+     * @param pageable 페이징 정보
+     * @return 페이징된 신청 목록
+     */
+    Page<CampaignApplication> findByUser(User user, Pageable pageable);
+
+    /**
+     * 특정 사용자와 캠페인의 신청 정보를 조회합니다.
+     * @param user 사용자
+     * @param campaign 캠페인
+     * @return 신청 정보 (존재하는 경우)
+     */
+    Optional<CampaignApplication> findByUserAndCampaign(User user, Campaign campaign);
+
+    /**
+     * 특정 캠페인의 상태별 신청 수를 조회합니다.
+     * @param campaignId 캠페인 ID
+     * @param status 신청 상태
+     * @return 해당 상태의 신청 수
+     */
+    @Query("SELECT COUNT(ca) FROM CampaignApplication ca WHERE ca.campaign.id = :campaignId AND ca.status = :status")
+    long countByCampaignIdAndStatus(@Param("campaignId") Long campaignId, @Param("status") String status);
+
+    /**
+     * 특정 캠페인의 모든 신청 수를 조회합니다.
+     * @param campaignId 캠페인 ID
+     * @return 전체 신청 수
+     */
+    long countByCampaignId(Long campaignId);
+
+    /**
+     * 특정 상태의 모든 신청 정보를 조회합니다.
+     * @param status 신청 상태
+     * @return 해당 상태의 신청 목록
+     */
+    List<CampaignApplication> findByStatus(String status);
+
+    /**
+     * 특정 캠페인의 특정 상태 신청 정보를 조회합니다.
+     * @param campaign 캠페인
+     * @param status 신청 상태
+     * @return 해당 캠페인의 해당 상태 신청 목록
+     */
+    List<CampaignApplication> findByCampaignAndStatus(Campaign campaign, String status);
+
+    /**
+     * 특정 사용자의 특정 상태 신청 정보를 조회합니다.
+     * @param user 사용자
+     * @param status 신청 상태
+     * @return 해당 사용자의 해당 상태 신청 목록
+     */
+    List<CampaignApplication> findByUserAndStatus(User user, String status);
+}
