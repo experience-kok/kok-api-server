@@ -65,6 +65,42 @@ public class S3Service {
     }
     
     /**
+     * 특정 객체 키에 대한 presigned URL을 생성합니다.
+     *
+     * @param objectKey 객체 키 (경로 포함)
+     * @return 업로드용 presigned URL 문자열
+     */
+    public String generatePresignedUrlForKey(String objectKey) {
+        try {
+            log.info("특정 객체 키를 위한 Presigned URL 생성: {}", objectKey);
+            
+            // S3 Presigned URL 요청 생성
+            GeneratePresignedUrlRequest generatePresignedUrlRequest = new GeneratePresignedUrlRequest(bucketName, objectKey)
+                    .withMethod(HttpMethod.PUT)
+                    .withExpiration(new Date(System.currentTimeMillis() + (presignedUrlExpirationSeconds * 1000)));
+
+            // 콘텐츠 타입 설정 (파일 확장자에서 추출)
+            String fileExtension = objectKey.substring(objectKey.lastIndexOf('.') + 1);
+            generatePresignedUrlRequest.setContentType(determineContentType(fileExtension));
+            
+            // 캐싱 헤더 추가 (1년 캐싱)
+            generatePresignedUrlRequest.addRequestParameter(
+                    Headers.CACHE_CONTROL,
+                    "max-age=31536000, immutable");
+
+            // Presigned URL 생성 및 반환
+            String presignedUrl = amazonS3Client.generatePresignedUrl(generatePresignedUrlRequest).toString();
+
+            log.info("Presigned URL 생성 완료 - 객체 키: {}", objectKey);
+
+            return presignedUrl;
+        } catch (Exception e) {
+            log.error("Presigned URL 생성 중 오류 발생: {}", e.getMessage(), e);
+            throw new RuntimeException("Presigned URL 생성에 실패했습니다: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
      * 이미지 업로드를 위한 presigned URL을 생성합니다.
      * 이미지 최적화 옵션 지원 버전
      *
@@ -134,28 +170,6 @@ public class S3Service {
             generatePresignedUrlRequest.addRequestParameter(
                     Headers.CACHE_CONTROL,
                     "max-age=31536000, immutable");
-            
-            // 리사이징 헤더 추가 (필요한 경우)
-            if (width != null || height != null) {
-                // x-amz-meta-resize-dimensions 헤더에 크기 정보 추가
-                String dimensions = "";
-                if (width != null && height != null) {
-                    dimensions = width + "x" + height;
-                } else if (width != null) {
-                    dimensions = width + "xAUTO";
-                } else if (height != null) {
-                    dimensions = "AUTOx" + height;
-                }
-                
-                generatePresignedUrlRequest.addRequestParameter(
-                        "x-amz-meta-resize-dimensions", 
-                        dimensions);
-                
-                // 이미지 품질 설정
-                generatePresignedUrlRequest.addRequestParameter(
-                        "x-amz-meta-image-quality", 
-                        quality);
-            }
 
             // Presigned URL 생성 및 반환
             String presignedUrl = amazonS3Client.generatePresignedUrl(generatePresignedUrlRequest).toString();
@@ -215,6 +229,106 @@ public class S3Service {
     }
     
     /**
+     * 리사이징된 이미지 URL을 생성합니다.
+     * 원본 이미지 URL 또는 키에서 폴더에 맞는 리사이징된 이미지 URL을 생성합니다.
+     * 
+     * @param objectKeyOrUrl 원본 이미지 URL 또는 객체 키
+     * @return 리사이징된 이미지 URL
+     */
+    public String getResizedImageUrl(String objectKeyOrUrl) {
+        if (objectKeyOrUrl == null || objectKeyOrUrl.isEmpty()) {
+            return objectKeyOrUrl;
+        }
+        
+        // URL에서 객체 키 추출
+        String objectKey = extractObjectKeyFromUrl(objectKeyOrUrl);
+        if (objectKey == null) {
+            return objectKeyOrUrl;
+        }
+        
+        // 이미 리사이징된 이미지인지 확인 (리사이징 경로에 있는 이미지는 다시 리사이징하지 않음)
+        if (objectKey.startsWith("resized/")) {
+            return getImageUrl(objectKeyOrUrl);
+        }
+        
+        // 폴더 경로와 파일명 추출
+        String folderPath = "";
+        String filename = "";
+        int firstSlashIndex = objectKey.indexOf('/');
+        
+        if (firstSlashIndex > 0) {
+            folderPath = objectKey.substring(0, firstSlashIndex);
+            int lastSlashIndex = objectKey.lastIndexOf('/');
+            if (lastSlashIndex >= 0 && lastSlashIndex < objectKey.length() - 1) {
+                filename = objectKey.substring(lastSlashIndex + 1);
+            }
+        } else {
+            filename = objectKey;
+        }
+        
+        if (filename.isEmpty()) {
+            return getImageUrl(objectKeyOrUrl);
+        }
+        
+        // 폴더별 리사이징 크기 결정
+        String sizeStr;
+        if ("profile-images".equals(folderPath)) {
+            sizeStr = "100x100";
+        } else if ("campaign-images".equals(folderPath)) {
+            sizeStr = "720x720";
+        } else {
+            // 지원하지 않는 폴더이지만, 리사이징된 이미지가 있을 수 있으므로 확인
+            try {
+                // 기본 크기로 리사이징된 이미지 경로 확인
+                String defaultResizedKey = String.format("resized/%s/default/%s", folderPath, filename);
+                if (amazonS3Client.doesObjectExist(bucketName, defaultResizedKey)) {
+                    return getImageUrl(defaultResizedKey);
+                }
+            } catch (Exception e) {
+                log.warn("리사이징된 이미지 확인 중 오류: {}", e.getMessage());
+            }
+            
+            // 원본 이미지는 삭제되었을 수 있으므로, 대체 이미지 URL 반환
+            log.warn("지원되지 않는 폴더이고 리사이징된 이미지를 찾을 수 없음: {}", folderPath);
+            return getDefaultImageUrl(folderPath);
+        }
+        
+        // 리사이징된 이미지 객체 키 생성
+        String resizedKey = String.format("resized/%s/%s/%s", folderPath, sizeStr, filename);
+        
+        // 리사이징된 이미지 URL 반환
+        return getImageUrl(resizedKey);
+    }
+
+    /**
+     * 특정 크기로 리사이징된 이미지 URL을 생성합니다.
+     * 크기 지정이 필요한 경우에 사용합니다.
+     * 
+     * @param objectKeyOrUrl 원본 이미지 URL 또는 객체 키
+     * @param size 이미지 크기 (예: 480, 720)
+     * @return 리사이징된 이미지 URL
+     */
+    public String getResizedImageUrl(String objectKeyOrUrl, int size) {
+        // 기본 메서드 호출 (폴더 기반 리사이징)
+        return getResizedImageUrl(objectKeyOrUrl);
+    }
+    
+    /**
+     * 객체 키에서 파일명을 추출합니다.
+     */
+    private String getFilenameFromObjectKey(String objectKey) {
+        if (objectKey == null || objectKey.isEmpty()) {
+            return null;
+        }
+        
+        int lastSlashIndex = objectKey.lastIndexOf('/');
+        if (lastSlashIndex >= 0 && lastSlashIndex < objectKey.length() - 1) {
+            return objectKey.substring(lastSlashIndex + 1);
+        }
+        return objectKey;
+    }
+    
+    /**
      * URL에서 객체 키를 추출합니다.
      * URL 형식이 아니면 그대로 반환합니다.
      *
@@ -266,6 +380,82 @@ public class S3Service {
         } catch (Exception e) {
             log.error("이미지 삭제 중 오류 발생: {}", e.getMessage(), e);
             throw new RuntimeException("이미지 삭제에 실패했습니다: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 폴더 유형에 따른 기본 이미지 URL을 반환합니다.
+     * 이미지를 찾을 수 없을 때 사용됩니다.
+     *
+     * @param folderType 폴더 유형 (예: profile-images, campaign-images)
+     * @return 기본 이미지 URL
+     */
+    private String getDefaultImageUrl(String folderType) {
+        if ("profile-images".equals(folderType)) {
+            // 기본 프로필 이미지 URL 반환
+            return cloudfrontEnabled && cloudfrontDomain != null && !cloudfrontDomain.isEmpty()
+                ? "https://" + cloudfrontDomain + "/defaults/default-profile.png"
+                : amazonS3Client.getUrl(bucketName, "defaults/default-profile.png").toString();
+        } else if ("campaign-images".equals(folderType)) {
+            // 기본 캠페인 이미지 URL 반환
+            return cloudfrontEnabled && cloudfrontDomain != null && !cloudfrontDomain.isEmpty()
+                ? "https://" + cloudfrontDomain + "/defaults/default-campaign.png"
+                : amazonS3Client.getUrl(bucketName, "defaults/default-campaign.png").toString();
+        } else {
+            // 일반 기본 이미지 URL 반환
+            return cloudfrontEnabled && cloudfrontDomain != null && !cloudfrontDomain.isEmpty()
+                ? "https://" + cloudfrontDomain + "/defaults/default-image.png"
+                : amazonS3Client.getUrl(bucketName, "defaults/default-image.png").toString();
+        }
+    }
+    
+    /**
+     * 최적화된 이미지를 S3에 직접 업로드합니다.
+     *
+     * @param presignedUrl S3 presigned URL
+     * @param imageData 이미지 데이터 바이트 배열
+     * @param contentType 이미지 콘텐츠 타입 (예: "image/jpeg")
+     * @return 업로드된 이미지의 URL
+     */
+    public String uploadOptimizedImage(String presignedUrl, byte[] imageData, String contentType) {
+        try {
+            log.info("최적화된 이미지 업로드 시작 - URL: {}, 크기: {} bytes", presignedUrl, imageData.length);
+            
+            // URL 객체 생성
+            java.net.URL url = new java.net.URL(presignedUrl);
+            
+            // 연결 열기
+            java.net.HttpURLConnection connection = (java.net.HttpURLConnection) url.openConnection();
+            connection.setDoOutput(true);
+            connection.setRequestMethod("PUT");
+            connection.setRequestProperty("Content-Type", contentType);
+            connection.setRequestProperty("Cache-Control", "max-age=31536000, immutable");
+            
+            // 이미지 데이터 업로드
+            try (java.io.OutputStream out = connection.getOutputStream()) {
+                out.write(imageData);
+            }
+            
+            // 응답 확인
+            int responseCode = connection.getResponseCode();
+            connection.disconnect();
+            
+            if (responseCode >= 200 && responseCode < 300) {
+                log.info("이미지 업로드 성공 - 응답 코드: {}", responseCode);
+                
+                // S3 URL 파싱하여 객체 키 추출
+                String objectKey = extractObjectKeyFromUrl(presignedUrl);
+                
+                // 이미지 URL 생성하여 반환
+                return getImageUrl(objectKey);
+            } else {
+                String errorMessage = "이미지 업로드 실패 - 응답 코드: " + responseCode;
+                log.error(errorMessage);
+                throw new RuntimeException(errorMessage);
+            }
+        } catch (Exception e) {
+            log.error("이미지 업로드 중 오류 발생: {}", e.getMessage(), e);
+            throw new RuntimeException("이미지 업로드에 실패했습니다: " + e.getMessage(), e);
         }
     }
 }
