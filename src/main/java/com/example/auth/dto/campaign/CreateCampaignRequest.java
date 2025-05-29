@@ -89,17 +89,32 @@ public class CreateCampaignRequest {
     @Schema(description = "신청 마감 날짜", example = "2025-05-14", required = true)
     private LocalDate applicationDeadlineDate;
 
-    @NotBlank(message = "카테고리 타입은 필수입니다.")
-    @Size(max = 20, message = "카테고리 타입은 최대 20자까지 입력 가능합니다.")
-    @Schema(description = "카테고리 타입", example = "방문", required = true, 
-           allowableValues = {"방문", "배송"})
-    private String categoryType;
+    @Valid
+    @NotNull(message = "카테고리 정보는 필수입니다.")
+    @Schema(description = "카테고리 정보")
+    private CategoryInfo category;
 
-    @NotBlank(message = "카테고리는 필수입니다.")
-    @Size(max = 50, message = "카테고리 이름은 최대 50자까지 입력 가능합니다.")
-    @Schema(description = "카테고리 이름", example = "카페", required = true, 
-           allowableValues = {"맛집", "카페", "뷰티", "숙박", "식품", "화장품", "생활용품", "패션", "잡화"})
-    private String categoryName;
+    /**
+     * 카테고리 정보 DTO
+     */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    @Schema(description = "카테고리 정보")
+    public static class CategoryInfo {
+        @NotBlank(message = "카테고리 타입은 필수입니다.")
+        @Size(max = 20, message = "카테고리 타입은 최대 20자까지 입력 가능합니다.")
+        @Schema(description = "카테고리 타입", example = "방문", required = true, 
+               allowableValues = {"방문", "배송"})
+        private String type;
+
+        @NotBlank(message = "카테고리는 필수입니다.")
+        @Size(max = 50, message = "카테고리 이름은 최대 50자까지 입력 가능합니다.")
+        @Schema(description = "카테고리 이름", example = "카페", required = true, 
+               allowableValues = {"맛집", "카페", "뷰티", "숙박", "식품", "화장품", "생활용품", "패션", "잡화"})
+        private String name;
+    }
 
     @Valid
     @Schema(description = "방문 정보 (위치 정보)")

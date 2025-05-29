@@ -63,10 +63,10 @@ public class CampaignCreationService {
         
         // 카테고리 조회 - 이름과 타입으로 찾기
         CampaignCategory category = categoryRepository.findByCategoryNameAndCategoryType(
-                request.getCategoryName(), request.getCategoryType())
+                request.getCategory().getName(), request.getCategory().getType())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         String.format("카테고리를 찾을 수 없습니다. 이름: %s, 타입: %s", 
-                                request.getCategoryName(), request.getCategoryType())));
+                                request.getCategory().getName(), request.getCategory().getType())));
         
         // Campaign 엔티티 생성
         Campaign campaign = request.toEntity(user, category);

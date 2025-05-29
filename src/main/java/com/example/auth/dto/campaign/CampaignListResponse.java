@@ -47,11 +47,21 @@ public class CampaignListResponse {
     private LocalDate applicationDeadlineDate;
     
     // 카테고리 정보
-    @Schema(description = "카테고리 타입", example = "방문", required = true)
-    private String categoryType;
+    @Schema(description = "카테고리 정보")
+    private CategoryInfo category;
     
-    @Schema(description = "카테고리 이름", example = "카페", required = true)
-    private String categoryName;
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    @Schema(description = "카테고리 정보")
+    public static class CategoryInfo {
+        @Schema(description = "카테고리 타입", example = "방문", required = true)
+        private String type;
+        
+        @Schema(description = "카테고리 이름", example = "카페", required = true)
+        private String name;
+    }
     
     // 제품 및 일정 정보
     @Schema(description = "제공 제품/서비스에 대한 간략 정보", example = "시그니처 음료 2잔 무료 제공")
@@ -128,8 +138,11 @@ public class CampaignListResponse {
                 
         // 카테고리 정보 설정
         if (campaign.getCategory() != null) {
-            builder.categoryType(campaign.getCategory().getCategoryType())
-                   .categoryName(campaign.getCategory().getCategoryName());
+            CategoryInfo categoryInfo = CategoryInfo.builder()
+                    .type(campaign.getCategory().getCategoryType())
+                    .name(campaign.getCategory().getCategoryName())
+                    .build();
+            builder.category(categoryInfo);
         }
         
         // 제품 및 일정 정보 설정

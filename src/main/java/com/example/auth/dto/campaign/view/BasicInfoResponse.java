@@ -33,14 +33,40 @@ public class BasicInfoResponse {
     @Schema(description = "신청 마감 날짜", example = "2025-05-14")
     private LocalDate applicationDeadlineDate;
     
+    @Schema(description = "카테고리 정보")
+    private CategoryInfo category;
+    
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Schema(description = "카테고리 정보")
+    public static class CategoryInfo {
+        @Schema(description = "카테고리 타입", example = "방문", required = true)
+        private String type;
+        
+        @Schema(description = "카테고리 이름", example = "카페", required = true)
+        private String name;
+    }
+    
     public static BasicInfoResponse fromEntity(Campaign campaign) {
-        return BasicInfoResponse.builder()
+        BasicInfoResponse.BasicInfoResponseBuilder builder = BasicInfoResponse.builder()
                 .id(campaign.getId())
                 .campaignType(campaign.getCampaignType())
                 .title(campaign.getTitle())
                 .maxApplicants(campaign.getMaxApplicants())
                 .currentApplicants(0) // 임시로 0 설정 (실제로는 별도 쿼리 필요)
-                .applicationDeadlineDate(campaign.getApplicationDeadlineDate())
-                .build();
+                .applicationDeadlineDate(campaign.getApplicationDeadlineDate());
+        
+        // 카테고리 정보가 있으면 추가
+        if (campaign.getCategory() != null) {
+            CategoryInfo categoryInfo = CategoryInfo.builder()
+                    .type(campaign.getCategory().getCategoryType())
+                    .name(campaign.getCategory().getCategoryName())
+                    .build();
+            builder.category(categoryInfo);
+        }
+        
+        return builder.build();
     }
 }

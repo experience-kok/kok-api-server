@@ -72,10 +72,10 @@ public class CreateCampaignResponse {
         private Integer id;
         
         @Schema(description = "카테고리 타입", example = "방문")
-        private String categoryType;
+        private String type;
         
         @Schema(description = "카테고리 이름", example = "카페")
-        private String categoryName;
+        private String name;
     }
 
     @Data
@@ -125,8 +125,8 @@ public class CreateCampaignResponse {
                 .approvalStatus(campaign.getApprovalStatus())
                 .category(CategoryDTO.builder()
                         .id(campaign.getCategory().getId())
-                        .categoryType(campaign.getCategory().getCategoryType())
-                        .categoryName(campaign.getCategory().getCategoryName())
+                        .type(campaign.getCategory().getCategoryType())
+                        .name(campaign.getCategory().getCategoryName())
                         .build())
                 .user(UserDTO.fromEntity(campaign.getCreator()))
                 .visitLocations(visitLocationDTOs)

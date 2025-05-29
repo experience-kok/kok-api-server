@@ -1,6 +1,7 @@
 package com.example.auth.controller;
 
 import com.example.auth.common.BaseResponse;
+import com.example.auth.dto.campaign.CampaignResponseWrapper;
 import com.example.auth.dto.campaign.CreateCampaignRequest;
 import com.example.auth.dto.campaign.CreateCampaignResponse;
 import com.example.auth.exception.AccessDeniedException;
@@ -77,8 +78,10 @@ public class CampaignCreationController {
                            "  \"missionGuide\": \"1. 카페 방문 시 직원에게 체험단임을 알려주세요.\\n2. 음료와 디저트를 맛있게 즐기며 사진을 찍어주세요.\\n3. 인스타그램에 사진과 함께 솔직한 후기를 작성해주세요.\",\n" +
                            "  \"missionKeywords\": [\"카페추천\", \"디저트맛집\", \"강남카페\"],\n" +
                            "  \"applicationDeadlineDate\": \"2025-05-14\",\n" +
-                           "  \"categoryType\": \"방문\",\n" +
-                           "  \"categoryName\": \"카페\",\n" +
+                           "  \"category\": {\n" +
+                           "    \"type\": \"방문\",\n" +
+                           "    \"name\": \"카페\"\n" +
+                           "  },\n" +
                            "  \"visitLocations\": [\n" +
                            "    {\n" +
                            "      \"address\": \"서울특별시 강남구 테헤란로 123\",\n" +
@@ -98,45 +101,47 @@ public class CampaignCreationController {
                 description = "캠페인 등록 성공",
                 content = @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = CreateCampaignResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(
                         name = "성공 응답 예시",
                         value = "{\n" +
                                "  \"status\": \"success\",\n" +
                                "  \"message\": \"캠페인이 성공적으로 등록되었습니다.\",\n" +
                                "  \"data\": {\n" +
-                               "    \"id\": 1,\n" +
-                               "    \"thumbnailUrl\": \"https://example.com/images/cafe.jpg\",\n" +
-                               "    \"campaignType\": \"인스타그램\",\n" +
-                               "    \"title\": \"인스타 감성 카페 체험단 모집\",\n" +
-                               "    \"productShortInfo\": \"시그니처 음료 2잔 무료 제공\",\n" +
-                               "    \"maxApplicants\": 10,\n" +
-                               "    \"recruitmentStartDate\": \"2025-05-01\",\n" +
-                               "    \"recruitmentEndDate\": \"2025-05-15\",\n" +
-                               "    \"selectionDate\": \"2025-05-16\",\n" +
-                               "    \"reviewDeadlineDate\": \"2025-05-30\",\n" +
-                               "    \"approvalStatus\": \"PENDING\",\n" +
-                               "    \"category\": {\n" +
+                               "    \"campaign\": {\n" +
                                "      \"id\": 1,\n" +
-                               "      \"categoryType\": \"방문\",\n" +
-                               "      \"categoryName\": \"카페\"\n" +
-                               "    },\n" +
-                               "    \"user\": {\n" +
-                               "      \"id\": 1,\n" +
-                               "      \"nickname\": \"브랜드매니저\",\n" +
-                               "      \"email\": \"brand@example.com\",\n" +
-                               "      \"profileImg\": \"https://example.com/profile.jpg\",\n" +
-                               "      \"role\": \"CLIENT\"\n" +
-                               "    },\n" +
-                               "    \"visitLocations\": [\n" +
-                               "      {\n" +
+                               "      \"thumbnailUrl\": \"https://example.com/images/cafe.jpg\",\n" +
+                               "      \"campaignType\": \"인스타그램\",\n" +
+                               "      \"title\": \"인스타 감성 카페 체험단 모집\",\n" +
+                               "      \"productShortInfo\": \"시그니처 음료 2잔 무료 제공\",\n" +
+                               "      \"maxApplicants\": 10,\n" +
+                               "      \"recruitmentStartDate\": \"2025-05-01\",\n" +
+                               "      \"recruitmentEndDate\": \"2025-05-15\",\n" +
+                               "      \"selectionDate\": \"2025-05-16\",\n" +
+                               "      \"reviewDeadlineDate\": \"2025-05-30\",\n" +
+                               "      \"approvalStatus\": \"PENDING\",\n" +
+                               "      \"category\": {\n" +
                                "        \"id\": 1,\n" +
-                               "        \"address\": \"서울특별시 강남구 테헤란로 123\",\n" +
-                               "        \"latitude\": 37.498095,\n" +
-                               "        \"longitude\": 127.027610,\n" +
-                               "        \"additionalInfo\": \"영업시간: 10:00-22:00, 주차 가능\"\n" +
-                               "      }\n" +
-                               "    ]\n" +
+                               "        \"type\": \"방문\",\n" +
+                               "        \"name\": \"카페\"\n" +
+                               "      },\n" +
+                               "      \"user\": {\n" +
+                               "        \"id\": 1,\n" +
+                               "        \"nickname\": \"브랜드매니저\",\n" +
+                               "        \"email\": \"brand@example.com\",\n" +
+                               "        \"profileImage\": \"https://example.com/profile.jpg\",\n" +
+                               "        \"role\": \"CLIENT\"\n" +
+                               "      },\n" +
+                               "      \"visitLocations\": [\n" +
+                               "        {\n" +
+                               "          \"id\": 1,\n" +
+                               "          \"address\": \"서울특별시 강남구 테헤란로 123\",\n" +
+                               "          \"latitude\": 37.498095,\n" +
+                               "          \"longitude\": 127.027610,\n" +
+                               "          \"additionalInfo\": \"영업시간: 10:00-22:00, 주차 가능\"\n" +
+                               "        }\n" +
+                               "      ]\n" +
+                               "    }\n" +
                                "  }\n" +
                                "}"
                     )
@@ -163,7 +168,10 @@ public class CampaignCreationController {
             log.info("캠페인 생성 성공: userId={}, campaignId={}", userId, response.getId());
             
             return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(BaseResponse.success(response, "캠페인이 성공적으로 등록되었습니다."));
+                    .body(BaseResponse.success(
+                        CampaignResponseWrapper.of(response),
+                        "캠페인이 성공적으로 등록되었습니다."
+                    ));
         } catch (AccessDeniedException e) {
             log.warn("캠페인 등록 권한 없음: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.FORBIDDEN)

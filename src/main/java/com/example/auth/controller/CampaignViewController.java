@@ -3,14 +3,10 @@ package com.example.auth.controller;
 import com.example.auth.common.BaseResponse;
 import com.example.auth.dto.campaign.CampaignListResponseWrapper;
 import com.example.auth.dto.campaign.CampaignListSimpleResponse;
-import com.example.auth.dto.campaign.CampaignSingleResponseWrapper;
 import com.example.auth.dto.campaign.view.*;
-import com.example.auth.exception.ResourceNotFoundException;
 import com.example.auth.service.CampaignViewService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -21,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @RestController
@@ -30,179 +27,55 @@ import java.util.List;
 public class CampaignViewController {
 
     private final CampaignViewService viewService;
+
+    // ===== 통합 캠페인 목록 조회 API =====
     
     @Operation(
-        summary = "캠페인 목록 조회", 
-        description = "캠페인 목록을 페이징하여 조회합니다."
-                    + "\n\n### 응답 형식 선택 (includePaging 파라미터):"
-                    + "\n- **true (기본값)**: 페이징 정보를 포함한 전체 응답 구조"
-                    + "\n- **false**: 요청한 갯수만큼의 캠페인 목록 데이터만 반환"
-                    + "\n\n### 페이지네이션 응답 설명 (includePaging=true인 경우):"
-                    + "\n- **campaigns**: 캠페인 목록"
-                    + "\n  - **id**: 캠페인 ID"
-                    + "\n  - **campaignType**: 캠페인 타입 (인스타그램, 블로그 등)"
-                    + "\n  - **title**: 캠페인 제목"
-                    + "\n  - **currentApplicants**: 현재 신청 인원"
-                    + "\n  - **maxApplicants**: 최대 신청 가능 인원"
-                    + "\n  - **createdAt**: 등록일"
-                    + "\n  - **applicationDeadlineDate**: 신청 마감일"
-                    + "\n  - **thumbnailUrl**: 썸네일 이미지 URL"
-                    + "\n  - **category**: 카테고리 정보"
-                    + "\n    - **type**: 카테고리 타입 (방문, 배송 등)"
-                    + "\n    - **name**: 카테고리 이름 (카페, 맛집 등)"
-                    + "\n- **pagination**: 페이징 정보 객체"
-                    + "\n  - **pageNumber**: 현재 페이지 번호 (0부터 시작)"
-                    + "\n  - **pageSize**: 페이지 크기 (한 페이지에 표시되는 항목 수)"
-                    + "\n  - **totalPages**: 전체 페이지 수"
-                    + "\n  - **totalElements**: 전체 항목 수"
-                    + "\n  - **first**: 현재 페이지가 첫 번째 페이지인지 여부"
-                    + "\n  - **last**: 현재 페이지가 마지막 페이지인지 여부"
+        summary = "캠페인 목록 조회 (통합)", 
+        description = "모든 캠페인 목록을 페이징하여 조회합니다."
+                    + "\n\n### 정렬 기준 옵션:"
+                    + "\n- **createdAt**: 최신 등록순 (기본값)"
+                    + "\n- **currentApplicants**: 신청 인원 많은 순"
+                    + "\n- **applicationDeadlineDate**: 마감일 가까운 순"
     )
     @ApiResponses(value = {
-            @ApiResponse(
-                responseCode = "200", 
-                description = "조회 성공",
-                content = @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = BaseResponse.class),
-                    examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
-                        name = "성공 응답 예시 (includePaging=true)",
-                        value = "{\n" +
-                               "  \"status\": \"success\",\n" +
-                               "  \"message\": \"캠페인 목록 조회 성공\",\n" +
-                               "  \"data\": {\n" +
-                               "    \"campaigns\": [\n" +
-                               "      {\n" +
-                               "        \"id\": 1,\n" +
-                               "        \"campaignType\": \"인스타그램\",\n" +
-                               "        \"title\": \"인스타 감성 카페 체험단 모집\",\n" +
-                               "        \"currentApplicants\": 12,\n" +
-                               "        \"maxApplicants\": 20,\n" +
-                               "        \"createdAt\": \"2025-05-01T09:30:00+09:00\",\n" +
-                               "        \"applicationDeadlineDate\": \"2025-06-15\",\n" +
-                               "        \"thumbnailUrl\": \"https://example.com/images/cafe.jpg\",\n" +
-                               "        \"category\": {\n" +
-                               "          \"type\": \"방문\",\n" +
-                               "          \"name\": \"카페\"\n" +
-                               "        }\n" +
-                               "      },\n" +
-                               "      {\n" +
-                               "        \"id\": 2,\n" +
-                               "        \"campaignType\": \"블로그\",\n" +
-                               "        \"title\": \"유기농 식품 체험단 모집\",\n" +
-                               "        \"currentApplicants\": 8,\n" +
-                               "        \"maxApplicants\": 15,\n" +
-                               "        \"createdAt\": \"2025-05-05T10:15:00+09:00\",\n" +
-                               "        \"applicationDeadlineDate\": \"2025-06-20\",\n" +
-                               "        \"thumbnailUrl\": \"https://example.com/images/food.jpg\",\n" +
-                               "        \"category\": {\n" +
-                               "          \"type\": \"배송\",\n" +
-                               "          \"name\": \"식품\"\n" +
-                               "        }\n" +
-                               "      }\n" +
-                               "    ],\n" +
-                               "    \"pagination\": {\n" +
-                               "      \"pageNumber\": 0,\n" +
-                               "      \"pageSize\": 10,\n" +
-                               "      \"totalPages\": 5,\n" +
-                               "      \"totalElements\": 42,\n" +
-                               "      \"first\": true,\n" +
-                               "      \"last\": false\n" +
-                               "    }\n" +
-                               "  }\n" +
-                               "}"
-                    )
-                )
-            ),
-            @ApiResponse(
-                responseCode = "200", 
-                description = "조회 성공 (includePaging=false)",
-                content = @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = BaseResponse.class),
-                    examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
-                        name = "성공 응답 예시 (includePaging=false)",
-                        value = "{\n" +
-                               "  \"status\": \"success\",\n" +
-                               "  \"message\": \"캠페인 목록 조회 성공\",\n" +
-                               "  \"data\": [\n" +
-                               "    {\n" +
-                               "      \"id\": 1,\n" +
-                               "      \"campaignType\": \"인스타그램\",\n" +
-                               "      \"title\": \"인스타 감성 카페 체험단 모집\",\n" +
-                               "      \"currentApplicants\": 12,\n" +
-                               "      \"maxApplicants\": 20,\n" +
-                               "      \"createdAt\": \"2025-05-01T09:30:00+09:00\",\n" +
-                               "      \"applicationDeadlineDate\": \"2025-06-15\",\n" +
-                               "      \"thumbnailUrl\": \"https://example.com/images/cafe.jpg\",\n" +
-                               "      \"category\": {\n" +
-                               "        \"type\": \"방문\",\n" +
-                               "        \"name\": \"카페\"\n" +
-                               "      }\n" +
-                               "    },\n" +
-                               "    {\n" +
-                               "      \"id\": 2,\n" +
-                               "      \"campaignType\": \"블로그\",\n" +
-                               "      \"title\": \"유기농 식품 체험단 모집\",\n" +
-                               "      \"currentApplicants\": 8,\n" +
-                               "      \"maxApplicants\": 15,\n" +
-                               "      \"createdAt\": \"2025-05-05T10:15:00+09:00\",\n" +
-                               "      \"applicationDeadlineDate\": \"2025-06-20\",\n" +
-                               "      \"thumbnailUrl\": \"https://example.com/images/food.jpg\",\n" +
-                               "      \"category\": {\n" +
-                               "        \"type\": \"배송\",\n" +
-                               "        \"name\": \"식품\"\n" +
-                               "      }\n" +
-                               "    }\n" +
-                               "  ]\n" +
-                               "}"
-                    )
-                )
-            ),
-            @ApiResponse(
-                responseCode = "500", 
-                description = "서버 오류"
-            )
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     @GetMapping
-    public ResponseEntity<?> getCampaignList(
+    public ResponseEntity<?> getAllCampaigns(
             @Parameter(description = "페이지 번호 (0부터 시작)")
             @RequestParam(required = false, defaultValue = "0") int page,
 
             @Parameter(description = "요청할 캠페인 갯수")
             @RequestParam(required = false, defaultValue = "10") int size,
 
-            @Parameter(description = "정렬 기준 (createdAt, applicationDeadlineDate 등)")
+            @Parameter(description = "정렬 기준 (createdAt, currentApplicants, applicationDeadlineDate)")
             @RequestParam(required = false, defaultValue = "createdAt") String sort,
 
-            @Parameter(description = "마감되지 않은 캠페인만 조회")
+            @Parameter(description = "활성 캠페인만 조회 여부")
             @RequestParam(required = false, defaultValue = "true") boolean onlyActive,
 
-            @Parameter(description = "카테고리 타입 필터 (방문, 배송 등)")
+            @Parameter(description = "카테고리 타입 (방문, 배송)")
             @RequestParam(required = false) String categoryType,
 
-            @Parameter(description = "캠페인 타입 필터 (인스타그램, 블로그 등)")
+            @Parameter(description = "캠페인 타입 (인스타그램, 블로그, 유튜브 등)")
             @RequestParam(required = false) String campaignType,
 
-            @Parameter(description = "페이징 정보 포함 여부 (true: 페이징 정보 포함, false: 콘텐츠만 반환)")
+            @Parameter(description = "페이징 정보 포함 여부")
             @RequestParam(required = false, defaultValue = "true") boolean includePaging
     ) {
         try {
-            log.info("캠페인 목록 조회 요청 - page: {}, size: {}, sort: {}, onlyActive: {}, categoryType: {}, campaignType: {}, includePaging: {}",
+            log.info("전체 캠페인 목록 조회 요청 - page: {}, size: {}, sort: {}, onlyActive: {}, categoryType: {}, campaignType: {}, includePaging: {}",
                     page, size, sort, onlyActive, categoryType, campaignType, includePaging);
 
-            // 서비스 호출하여 목록 조회
             var pageResponse = viewService.getCampaignList(page, size, sort, onlyActive, categoryType, campaignType);
-            
-            // 직접 캠페인 목록 사용 (중첩 구조 제거)
             List<CampaignListSimpleResponse> campaigns = pageResponse.getContent();
 
             if (includePaging) {
-                // 페이징 정보를 포함한 응답 구조 생성
                 CampaignListResponseWrapper responseWrapper = new CampaignListResponseWrapper();
                 responseWrapper.setCampaigns(campaigns);
                 
-                // 페이징 정보 설정
                 CampaignListResponseWrapper.PaginationInfo paginationInfo = 
                     CampaignListResponseWrapper.PaginationInfo.builder()
                         .pageNumber(pageResponse.getPageNumber())
@@ -217,8 +90,8 @@ public class CampaignViewController {
                 
                 return ResponseEntity.ok(BaseResponse.success(responseWrapper, "캠페인 목록 조회 성공"));
             } else {
-                // 페이징 정보 없이 캠페인 목록만 반환
-                return ResponseEntity.ok(BaseResponse.success(campaigns, "캠페인 목록 조회 성공"));
+                Map<String, Object> responseData = Map.of("campaigns", campaigns);
+                return ResponseEntity.ok(BaseResponse.success(responseData, "캠페인 목록 조회 성공"));
             }
         } catch (Exception e) {
             log.error("캠페인 목록 조회 중 오류 발생: {}", e.getMessage(), e);
@@ -227,361 +100,544 @@ public class CampaignViewController {
         }
     }
 
+    // ===== 인기순/마감순 특화 API =====
+    
     @Operation(
-        summary = "캠페인 썸네일 조회", 
-        description = "캠페인 썸네일 이미지 URL을 조회합니다."
+        summary = "인기 캠페인 목록 조회", 
+        description = "신청 인원이 많은 순으로 캠페인을 조회합니다."
     )
     @ApiResponses(value = {
-            @ApiResponse(
-                responseCode = "200", 
-                description = "조회 성공",
-                content = @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = BaseResponse.class),
-                    examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
-                        name = "썸네일 조회 성공 응답 예시",
-                        value = "{\n" +
-                               "  \"status\": \"success\",\n" +
-                               "  \"message\": \"썸네일 조회 성공\",\n" +
-                               "  \"data\": {\n" +
-                               "    \"campaign\": {\n" +
-                               "      \"id\": 1,\n" +
-                               "      \"thumbnailUrl\": \"https://example.com/images/cafe.jpg\"\n" +
-                               "    }\n" +
-                               "  }\n" +
-                               "}"
-                    )
-                )
-            ),
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    @GetMapping("/popular")
+    public ResponseEntity<?> getPopularCampaigns(
+            @Parameter(description = "페이지 번호 (0부터 시작)")
+            @RequestParam(required = false, defaultValue = "0") int page,
+
+            @Parameter(description = "요청할 캠페인 갯수")
+            @RequestParam(required = false, defaultValue = "10") int size,
+
+            @Parameter(description = "카테고리 타입 (방문, 배송)")
+            @RequestParam(required = false) String categoryType,
+
+            @Parameter(description = "캠페인 타입 (인스타그램, 블로그, 유튜브 등)")
+            @RequestParam(required = false) String campaignType,
+
+            @Parameter(description = "페이징 정보 포함 여부")
+            @RequestParam(required = false, defaultValue = "true") boolean includePaging
+    ) {
+        try {
+            log.info("인기 캠페인 목록 조회 요청 - page: {}, size: {}, categoryType: {}, campaignType: {}, includePaging: {}",
+                    page, size, categoryType, campaignType, includePaging);
+
+            var pageResponse = viewService.getCampaignList(page, size, "currentApplicants", true, categoryType, campaignType);
+            List<CampaignListSimpleResponse> campaigns = pageResponse.getContent();
+
+            if (includePaging) {
+                CampaignListResponseWrapper responseWrapper = new CampaignListResponseWrapper();
+                responseWrapper.setCampaigns(campaigns);
+                
+                CampaignListResponseWrapper.PaginationInfo paginationInfo = 
+                    CampaignListResponseWrapper.PaginationInfo.builder()
+                        .pageNumber(pageResponse.getPageNumber())
+                        .pageSize(pageResponse.getPageSize())
+                        .totalPages(pageResponse.getTotalPages())
+                        .totalElements(pageResponse.getTotalElements())
+                        .first(pageResponse.isFirst())
+                        .last(pageResponse.isLast())
+                        .build();
+                
+                responseWrapper.setPagination(paginationInfo);
+                
+                return ResponseEntity.ok(BaseResponse.success(responseWrapper, "인기 캠페인 목록 조회 성공"));
+            } else {
+                Map<String, Object> responseData = Map.of("campaigns", campaigns);
+                return ResponseEntity.ok(BaseResponse.success(responseData, "인기 캠페인 목록 조회 성공"));
+            }
+        } catch (Exception e) {
+            log.error("인기 캠페인 목록 조회 중 오류 발생: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(BaseResponse.fail("인기 캠페인 목록 조회 중 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
+        }
+    }
+
+    @Operation(
+        summary = "마감 임박 캠페인 목록 조회", 
+        description = "신청 마감일이 가까운 순으로 캠페인을 조회합니다."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    @GetMapping("/deadline-soon")
+    public ResponseEntity<?> getDeadlineSoonCampaigns(
+            @Parameter(description = "페이지 번호 (0부터 시작)")
+            @RequestParam(required = false, defaultValue = "0") int page,
+
+            @Parameter(description = "요청할 캠페인 갯수")
+            @RequestParam(required = false, defaultValue = "10") int size,
+
+            @Parameter(description = "카테고리 타입 (방문, 배송)")
+            @RequestParam(required = false) String categoryType,
+
+            @Parameter(description = "캠페인 타입 (인스타그램, 블로그, 유튜브 등)")
+            @RequestParam(required = false) String campaignType,
+
+            @Parameter(description = "페이징 정보 포함 여부")
+            @RequestParam(required = false, defaultValue = "true") boolean includePaging
+    ) {
+        try {
+            log.info("마감 임박 캠페인 목록 조회 요청 - page: {}, size: {}, categoryType: {}, campaignType: {}, includePaging: {}",
+                    page, size, categoryType, campaignType, includePaging);
+
+            var pageResponse = viewService.getCampaignListByDeadlineSoon(page, size, categoryType, campaignType);
+            List<CampaignListSimpleResponse> campaigns = pageResponse.getContent();
+
+            if (includePaging) {
+                CampaignListResponseWrapper responseWrapper = new CampaignListResponseWrapper();
+                responseWrapper.setCampaigns(campaigns);
+                
+                CampaignListResponseWrapper.PaginationInfo paginationInfo = 
+                    CampaignListResponseWrapper.PaginationInfo.builder()
+                        .pageNumber(pageResponse.getPageNumber())
+                        .pageSize(pageResponse.getPageSize())
+                        .totalPages(pageResponse.getTotalPages())
+                        .totalElements(pageResponse.getTotalElements())
+                        .first(pageResponse.isFirst())
+                        .last(pageResponse.isLast())
+                        .build();
+                
+                responseWrapper.setPagination(paginationInfo);
+                
+                return ResponseEntity.ok(BaseResponse.success(responseWrapper, "마감 임박 캠페인 목록 조회 성공"));
+            } else {
+                Map<String, Object> responseData = Map.of("campaigns", campaigns);
+                return ResponseEntity.ok(BaseResponse.success(responseData, "마감 임박 캠페인 목록 조회 성공"));
+            }
+        } catch (Exception e) {
+            log.error("마감 임박 캠페인 목록 조회 중 오류 발생: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(BaseResponse.fail("마감 임박 캠페인 목록 조회 중 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
+        }
+    }
+
+    @Operation(
+        summary = "최신 캠페인 목록 조회", 
+        description = "최신 등록순으로 캠페인을 조회합니다."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    @GetMapping("/latest")
+    public ResponseEntity<?> getLatestCampaigns(
+            @Parameter(description = "페이지 번호 (0부터 시작)")
+            @RequestParam(required = false, defaultValue = "0") int page,
+
+            @Parameter(description = "요청할 캠페인 갯수")
+            @RequestParam(required = false, defaultValue = "10") int size,
+
+            @Parameter(description = "카테고리 타입 (방문, 배송)")
+            @RequestParam(required = false) String categoryType,
+
+            @Parameter(description = "캠페인 타입 (인스타그램, 블로그, 유튜브 등)")
+            @RequestParam(required = false) String campaignType,
+
+            @Parameter(description = "페이징 정보 포함 여부")
+            @RequestParam(required = false, defaultValue = "true") boolean includePaging
+    ) {
+        try {
+            log.info("최신 캠페인 목록 조회 요청 - page: {}, size: {}, categoryType: {}, campaignType: {}, includePaging: {}",
+                    page, size, categoryType, campaignType, includePaging);
+
+            var pageResponse = viewService.getCampaignList(page, size, "createdAt", true, categoryType, campaignType);
+            List<CampaignListSimpleResponse> campaigns = pageResponse.getContent();
+
+            if (includePaging) {
+                CampaignListResponseWrapper responseWrapper = new CampaignListResponseWrapper();
+                responseWrapper.setCampaigns(campaigns);
+                
+                CampaignListResponseWrapper.PaginationInfo paginationInfo = 
+                    CampaignListResponseWrapper.PaginationInfo.builder()
+                        .pageNumber(pageResponse.getPageNumber())
+                        .pageSize(pageResponse.getPageSize())
+                        .totalPages(pageResponse.getTotalPages())
+                        .totalElements(pageResponse.getTotalElements())
+                        .first(pageResponse.isFirst())
+                        .last(pageResponse.isLast())
+                        .build();
+                
+                responseWrapper.setPagination(paginationInfo);
+                
+                return ResponseEntity.ok(BaseResponse.success(responseWrapper, "최신 캠페인 목록 조회 성공"));
+            } else {
+                Map<String, Object> responseData = Map.of("campaigns", campaigns);
+                return ResponseEntity.ok(BaseResponse.success(responseData, "최신 캠페인 목록 조회 성공"));
+            }
+        } catch (Exception e) {
+            log.error("최신 캠페인 목록 조회 중 오류 발생: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(BaseResponse.fail("최신 캠페인 목록 조회 중 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
+        }
+    }
+
+    // ===== 세분화된 캠페인 조회 API =====
+
+    @Operation(
+        summary = "방문 캠페인 목록 조회", 
+        description = "방문형 캠페인 목록을 다양한 조건으로 조회합니다."
+                    + "\n\n### 지원하는 카테고리:"
+                    + "\n- **전체**: categoryName 파라미터 생략"
+                    + "\n- **맛집**: categoryName=맛집"
+                    + "\n- **카페**: categoryName=카페"  
+                    + "\n- **뷰티**: categoryName=뷰티"
+                    + "\n- **숙박**: categoryName=숙박"
+                    + "\n\n### 플랫폼 필터링:"
+                    + "\n- **단일 플랫폼**: campaignTypes=블로그 또는 campaignTypes=인스타그램 또는 campaignTypes=유튜브"
+                    + "\n- **복수 플랫폼**: campaignTypes=블로그,인스타그램 (쉼표로 구분)"
+                    + "\n- **전체 플랫폼**: campaignTypes 파라미터 생략"
+                    + "\n\n### 정렬 옵션:"
+                    + "\n- **최신순**: sort=latest (기본값)"
+                    + "\n- **인기순**: sort=popular"
+                    + "\n- **선정 마감순**: sort=deadline"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    @GetMapping("/visit")
+    public ResponseEntity<?> getVisitCampaigns(
+            @Parameter(description = "페이지 번호 (0부터 시작)")
+            @RequestParam(required = false, defaultValue = "0") int page,
+
+            @Parameter(description = "요청할 캠페인 갯수")
+            @RequestParam(required = false, defaultValue = "10") int size,
+
+            @Parameter(description = "카테고리명 (맛집, 카페, 뷰티, 숙박). 생략시 전체")
+            @RequestParam(required = false) String categoryName,
+
+            @Parameter(description = "캠페인 플랫폼 (쉼표로 구분): 블로그, 인스타그램, 유튜브")
+            @RequestParam(required = false) String campaignTypes,
+
+            @Parameter(description = "정렬 기준 (latest, popular, deadline)")
+            @RequestParam(required = false, defaultValue = "latest") String sort,
+
+            @Parameter(description = "페이징 정보 포함 여부")
+            @RequestParam(required = false, defaultValue = "true") boolean includePaging
+    ) {
+        try {
+            log.info("방문 캠페인 목록 조회 요청 - page: {}, size: {}, categoryName: {}, campaignTypes: {}, sort: {}, includePaging: {}",
+                    page, size, categoryName, campaignTypes, sort, includePaging);
+
+            var pageResponse = viewService.getFilteredCampaignList(
+                page, size, "방문", categoryName, campaignTypes, sort);
+            
+            List<CampaignListSimpleResponse> campaigns = pageResponse.getContent();
+
+            if (includePaging) {
+                CampaignListResponseWrapper responseWrapper = new CampaignListResponseWrapper();
+                responseWrapper.setCampaigns(campaigns);
+                
+                CampaignListResponseWrapper.PaginationInfo paginationInfo = 
+                    CampaignListResponseWrapper.PaginationInfo.builder()
+                        .pageNumber(pageResponse.getPageNumber())
+                        .pageSize(pageResponse.getPageSize())
+                        .totalPages(pageResponse.getTotalPages())
+                        .totalElements(pageResponse.getTotalElements())
+                        .first(pageResponse.isFirst())
+                        .last(pageResponse.isLast())
+                        .build();
+                
+                responseWrapper.setPagination(paginationInfo);
+                
+                return ResponseEntity.ok(BaseResponse.success(responseWrapper, "방문 캠페인 목록 조회 성공"));
+            } else {
+                Map<String, Object> responseData = Map.of("campaigns", campaigns);
+                return ResponseEntity.ok(BaseResponse.success(responseData, "방문 캠페인 목록 조회 성공"));
+            }
+        } catch (Exception e) {
+            log.error("방문 캠페인 목록 조회 중 오류 발생: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(BaseResponse.fail("방문 캠페인 목록 조회 중 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
+        }
+    }
+
+    @Operation(
+        summary = "배송 캠페인 목록 조회", 
+        description = "배송형 캠페인 목록을 다양한 조건으로 조회합니다."
+                    + "\n\n### 지원하는 카테고리:"
+                    + "\n- **전체**: categoryName 파라미터 생략"
+                    + "\n- **식품**: categoryName=식품"
+                    + "\n- **화장품**: categoryName=화장품"  
+                    + "\n- **생활용품**: categoryName=생활용품"
+                    + "\n- **패션**: categoryName=패션"
+                    + "\n- **잡화**: categoryName=잡화"
+                    + "\n\n### 플랫폼 필터링:"
+                    + "\n- **단일 플랫폼**: campaignTypes=블로그 또는 campaignTypes=인스타그램 또는 campaignTypes=유튜브"
+                    + "\n- **복수 플랫폼**: campaignTypes=블로그,인스타그램 (쉼표로 구분)"
+                    + "\n- **전체 플랫폼**: campaignTypes 파라미터 생략"
+                    + "\n\n### 정렬 옵션:"
+                    + "\n- **최신순**: sort=latest (기본값)"
+                    + "\n- **인기순**: sort=popular"
+                    + "\n- **선정 마감순**: sort=deadline"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    @GetMapping("/delivery")
+    public ResponseEntity<?> getDeliveryCampaigns(
+            @Parameter(description = "페이지 번호 (0부터 시작)")
+            @RequestParam(required = false, defaultValue = "0") int page,
+
+            @Parameter(description = "요청할 캠페인 갯수")
+            @RequestParam(required = false, defaultValue = "10") int size,
+
+            @Parameter(description = "카테고리명 (식품, 화장품, 생활용품, 패션, 잡화). 생략시 전체")
+            @RequestParam(required = false) String categoryName,
+
+            @Parameter(description = "캠페인 플랫폼 (쉼표로 구분): 블로그, 인스타그램, 유튜브")
+            @RequestParam(required = false) String campaignTypes,
+
+            @Parameter(description = "정렬 기준 (latest, popular, deadline)")
+            @RequestParam(required = false, defaultValue = "latest") String sort,
+
+            @Parameter(description = "페이징 정보 포함 여부")
+            @RequestParam(required = false, defaultValue = "true") boolean includePaging
+    ) {
+        try {
+            log.info("배송 캠페인 목록 조회 요청 - page: {}, size: {}, categoryName: {}, campaignTypes: {}, sort: {}, includePaging: {}",
+                    page, size, categoryName, campaignTypes, sort, includePaging);
+
+            var pageResponse = viewService.getFilteredCampaignList(
+                page, size, "배송", categoryName, campaignTypes, sort);
+            
+            List<CampaignListSimpleResponse> campaigns = pageResponse.getContent();
+
+            if (includePaging) {
+                CampaignListResponseWrapper responseWrapper = new CampaignListResponseWrapper();
+                responseWrapper.setCampaigns(campaigns);
+                
+                CampaignListResponseWrapper.PaginationInfo paginationInfo = 
+                    CampaignListResponseWrapper.PaginationInfo.builder()
+                        .pageNumber(pageResponse.getPageNumber())
+                        .pageSize(pageResponse.getPageSize())
+                        .totalPages(pageResponse.getTotalPages())
+                        .totalElements(pageResponse.getTotalElements())
+                        .first(pageResponse.isFirst())
+                        .last(pageResponse.isLast())
+                        .build();
+                
+                responseWrapper.setPagination(paginationInfo);
+                
+                return ResponseEntity.ok(BaseResponse.success(responseWrapper, "배송 캠페인 목록 조회 성공"));
+            } else {
+                Map<String, Object> responseData = Map.of("campaigns", campaigns);
+                return ResponseEntity.ok(BaseResponse.success(responseData, "배송 캠페인 목록 조회 성공"));
+            }
+        } catch (Exception e) {
+            log.error("배송 캠페인 목록 조회 중 오류 발생: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(BaseResponse.fail("배송 캠페인 목록 조회 중 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
+        }
+    }
+
+    // ===== 캠페인 상세 조회 API (세분화) =====
+
+    @Operation(
+        summary = "캠페인 썸네일 조회", 
+        description = "캠페인의 썸네일 이미지 URL을 조회합니다."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "404", description = "캠페인을 찾을 수 없음"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     @GetMapping("/{campaignId}/thumbnail")
-    public ResponseEntity<?> getThumbnail(@PathVariable Long campaignId) {
+    public ResponseEntity<?> getCampaignThumbnail(
+            @Parameter(description = "캠페인 ID", required = true)
+            @PathVariable Long campaignId
+    ) {
         try {
-            ThumbnailResponse response = viewService.getThumbnail(campaignId);
+            log.info("캠페인 썸네일 조회 요청 - campaignId: {}", campaignId);
+
+            var thumbnailResponse = viewService.getThumbnail(campaignId);
+            
             return ResponseEntity.ok(BaseResponse.success(
-                    CampaignSingleResponseWrapper.of(response), 
-                    "썸네일 조회 성공"
-            ));
-        } catch (ResourceNotFoundException e) {
-            log.warn("캠페인을 찾을 수 없음: campaignId={}", campaignId);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(BaseResponse.fail(e.getMessage(), "NOT_FOUND", HttpStatus.NOT_FOUND.value()));
+                Map.of("campaign", thumbnailResponse), "캠페인 썸네일 조회 성공"));
         } catch (Exception e) {
-            log.error("썸네일 조회 중 오류 발생: {}", e.getMessage(), e);
+            log.error("캠페인 썸네일 조회 중 오류 발생: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(BaseResponse.fail("정보 조회 중 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
+                    .body(BaseResponse.fail("캠페인 썸네일 조회 중 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
         }
     }
 
     @Operation(
         summary = "캠페인 기본 정보 조회", 
-        description = "캠페인 타입, 제목, 신청 인원, 마감일 등의 기본 정보를 조회합니다."
+        description = "캠페인의 기본 정보(타입, 제목, 신청 인원, 마감일 등)를 조회합니다."
     )
     @ApiResponses(value = {
-            @ApiResponse(
-                responseCode = "200", 
-                description = "조회 성공",
-                content = @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = BaseResponse.class),
-                    examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
-                        name = "기본 정보 조회 성공 응답 예시",
-                        value = "{\n" +
-                               "  \"status\": \"success\",\n" +
-                               "  \"message\": \"기본 정보 조회 성공\",\n" +
-                               "  \"data\": {\n" +
-                               "    \"campaign\": {\n" +
-                               "      \"id\": 1,\n" +
-                               "      \"campaignType\": \"인스타그램\",\n" +
-                               "      \"title\": \"인스타 감성 카페 체험단 모집\",\n" +
-                               "      \"currentApplicants\": 12,\n" +
-                               "      \"maxApplicants\": 20,\n" +
-                               "      \"applicationDeadlineDate\": \"2025-06-15\",\n" +
-                               "      \"category\": {\n" +
-                               "        \"type\": \"방문\",\n" +
-                               "        \"name\": \"카페\"\n" +
-                               "      }\n" +
-                               "    }\n" +
-                               "  }\n" +
-                               "}"
-                    )
-                )
-            ),
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "404", description = "캠페인을 찾을 수 없음"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     @GetMapping("/{campaignId}/basic-info")
-    public ResponseEntity<?> getBasicInfo(@PathVariable Long campaignId) {
+    public ResponseEntity<?> getCampaignBasicInfo(
+            @Parameter(description = "캠페인 ID", required = true)
+            @PathVariable Long campaignId
+    ) {
         try {
-            BasicInfoResponse response = viewService.getBasicInfo(campaignId);
+            log.info("캠페인 기본 정보 조회 요청 - campaignId: {}", campaignId);
+
+            var basicInfoResponse = viewService.getBasicInfo(campaignId);
+            
             return ResponseEntity.ok(BaseResponse.success(
-                    CampaignSingleResponseWrapper.of(response), 
-                    "기본 정보 조회 성공"
-            ));
-        } catch (ResourceNotFoundException e) {
-            log.warn("캠페인을 찾을 수 없음: campaignId={}", campaignId);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(BaseResponse.fail(e.getMessage(), "NOT_FOUND", HttpStatus.NOT_FOUND.value()));
+                Map.of("campaign", basicInfoResponse), "캠페인 기본 정보 조회 성공"));
         } catch (Exception e) {
-            log.error("기본 정보 조회 중 오류 발생: {}", e.getMessage(), e);
+            log.error("캠페인 기본 정보 조회 중 오류 발생: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(BaseResponse.fail("정보 조회 중 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
+                    .body(BaseResponse.fail("캠페인 기본 정보 조회 중 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
         }
     }
 
     @Operation(
         summary = "캠페인 제품 및 일정 정보 조회", 
-        description = "제공 제품 정보와 모집/선정 일정을 조회합니다."
+        description = "캠페인의 제품 정보와 모집/선정/리뷰 일정을 조회합니다."
     )
     @ApiResponses(value = {
-            @ApiResponse(
-                responseCode = "200", 
-                description = "조회 성공",
-                content = @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = BaseResponse.class),
-                    examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
-                        name = "제품 및 일정 정보 조회 성공 응답 예시",
-                        value = "{\n" +
-                               "  \"status\": \"success\",\n" +
-                               "  \"message\": \"제품 및 일정 정보 조회 성공\",\n" +
-                               "  \"data\": {\n" +
-                               "    \"campaign\": {\n" +
-                               "      \"id\": 1,\n" +
-                               "      \"productShortInfo\": \"시그니처 음료 2잔 무료 제공\",\n" +
-                               "      \"productDetails\": \"인스타 감성 가득한 카페에서 시그니처 음료 2잔과 디저트 1개를 무료로 체험하실 분들을 모집합니다.\",\n" +
-                               "      \"recruitmentStartDate\": \"2025-05-01\",\n" +
-                               "      \"recruitmentEndDate\": \"2025-05-15\",\n" +
-                               "      \"selectionDate\": \"2025-05-16\",\n" +
-                               "      \"reviewDeadlineDate\": \"2025-05-30\"\n" +
-                               "    }\n" +
-                               "  }\n" +
-                               "}"
-                    )
-                )
-            ),
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "404", description = "캠페인을 찾을 수 없음"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     @GetMapping("/{campaignId}/product-schedule")
-    public ResponseEntity<?> getProductAndSchedule(@PathVariable Long campaignId) {
+    public ResponseEntity<?> getCampaignProductAndSchedule(
+            @Parameter(description = "캠페인 ID", required = true)
+            @PathVariable Long campaignId
+    ) {
         try {
-            ProductAndScheduleResponse response = viewService.getProductAndSchedule(campaignId);
+            log.info("캠페인 제품 및 일정 정보 조회 요청 - campaignId: {}", campaignId);
+
+            var productScheduleResponse = viewService.getProductAndSchedule(campaignId);
+            
             return ResponseEntity.ok(BaseResponse.success(
-                    CampaignSingleResponseWrapper.of(response), 
-                    "제품 및 일정 정보 조회 성공"
-            ));
-        } catch (ResourceNotFoundException e) {
-            log.warn("캠페인을 찾을 수 없음: campaignId={}", campaignId);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(BaseResponse.fail(e.getMessage(), "NOT_FOUND", HttpStatus.NOT_FOUND.value()));
+                Map.of("campaign", productScheduleResponse), "캠페인 제품 및 일정 정보 조회 성공"));
         } catch (Exception e) {
-            log.error("제품 및 일정 정보 조회 중 오류 발생: {}", e.getMessage(), e);
+            log.error("캠페인 제품 및 일정 정보 조회 중 오류 발생: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(BaseResponse.fail("정보 조회 중 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
+                    .body(BaseResponse.fail("캠페인 제품 및 일정 정보 조회 중 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
         }
     }
 
     @Operation(
         summary = "캠페인 업체 정보 조회", 
-        description = "업체/브랜드 정보와 캠페인 등록자(크리에이터) 닉네임을 조회합니다."
+        description = "캠페인의 업체/브랜드 정보를 조회합니다."
     )
     @ApiResponses(value = {
-            @ApiResponse(
-                responseCode = "200", 
-                description = "조회 성공",
-                content = @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = BaseResponse.class),
-                    examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
-                        name = "업체 정보 조회 성공 응답 예시",
-                        value = "{\n" +
-                               "  \"status\": \"success\",\n" +
-                               "  \"message\": \"업체 정보 조회 성공\",\n" +
-                               "  \"data\": {\n" +
-                               "    \"campaign\": {\n" +
-                               "      \"id\": 1,\n" +
-                               "      \"companyInfo\": \"2020년에 오픈한 강남 소재의 프리미엄 디저트 카페로, 유기농 재료만을 사용한 건강한 음료를 제공합니다.\",\n" +
-                               "      \"creatorNickname\": \"브랜드매니저\"\n" +
-                               "    }\n" +
-                               "  }\n" +
-                               "}"
-                    )
-                )
-            ),
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "404", description = "캠페인을 찾을 수 없음"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     @GetMapping("/{campaignId}/company-info")
-    public ResponseEntity<?> getCompanyInfo(@PathVariable Long campaignId) {
+    public ResponseEntity<?> getCampaignCompanyInfo(
+            @Parameter(description = "캠페인 ID", required = true)
+            @PathVariable Long campaignId
+    ) {
         try {
-            CompanyInfoResponse response = viewService.getCompanyInfo(campaignId);
+            log.info("캠페인 업체 정보 조회 요청 - campaignId: {}", campaignId);
+
+            var companyInfoResponse = viewService.getCompanyInfo(campaignId);
+            
             return ResponseEntity.ok(BaseResponse.success(
-                    CampaignSingleResponseWrapper.of(response), 
-                    "업체 정보 조회 성공"
-            ));
-        } catch (ResourceNotFoundException e) {
-            log.warn("캠페인을 찾을 수 없음: campaignId={}", campaignId);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(BaseResponse.fail(e.getMessage(), "NOT_FOUND", HttpStatus.NOT_FOUND.value()));
+                Map.of("campaign", companyInfoResponse), "캠페인 업체 정보 조회 성공"));
         } catch (Exception e) {
-            log.error("업체 정보 조회 중 오류 발생: {}", e.getMessage(), e);
+            log.error("캠페인 업체 정보 조회 중 오류 발생: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(BaseResponse.fail("정보 조회 중 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
+                    .body(BaseResponse.fail("캠페인 업체 정보 조회 중 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
         }
     }
 
     @Operation(
         summary = "캠페인 미션 가이드 조회", 
-        description = "미션 가이드(마크다운 형식)를 조회합니다."
+        description = "캠페인의 미션 가이드(마크다운 형식)를 조회합니다."
     )
     @ApiResponses(value = {
-            @ApiResponse(
-                responseCode = "200", 
-                description = "조회 성공",
-                content = @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = BaseResponse.class),
-                    examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
-                        name = "미션 가이드 조회 성공 응답 예시",
-                        value = "{\n" +
-                               "  \"status\": \"success\",\n" +
-                               "  \"message\": \"미션 가이드 조회 성공\",\n" +
-                               "  \"data\": {\n" +
-                               "    \"campaign\": {\n" +
-                               "      \"id\": 1,\n" +
-                               "      \"missionGuide\": \"1. 카페 방문 시 직원에게 체험단임을 알려주세요.\\n2. 음료와 디저트를 맛있게 즐기며 사진을 찍어주세요.\\n3. 인스타그램에 사진과 함께 솔직한 후기를 작성해주세요.\"\n" +
-                               "    }\n" +
-                               "  }\n" +
-                               "}"
-                    )
-                )
-            ),
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "404", description = "캠페인을 찾을 수 없음"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     @GetMapping("/{campaignId}/mission-guide")
-    public ResponseEntity<?> getMissionGuide(@PathVariable Long campaignId) {
+    public ResponseEntity<?> getCampaignMissionGuide(
+            @Parameter(description = "캠페인 ID", required = true)
+            @PathVariable Long campaignId
+    ) {
         try {
-            MissionGuideResponse response = viewService.getMissionGuide(campaignId);
+            log.info("캠페인 미션 가이드 조회 요청 - campaignId: {}", campaignId);
+
+            var missionGuideResponse = viewService.getMissionGuide(campaignId);
+            
             return ResponseEntity.ok(BaseResponse.success(
-                    CampaignSingleResponseWrapper.of(response), 
-                    "미션 가이드 조회 성공"
-            ));
-        } catch (ResourceNotFoundException e) {
-            log.warn("캠페인을 찾을 수 없음: campaignId={}", campaignId);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(BaseResponse.fail(e.getMessage(), "NOT_FOUND", HttpStatus.NOT_FOUND.value()));
+                Map.of("campaign", missionGuideResponse), "캠페인 미션 가이드 조회 성공"));
         } catch (Exception e) {
-            log.error("미션 가이드 조회 중 오류 발생: {}", e.getMessage(), e);
+            log.error("캠페인 미션 가이드 조회 중 오류 발생: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(BaseResponse.fail("정보 조회 중 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
+                    .body(BaseResponse.fail("캠페인 미션 가이드 조회 중 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
         }
     }
 
     @Operation(
         summary = "캠페인 미션 키워드 조회", 
-        description = "미션 컨텐츠에 포함되어야 하는 키워드를 조회합니다."
+        description = "캠페인의 미션 키워드 목록을 조회합니다."
     )
     @ApiResponses(value = {
-            @ApiResponse(
-                responseCode = "200", 
-                description = "조회 성공",
-                content = @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = BaseResponse.class),
-                    examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
-                        name = "미션 키워드 조회 성공 응답 예시",
-                        value = "{\n" +
-                               "  \"status\": \"success\",\n" +
-                               "  \"message\": \"미션 키워드 조회 성공\",\n" +
-                               "  \"data\": {\n" +
-                               "    \"campaign\": {\n" +
-                               "      \"id\": 1,\n" +
-                               "      \"missionKeywords\": [\"카페추천\", \"디저트맛집\", \"강남카페\"]\n" +
-                               "    }\n" +
-                               "  }\n" +
-                               "}"
-                    )
-                )
-            ),
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "404", description = "캠페인을 찾을 수 없음"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     @GetMapping("/{campaignId}/mission-keywords")
-    public ResponseEntity<?> getMissionKeywords(@PathVariable Long campaignId) {
+    public ResponseEntity<?> getCampaignMissionKeywords(
+            @Parameter(description = "캠페인 ID", required = true)
+            @PathVariable Long campaignId
+    ) {
         try {
-            MissionKeywordsResponse response = viewService.getMissionKeywords(campaignId);
+            log.info("캠페인 미션 키워드 조회 요청 - campaignId: {}", campaignId);
+
+            var missionKeywordsResponse = viewService.getMissionKeywords(campaignId);
+            
             return ResponseEntity.ok(BaseResponse.success(
-                    CampaignSingleResponseWrapper.of(response), 
-                    "미션 키워드 조회 성공"
-            ));
-        } catch (ResourceNotFoundException e) {
-            log.warn("캠페인을 찾을 수 없음: campaignId={}", campaignId);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(BaseResponse.fail(e.getMessage(), "NOT_FOUND", HttpStatus.NOT_FOUND.value()));
+                Map.of("campaign", missionKeywordsResponse), "캠페인 미션 키워드 조회 성공"));
         } catch (Exception e) {
-            log.error("미션 키워드 조회 중 오류 발생: {}", e.getMessage(), e);
+            log.error("캠페인 미션 키워드 조회 중 오류 발생: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(BaseResponse.fail("정보 조회 중 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
+                    .body(BaseResponse.fail("캠페인 미션 키워드 조회 중 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
         }
     }
 
     @Operation(
         summary = "캠페인 위치 정보 조회", 
-        description = "방문 정보(위치 정보)를 조회합니다."
+        description = "캠페인의 방문 위치 정보(지도 API용)를 조회합니다. 방문형 캠페인에만 해당됩니다."
     )
     @ApiResponses(value = {
-            @ApiResponse(
-                responseCode = "200", 
-                description = "조회 성공",
-                content = @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = BaseResponse.class),
-                    examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
-                        name = "위치 정보 조회 성공 응답 예시",
-                        value = "{\n" +
-                               "  \"status\": \"success\",\n" +
-                               "  \"message\": \"위치 정보 조회 성공\",\n" +
-                               "  \"data\": {\n" +
-                               "    \"campaign\": {\n" +
-                               "      \"id\": 1,\n" +
-                               "      \"visitLocations\": [\n" +
-                               "        {\n" +
-                               "          \"id\": 1,\n" +
-                               "          \"address\": \"서울특별시 강남구 테헤란로 123\",\n" +
-                               "          \"latitude\": 37.498095,\n" +
-                               "          \"longitude\": 127.027610,\n" +
-                               "          \"additionalInfo\": \"영업시간: 10:00-22:00, 주차 가능\"\n" +
-                               "        }\n" +
-                               "      ]\n" +
-                               "    }\n" +
-                               "  }\n" +
-                               "}"
-                    )
-                )
-            ),
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "404", description = "캠페인을 찾을 수 없음"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     @GetMapping("/{campaignId}/location-info")
-    public ResponseEntity<?> getLocationInfo(@PathVariable Long campaignId) {
+    public ResponseEntity<?> getCampaignLocationInfo(
+            @Parameter(description = "캠페인 ID", required = true)
+            @PathVariable Long campaignId
+    ) {
         try {
-            LocationInfoResponse response = viewService.getLocationInfo(campaignId);
+            log.info("캠페인 위치 정보 조회 요청 - campaignId: {}", campaignId);
+
+            var locationInfoResponse = viewService.getLocationInfo(campaignId);
+            
             return ResponseEntity.ok(BaseResponse.success(
-                    CampaignSingleResponseWrapper.of(response), 
-                    "위치 정보 조회 성공"
-            ));
-        } catch (ResourceNotFoundException e) {
-            log.warn("캠페인을 찾을 수 없음: campaignId={}", campaignId);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(BaseResponse.fail(e.getMessage(), "NOT_FOUND", HttpStatus.NOT_FOUND.value()));
+                Map.of("campaign", locationInfoResponse), "캠페인 위치 정보 조회 성공"));
         } catch (Exception e) {
-            log.error("위치 정보 조회 중 오류 발생: {}", e.getMessage(), e);
+            log.error("캠페인 위치 정보 조회 중 오류 발생: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(BaseResponse.fail("정보 조회 중 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
+                    .body(BaseResponse.fail("캠페인 위치 정보 조회 중 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
         }
     }
 }

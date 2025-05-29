@@ -25,19 +25,25 @@ public class JwtAuthInterceptor implements HandlerInterceptor {
     private final JwtUtil jwtUtil;
     private final TokenService tokenService;
 
-    // API 패턴을 기반으로 인증이 필요하지 않은 경로들 지정
+    // API 패턴을 기반으로 인증이 필요하지 않은 경로들 지정 (모든 HTTP 메서드)
     private final List<String> publicApis = Arrays.asList(
             "/api/auth/login-redirect",
             "/api/auth/kakao",
             "/api/auth/refresh"
     );
-
+    
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         String path = request.getRequestURI();
+        String method = request.getMethod();
 
         // 공개 API 건너뜀
         if (isPublicApi(path)) {
+            return true;
+        }
+        
+        // GET 요청이며 캠페인 조회 API인 경우 인증 없이 허용
+        if ("GET".equals(method) && path.startsWith("/api/campaigns")) {
             return true;
         }
 
