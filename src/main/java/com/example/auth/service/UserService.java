@@ -88,4 +88,29 @@ public class UserService {
     }
     
     // 사용자 역할 관리 메서드는 다른 프로젝트에서 관리합니다.
+    
+    /**
+     * 사용자 ID로 사용자 조회
+     * @param userId 사용자 ID
+     * @return 사용자 객체 또는 null
+     */
+    public User findUserById(Long userId) {
+        return userRepository.findById(userId).orElse(null);
+    }
+    
+    /**
+     * 사용자 권한 업데이트
+     * @param userId 사용자 ID
+     * @param role 새로운 권한 ('USER', 'CLIENT', 'ADMIN')
+     * @return 업데이트된 사용자 객체
+     * @throws RuntimeException 사용자를 찾을 수 없는 경우
+     */
+    @Transactional
+    public User updateUserRole(Long userId, String role) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("사용자 정보를 찾을 수 없습니다."));
+        
+        user.updateRole(role);
+        return userRepository.save(user);
+    }
 }
