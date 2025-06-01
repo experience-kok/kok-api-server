@@ -53,7 +53,7 @@ public class CampaignApplicationService {
                 .orElseThrow(() -> new ResourceNotFoundException("사용자를 찾을 수 없습니다. ID: " + userId));
         
         // 이미 신청한 경우 체크
-        if (applicationRepository.findByUserAndCampaign(user, campaign).isPresent()) {
+        if (applicationRepository.existsByUserAndCampaign(user, campaign)) {
             throw new IllegalStateException("이미 해당 캠페인에 신청하셨습니다.");
         }
         
@@ -68,7 +68,7 @@ public class CampaignApplicationService {
         CampaignApplication application = CampaignApplication.builder()
                 .campaign(campaign)
                 .user(user)
-                .status("pending")
+                .applicationStatus(CampaignApplication.ApplicationStatus.APPLIED)
                 .build();
         
         CampaignApplication savedApplication = applicationRepository.save(application);
@@ -127,7 +127,7 @@ public class CampaignApplicationService {
         }
         
         // 대기 상태인 경우만 취소 가능
-        if (!"pending".equals(application.getStatus())) {
+        if (application.getApplicationStatus() != CampaignApplication.ApplicationStatus.APPLIED) {
             throw new IllegalStateException("이미 처리된 신청은 취소할 수 없습니다.");
         }
         
@@ -150,7 +150,7 @@ public class CampaignApplicationService {
             return false;
         }
         
-        return applicationRepository.findByUserAndCampaign(user, campaign).isPresent();
+        return applicationRepository.existsByUserAndCampaign(user, campaign);
     }
     
     /**

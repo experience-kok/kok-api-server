@@ -32,7 +32,8 @@ public class CompanyInfoResponse {
      */
     public static CompanyInfoResponse fromEntity(Campaign campaign) {
         return CompanyInfoResponse.builder()
-                .companyInfo(campaign.getCompanyInfo())
+                .companyInfo(campaign.getCompany() != null ? 
+                    campaign.getCompany().getCompanyName() : null)
                 .userNickname(campaign.getCreator() != null ? campaign.getCreator().getNickname() : null)
                 .build();
     }

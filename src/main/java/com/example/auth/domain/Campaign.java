@@ -29,6 +29,14 @@ public class Campaign {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;  // 캠페인 고유 식별자
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "creator_id", nullable = false)
+    private User creator;  // 캠페인 등록자 (필수)
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_id")
+    private Company company;  // 업체 정보 (선택)
+
     @Column(name = "thumbnail_url", columnDefinition = "TEXT")
     private String thumbnailUrl;  // 캠페인 썸네일 이미지 URL
 
@@ -47,11 +55,15 @@ public class Campaign {
     @Column(name = "product_details", nullable = false, columnDefinition = "TEXT")
     private String productDetails;  // 제공되는 제품/서비스에 대한 상세 정보
 
+    // 날짜 필드들 - 논리적 순서에 따라 정렬
     @Column(name = "recruitment_start_date", nullable = false)
     private LocalDate recruitmentStartDate;  // 모집 시작 날짜
 
     @Column(name = "recruitment_end_date", nullable = false)
     private LocalDate recruitmentEndDate;  // 모집 종료 날짜
+
+    @Column(name = "application_deadline_date", nullable = false)
+    private LocalDate applicationDeadlineDate;  // 신청 마감 날짜
 
     @Column(name = "selection_date", nullable = false)
     private LocalDate selectionDate;  // 참여자 선정 날짜
@@ -59,8 +71,8 @@ public class Campaign {
     @Column(name = "review_deadline_date", nullable = false)
     private LocalDate reviewDeadlineDate;  // 리뷰 제출 마감일
 
-    @Column(name = "company_info", columnDefinition = "TEXT")
-    private String companyInfo;  // 업체/브랜드 정보
+    @Column(name = "selection_criteria", columnDefinition = "TEXT")
+    private String selectionCriteria;  // 선정 기준
 
     @Column(name = "mission_guide", columnDefinition = "TEXT")
     private String missionGuide;  // 리뷰어 미션 가이드 (마크다운 형식)
@@ -70,30 +82,31 @@ public class Campaign {
     @JdbcTypeCode(SqlTypes.ARRAY)
     private String[] missionKeywords;  // 리뷰 콘텐츠에 포함되어야 하는 키워드 배열
 
-    @Column(name = "application_deadline_date", nullable = false)
-    private LocalDate applicationDeadlineDate;  // 신청 마감 날짜
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id", nullable = false)
+    private CampaignCategory category;  // 캠페인 카테고리 (필수)
+    
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "creator_id")
-    private User creator;  // 캠페인 등록자 (클라이언트)
-    
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id")
-    private CampaignCategory category;  // 캠페인 카테고리
-    
+
     @OneToMany(mappedBy = "campaign", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<VisitLocation> visitLocations = new ArrayList<>();  // 방문 위치 정보 목록
+    private List<CampaignApplication> applications = new ArrayList<>();  // 캠페인 신청 목록
 
+    // 관리자 승인 관련 필드들
     @Column(name = "approval_status", nullable = false, length = 20)
+    @Enumerated(EnumType.STRING)
     @Builder.Default
-    private String approvalStatus = "PENDING";  // 승인 상태: 'PENDING'(대기), 'APPROVED'(승인), 'REJECTED'(거절)
+    private ApprovalStatus approvalStatus = ApprovalStatus.PENDING;  // 승인 상태
 
     @Column(name = "approval_comment", columnDefinition = "TEXT")
     private String approvalComment;  // 승인/거절 관련 관리자 코멘트
 
     @Column(name = "approval_date", columnDefinition = "TIMESTAMP WITH TIME ZONE")
     private ZonedDateTime approvalDate;  // 승인/거절 처리 날짜
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "approved_by")
+    private User approvedBy;  // 승인한 관리자
 
     @Column(name = "created_at", columnDefinition = "TIMESTAMP WITH TIME ZONE")
     @Builder.Default
@@ -102,6 +115,25 @@ public class Campaign {
     @Column(name = "updated_at", columnDefinition = "TIMESTAMP WITH TIME ZONE")
     @Builder.Default
     private ZonedDateTime updatedAt = ZonedDateTime.now();  // 캠페인 정보 수정 시간
+
+    /**
+     * 승인 상태 열거형
+     */
+    public enum ApprovalStatus {
+        PENDING("대기중"),
+        APPROVED("승인됨"),
+        REJECTED("거절됨");
+
+        private final String description;
+
+        ApprovalStatus(String description) {
+            this.description = description;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+    }
 
     /**
      * 캠페인 정보가 업데이트될 때 호출되어 수정 시간을 현재 시간으로 업데이트합니다.
@@ -197,30 +229,79 @@ public class Campaign {
             setMissionKeywordsFromList(currentKeywords);
         }
     }
-    
+
+
     /**
-     * 방문 위치를 추가합니다.
-     * @param visitLocation 추가할 방문 위치
+     * 캠페인 신청을 추가합니다.
+     * @param application 추가할 신청
      */
-    public void addVisitLocation(VisitLocation visitLocation) {
-        if (visitLocation == null) {
+    public void addApplication(CampaignApplication application) {
+        if (application == null) {
             return;
         }
         
-        visitLocations.add(visitLocation);
-        visitLocation.setCampaign(this);
+        applications.add(application);
+        application.setCampaign(this);
     }
     
     /**
-     * 방문 위치를 제거합니다.
-     * @param visitLocation 제거할 방문 위치
+     * 캠페인 신청을 제거합니다.
+     * @param application 제거할 신청
      */
-    public void removeVisitLocation(VisitLocation visitLocation) {
-        if (visitLocation == null) {
+    public void removeApplication(CampaignApplication application) {
+        if (application == null) {
             return;
         }
         
-        visitLocations.remove(visitLocation);
-        visitLocation.setCampaign(null);
+        applications.remove(application);
+        application.setCampaign(null);
+    }
+
+    /**
+     * 현재 신청자 수를 반환합니다.
+     * @return 현재 신청자 수
+     */
+    @Transient
+    public int getCurrentApplicantCount() {
+        return (int) applications.stream()
+                .filter(app -> app.getApplicationStatus() == CampaignApplication.ApplicationStatus.APPLIED)
+                .count();
+    }
+
+    /**
+     * 캠페인을 승인합니다.
+     * @param approver 승인한 관리자
+     * @param comment 승인 코멘트
+     */
+    public void approve(User approver, String comment) {
+        this.approvalStatus = ApprovalStatus.APPROVED;
+        this.approvedBy = approver;
+        this.approvalComment = comment;
+        this.approvalDate = ZonedDateTime.now();
+        this.updatedAt = ZonedDateTime.now();
+    }
+
+    /**
+     * 캠페인을 거절합니다.
+     * @param approver 거절한 관리자
+     * @param comment 거절 사유
+     */
+    public void reject(User approver, String comment) {
+        this.approvalStatus = ApprovalStatus.REJECTED;
+        this.approvedBy = approver;
+        this.approvalComment = comment;
+        this.approvalDate = ZonedDateTime.now();
+        this.updatedAt = ZonedDateTime.now();
+    }
+
+    /**
+     * 승인 상태를 대기로 변경합니다.
+     */
+    public void resetApprovalStatus() {
+        this.approvalStatus = ApprovalStatus.PENDING;
+        this.approvedBy = null;
+        this.approvalComment = null;
+        this.approvalDate = null;
+        this.updatedAt = ZonedDateTime.now();
     }
 }

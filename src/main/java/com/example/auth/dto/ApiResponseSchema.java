@@ -96,4 +96,40 @@ public class ApiResponseSchema {
         @Schema(description = "HTTP 상태 코드", example = "401")
         private Integer status;
     }
+    
+    // 제네릭 지원을 위한 공통 응답 클래스들 추가
+    @Getter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class SuccessResponse<T> {
+        private T data;
+        private String message;
+        private String status;
+        
+        public static <T> SuccessResponse<T> of(T data, String message) {
+            return new SuccessResponse<>(data, message, "SUCCESS");
+        }
+    }
+    
+    @Getter
+    @NoArgsConstructor  
+    @AllArgsConstructor
+    public static class ErrorResponseWithCode {
+        private String message;
+        private String code;
+        private String status;
+        
+        public static ErrorResponseWithCode of(String message, String code) {
+            return new ErrorResponseWithCode(message, code, "ERROR");
+        }
+    }
+    
+    // 기존 코드와의 호환성을 위한 static 메서드들
+    public static <T> SuccessResponse<T> success(T data, String message) {
+        return SuccessResponse.of(data, message);
+    }
+    
+    public static ErrorResponseWithCode fail(String message, String code) {
+        return ErrorResponseWithCode.of(message, code);
+    }
 }

@@ -1,7 +1,6 @@
 package com.example.auth.dto.campaign;
 
 import com.example.auth.domain.Campaign;
-import com.example.auth.domain.VisitLocation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -96,32 +95,6 @@ public class CampaignListResponse {
     @Schema(description = "미션 키워드", example = "[\"카페추천\", \"디저트맛집\", \"강남카페\"]")
     private String[] missionKeywords;
     
-    // 위치 정보
-    @Schema(description = "방문 위치 정보")
-    private List<VisitLocationDTO> visitLocations;
-    
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @Builder
-    @Schema(description = "방문 위치 정보")
-    public static class VisitLocationDTO {
-        @Schema(description = "방문 위치 ID", example = "1")
-        private Long id;
-        
-        @Schema(description = "방문 장소 주소", example = "서울특별시 강남구 테헤란로 123")
-        private String address;
-        
-        @Schema(description = "위도 좌표", example = "37.498095")
-        private BigDecimal latitude;
-        
-        @Schema(description = "경도 좌표", example = "127.027610")
-        private BigDecimal longitude;
-        
-        @Schema(description = "추가 장소 정보", example = "영업시간: 10:00-22:00, 주차 가능")
-        private String additionalInfo;
-    }
-    
     /**
      * Campaign 엔티티에서 종합 DTO로 변환
      */
@@ -139,7 +112,7 @@ public class CampaignListResponse {
         // 카테고리 정보 설정
         if (campaign.getCategory() != null) {
             CategoryInfo categoryInfo = CategoryInfo.builder()
-                    .type(campaign.getCategory().getCategoryType())
+                    .type(campaign.getCategory().getCategoryType().name())
                     .name(campaign.getCategory().getCategoryName())
                     .build();
             builder.category(categoryInfo);
@@ -154,7 +127,8 @@ public class CampaignListResponse {
                .reviewDeadlineDate(campaign.getReviewDeadlineDate());
         
         // 업체 정보 설정
-        builder.companyInfo(campaign.getCompanyInfo());
+        builder.companyInfo(campaign.getCompany() != null ? 
+            campaign.getCompany().getCompanyName() : null);
         if (campaign.getCreator() != null) {
             builder.creatorNickname(campaign.getCreator().getNickname());
         }
@@ -163,30 +137,10 @@ public class CampaignListResponse {
         builder.missionGuide(campaign.getMissionGuide())
                .missionKeywords(campaign.getMissionKeywords());
         
-        // 위치 정보 설정
-        List<VisitLocationDTO> visitLocationDTOs = new ArrayList<>();
-        if (campaign.getVisitLocations() != null && !campaign.getVisitLocations().isEmpty()) {
-            visitLocationDTOs = campaign.getVisitLocations().stream()
-                    .map(location -> convertToVisitLocationDTO(location))
-                    .collect(Collectors.toList());
-        }
-        builder.visitLocations(visitLocationDTOs);
-        
         return builder.build();
     }
     
-    /**
-     * VisitLocation 엔티티를 DTO로 변환
-     */
-    private static VisitLocationDTO convertToVisitLocationDTO(VisitLocation location) {
-        return VisitLocationDTO.builder()
-                .id(location.getId())
-                .address(location.getAddress())
-                .latitude(location.getLatitude())
-                .longitude(location.getLongitude())
-                .additionalInfo(location.getAdditionalInfo())
-                .build();
-    }
+
     
     /**
      * Campaign 엔티티 리스트에서 DTO 리스트로 변환

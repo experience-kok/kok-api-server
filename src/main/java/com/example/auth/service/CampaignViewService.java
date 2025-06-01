@@ -1,7 +1,9 @@
 package com.example.auth.service;
 
 import com.example.auth.domain.Campaign;
+import com.example.auth.domain.CampaignCategory;
 import com.example.auth.dto.campaign.CampaignListSimpleResponse;
+import com.example.auth.dto.campaign.*;
 import com.example.auth.dto.campaign.view.*;
 import com.example.auth.dto.common.PageResponse;
 import com.example.auth.exception.ResourceNotFoundException;
@@ -26,18 +28,33 @@ import java.util.Map;
 public class CampaignViewService {
 
     private final CampaignRepository campaignRepository;
-    private static final String APPROVED_STATUS = "APPROVED";
+    private static final Campaign.ApprovalStatus APPROVED_STATUS = Campaign.ApprovalStatus.APPROVED;
+
+    /**
+     * String categoryType을 CategoryType enum으로 변환
+     */
+    private CampaignCategory.CategoryType convertCategoryType(String categoryType) {
+        if (categoryType == null || categoryType.isEmpty()) {
+            return null;
+        }
+        try {
+            return CampaignCategory.CategoryType.valueOf(categoryType);
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid categoryType: {}", categoryType);
+            return null;
+        }
+    }
 
     /**
      * 캠페인 목록 조회 (페이징 처리) - 간소화된 응답
      */
     @Transactional(readOnly = true)
-    public PageResponse<CampaignListSimpleResponse> getCampaignList(int page, int size, String sort, boolean onlyActive, 
-                                                            String categoryType, String campaignType) {
+    public PageResponse<CampaignListSimpleResponse> getCampaignList(int page, int size, String sort, boolean onlyActive,
+                                                                    String categoryType, String campaignType) {
         // 정렬 기준에 따라 페이지 정보 생성
         Pageable pageable;
         boolean sortByCurrentApplicants = "currentApplicants".equals(sort);
-        
+
         if (sortByCurrentApplicants) {
             // currentApplicants로 정렬하는 경우 쿼리에서 ORDER BY를 처리하므로 Pageable에는 정렬 없이 생성
             pageable = PageRequest.of(page, size);
@@ -45,9 +62,9 @@ public class CampaignViewService {
             // 기본 정렬 처리
             pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, sort != null ? sort : "createdAt"));
         }
-        
+
         Page<Campaign> campaignPage;
-        
+
         if (sortByCurrentApplicants) {
             // 신청 인원수 기준 정렬 (신청 많은 순)
             campaignPage = getCampaignPageSortedByCurrentApplicants(categoryType, campaignType, onlyActive, pageable);
@@ -55,20 +72,28 @@ public class CampaignViewService {
             // 기존 정렬 방식
             campaignPage = getCampaignPageWithStandardSort(categoryType, campaignType, onlyActive, pageable);
         }
-        
+
         // 엔티티를 간소화된 DTO로 변환
         Page<CampaignListSimpleResponse> responsePage = campaignPage.map(campaign -> {
             CampaignListSimpleResponse response = CampaignListSimpleResponse.fromEntity(campaign);
             return response;
         });
-        
-        // 신청 인원수를 배치로 조회하여 설정 (성능 최적화)
+
+        // 신청 인원수를 실제 데이터로 설정
         List<CampaignListSimpleResponse> campaigns = responsePage.getContent();
         if (!campaigns.isEmpty()) {
-            // 임시로 0으로 설정 (실제로는 CampaignApplication 테이블에서 조회)
-            campaigns.forEach(campaign -> campaign.setCurrentApplicants(0));
+            campaigns.forEach(campaignResponse -> {
+                // 실제 캠페인에서 신청자 수를 가져와 설정
+                Campaign actualCampaign = campaignPage.getContent().stream()
+                    .filter(c -> c.getId().equals(campaignResponse.getId()))
+                    .findFirst()
+                    .orElse(null);
+                if (actualCampaign != null) {
+                    campaignResponse.setCurrentApplicants(actualCampaign.getCurrentApplicantCount());
+                }
+            });
         }
-        
+
         return PageResponse.from(responsePage);
     }
 
@@ -76,54 +101,64 @@ public class CampaignViewService {
      * 마감 임박순 캠페인 목록 조회 (페이징 처리) - 활성 캠페인만
      */
     @Transactional(readOnly = true)
-    public PageResponse<CampaignListSimpleResponse> getCampaignListByDeadlineSoon(int page, int size, 
-                                                                          String categoryType, String campaignType) {
+    public PageResponse<CampaignListSimpleResponse> getCampaignListByDeadlineSoon(int page, int size,
+                                                                                  String categoryType, String campaignType) {
         // 마감일 오름차순 정렬 (마감 가까운 순)
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "applicationDeadlineDate"));
-        
+
         // 모든 활성 캠페인 조회 (마감되지 않은 캠페인만)
         Page<Campaign> campaignPage;
-        
+
         if (categoryType != null && !categoryType.isEmpty()) {
-            campaignPage = campaignRepository.findByApprovalStatusAndCategoryCategoryTypeAndApplicationDeadlineDateGreaterThanEqual(
-                    APPROVED_STATUS, categoryType, LocalDate.now(), pageable);
+            CampaignCategory.CategoryType categoryTypeEnum = convertCategoryType(categoryType);
+            if (categoryTypeEnum != null) {
+                campaignPage = campaignRepository.findByCategoryCategoryType(categoryTypeEnum, pageable);
+            } else {
+                campaignPage = campaignRepository.findAll(pageable);
+            }
         } else if (campaignType != null && !campaignType.isEmpty()) {
-            campaignPage = campaignRepository.findByApprovalStatusAndCampaignTypeAndApplicationDeadlineDateGreaterThanEqual(
-                    APPROVED_STATUS, campaignType, LocalDate.now(), pageable);
+            campaignPage = campaignRepository.findByCampaignType(campaignType, pageable);
         } else {
-            campaignPage = campaignRepository.findByApprovalStatusAndApplicationDeadlineDateGreaterThanEqual(
-                    APPROVED_STATUS, LocalDate.now(), pageable);
+            campaignPage = campaignRepository.findAll(pageable);
         }
-        
+
         // 엔티티를 간소화된 DTO로 변환
         Page<CampaignListSimpleResponse> responsePage = campaignPage.map(campaign -> {
             CampaignListSimpleResponse response = CampaignListSimpleResponse.fromEntity(campaign);
             return response;
         });
-        
-        // 신청 인원수를 배치로 조회하여 설정 (성능 최적화)
+
+        // 신청 인원수를 실제 데이터로 설정
         List<CampaignListSimpleResponse> campaigns = responsePage.getContent();
         if (!campaigns.isEmpty()) {
-            // 임시로 0으로 설정 (실제로는 CampaignApplication 테이블에서 조회)
-            campaigns.forEach(campaign -> campaign.setCurrentApplicants(0));
+            campaigns.forEach(campaignResponse -> {
+                // 실제 캠페인에서 신청자 수를 가져와 설정
+                Campaign actualCampaign = campaignPage.getContent().stream()
+                    .filter(c -> c.getId().equals(campaignResponse.getId()))
+                    .findFirst()
+                    .orElse(null);
+                if (actualCampaign != null) {
+                    campaignResponse.setCurrentApplicants(actualCampaign.getCurrentApplicantCount());
+                }
+            });
         }
-        
+
         return PageResponse.from(responsePage);
     }
-    
+
     /**
      * 세분화된 필터 조건으로 캠페인 목록 조회
      */
     @Transactional(readOnly = true)
     public PageResponse<CampaignListSimpleResponse> getFilteredCampaignList(
-            int page, int size, String categoryType, String categoryName, 
+            int page, int size, String categoryType, String categoryName,
             String campaignTypes, String sort) {
-        
+
         // 정렬 기준 변환
         String actualSort = convertSortParameter(sort);
         boolean sortByCurrentApplicants = "currentApplicants".equals(actualSort);
         boolean sortByDeadline = "applicationDeadlineDate".equals(actualSort);
-        
+
         // 캠페인 타입 파싱 (쉼표로 구분된 문자열을 List로 변환)
         List<String> campaignTypeList = null;
         if (campaignTypes != null && !campaignTypes.trim().isEmpty()) {
@@ -132,7 +167,7 @@ public class CampaignViewService {
                     .filter(s -> !s.isEmpty())
                     .toList();
         }
-        
+
         // 페이지 정보 생성
         Pageable pageable;
         if (sortByCurrentApplicants) {
@@ -142,9 +177,9 @@ public class CampaignViewService {
         } else {
             pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         }
-        
+
         Page<Campaign> campaignPage;
-        
+
         if (sortByCurrentApplicants) {
             // 인기순 정렬
             campaignPage = getFilteredCampaignPageByPopularity(categoryType, categoryName, campaignTypeList, pageable);
@@ -152,181 +187,220 @@ public class CampaignViewService {
             // 일반 정렬
             campaignPage = getFilteredCampaignPageByStandardSort(categoryType, categoryName, campaignTypeList, pageable);
         }
-        
+
         // DTO 변환
         Page<CampaignListSimpleResponse> responsePage = campaignPage.map(CampaignListSimpleResponse::fromEntity);
-        
-        // 신청 인원수를 배치로 조회하여 설정
+
+        // 신청 인원수를 실제 데이터로 설정
         List<CampaignListSimpleResponse> campaigns = responsePage.getContent();
         if (!campaigns.isEmpty()) {
-            // 임시로 0으로 설정 (실제로는 CampaignApplication 테이블에서 조회)
-            campaigns.forEach(campaign -> campaign.setCurrentApplicants(0));
+            campaigns.forEach(campaignResponse -> {
+                Campaign actualCampaign = campaignPage.getContent().stream()
+                    .filter(c -> c.getId().equals(campaignResponse.getId()))
+                    .findFirst()
+                    .orElse(null);
+                if (actualCampaign != null) {
+                    campaignResponse.setCurrentApplicants(actualCampaign.getCurrentApplicantCount());
+                }
+            });
         }
-        
+
         return PageResponse.from(responsePage);
     }
-    
+
     /**
      * 정렬 파라미터 변환
      */
     private String convertSortParameter(String sort) {
         return switch (sort) {
             case "popular" -> "currentApplicants";
-            case "deadline" -> "applicationDeadlineDate"; 
+            case "deadline" -> "applicationDeadlineDate";
             case "latest" -> "createdAt";
             default -> "createdAt";
         };
     }
-    
+
     /**
      * 인기순 정렬을 위한 필터링된 캠페인 조회
      */
-    private Page<Campaign> getFilteredCampaignPageByPopularity(String categoryType, String categoryName, 
-                                                              List<String> campaignTypes, Pageable pageable) {
-        // 실제로는 JOIN을 통한 복잡한 쿼리가 필요하지만, 임시로 기본 조회로 처리
-        return getFilteredCampaignPageByStandardSort(categoryType, categoryName, campaignTypes, pageable);
+    private Page<Campaign> getFilteredCampaignPageByPopularity(String categoryType, String categoryName,
+                                                               List<String> campaignTypes, Pageable pageable) {
+        CampaignCategory.CategoryType categoryTypeEnum = convertCategoryType(categoryType);
+
+        if (categoryTypeEnum == null) {
+            // categoryType이 유효하지 않은 경우 모든 캠페인을 인기순으로 반환
+            return campaignRepository.findAllOrderByCurrentApplicantsDesc(pageable);
+        }
+
+        if (categoryName != null && campaignTypes != null && !campaignTypes.isEmpty()) {
+            // 카테고리명과 플랫폼 타입 모두 필터링 + 인기순
+            return campaignRepository.findByCategoryCategoryTypeAndCategoryCategoryNameAndCampaignTypeInOrderByCurrentApplicantsDesc(
+                    categoryTypeEnum, categoryName, campaignTypes, pageable);
+        } else if (categoryName != null) {
+            // 카테고리명만 필터링 + 인기순
+            return campaignRepository.findByCategoryCategoryTypeAndCategoryCategoryNameOrderByCurrentApplicantsDesc(
+                    categoryTypeEnum, categoryName, pageable);
+        } else if (campaignTypes != null && !campaignTypes.isEmpty()) {
+            // 플랫폼 타입만 필터링 + 인기순
+            return campaignRepository.findByCategoryCategoryTypeAndCampaignTypeInOrderByCurrentApplicantsDesc(
+                    categoryTypeEnum, campaignTypes, pageable);
+        } else {
+            // 카테고리 타입만 필터링 + 인기순
+            return campaignRepository.findByCategoryCategoryTypeOrderByCurrentApplicantsDesc(
+                    categoryTypeEnum, pageable);
+        }
     }
-    
+
     /**
      * 일반 정렬을 위한 필터링된 캠페인 조회
      */
-    private Page<Campaign> getFilteredCampaignPageByStandardSort(String categoryType, String categoryName, 
-                                                                List<String> campaignTypes, Pageable pageable) {
+    private Page<Campaign> getFilteredCampaignPageByStandardSort(String categoryType, String categoryName,
+                                                                 List<String> campaignTypes, Pageable pageable) {
+        CampaignCategory.CategoryType categoryTypeEnum = convertCategoryType(categoryType);
+
+        if (categoryTypeEnum == null) {
+            // categoryType이 유효하지 않은 경우 모든 캠페인 반환
+            return campaignRepository.findAll(pageable);
+        }
+
         if (categoryName != null && campaignTypes != null && !campaignTypes.isEmpty()) {
             // 카테고리명과 플랫폼 타입 모두 필터링
-            return campaignRepository.findByApprovalStatusAndCategoryCategoryTypeAndCategoryCategoryNameAndCampaignTypeInAndApplicationDeadlineDateGreaterThanEqual(
-                    APPROVED_STATUS, categoryType, categoryName, campaignTypes, LocalDate.now(), pageable);
+            return campaignRepository.findByCategoryCategoryTypeAndCategoryCategoryNameAndCampaignTypeIn(
+                    categoryTypeEnum, categoryName, campaignTypes, pageable);
         } else if (categoryName != null) {
             // 카테고리명만 필터링
-            return campaignRepository.findByApprovalStatusAndCategoryCategoryTypeAndCategoryCategoryNameAndApplicationDeadlineDateGreaterThanEqual(
-                    APPROVED_STATUS, categoryType, categoryName, LocalDate.now(), pageable);
+            return campaignRepository.findByCategoryCategoryTypeAndCategoryCategoryName(
+                    categoryTypeEnum, categoryName, pageable);
         } else if (campaignTypes != null && !campaignTypes.isEmpty()) {
             // 플랫폼 타입만 필터링
-            return campaignRepository.findByApprovalStatusAndCategoryCategoryTypeAndCampaignTypeInAndApplicationDeadlineDateGreaterThanEqual(
-                    APPROVED_STATUS, categoryType, campaignTypes, LocalDate.now(), pageable);
+            return campaignRepository.findByCategoryCategoryTypeAndCampaignTypeIn(
+                    categoryTypeEnum, campaignTypes, pageable);
         } else {
             // 카테고리 타입만 필터링
-            return campaignRepository.findByApprovalStatusAndCategoryCategoryTypeAndApplicationDeadlineDateGreaterThanEqual(
-                    APPROVED_STATUS, categoryType, LocalDate.now(), pageable);
+            return campaignRepository.findByCategoryCategoryType(
+                    categoryTypeEnum, pageable);
         }
     }
 
     /**
      * 신청자 수 기준으로 정렬된 캠페인 페이지 조회
      */
-    private Page<Campaign> getCampaignPageSortedByCurrentApplicants(String categoryType, String campaignType, 
-                                                                   boolean onlyActive, Pageable pageable) {
+    private Page<Campaign> getCampaignPageSortedByCurrentApplicants(String categoryType, String campaignType,
+                                                                    boolean onlyActive, Pageable pageable) {
         if (categoryType != null && !categoryType.isEmpty()) {
-            // 카테고리별 조회 (신청 많은 순)
-            return campaignRepository.findByApprovalStatusAndCategoryCategoryTypeOrderByCurrentApplicantsDesc(
-                    APPROVED_STATUS, categoryType, pageable);
+            CampaignCategory.CategoryType categoryTypeEnum = convertCategoryType(categoryType);
+            if (categoryTypeEnum != null) {
+                return campaignRepository.findByCategoryCategoryTypeOrderByCurrentApplicantsDesc(categoryTypeEnum, pageable);
+            }
         } else if (campaignType != null && !campaignType.isEmpty()) {
             // 캠페인 타입별 조회 (신청 많은 순)
-            return campaignRepository.findByApprovalStatusAndCampaignTypeOrderByCurrentApplicantsDesc(
-                    APPROVED_STATUS, campaignType, pageable);
-        } else if (onlyActive) {
-            // 마감되지 않은 캠페인만 조회 (신청 많은 순)
-            return campaignRepository.findByApprovalStatusAndApplicationDeadlineDateGreaterThanEqualOrderByCurrentApplicantsDesc(
-                    APPROVED_STATUS, LocalDate.now(), pageable);
-        } else {
-            // 모든 승인된 캠페인 조회 (신청 많은 순)
-            return campaignRepository.findByApprovalStatusOrderByCurrentApplicantsDesc(APPROVED_STATUS, pageable);
+            return campaignRepository.findByCampaignTypeOrderByCurrentApplicantsDesc(campaignType, pageable);
         }
+        // 모든 캠페인 조회 (신청 많은 순)
+        return campaignRepository.findAllOrderByCurrentApplicantsDesc(pageable);
     }
-    
+
     /**
      * 기본 정렬 방식으로 캠페인 페이지 조회
      */
-    private Page<Campaign> getCampaignPageWithStandardSort(String categoryType, String campaignType, 
-                                                          boolean onlyActive, Pageable pageable) {
+    private Page<Campaign> getCampaignPageWithStandardSort(String categoryType, String campaignType,
+                                                           boolean onlyActive, Pageable pageable) {
         if (categoryType != null && !categoryType.isEmpty()) {
-            // 카테고리별 조회
-            return campaignRepository.findByApprovalStatusAndCategoryCategoryType(
-                    APPROVED_STATUS, categoryType, pageable);
+            CampaignCategory.CategoryType categoryTypeEnum = convertCategoryType(categoryType);
+            if (categoryTypeEnum != null) {
+                return campaignRepository.findByCategoryCategoryType(categoryTypeEnum, pageable);
+            }
         } else if (campaignType != null && !campaignType.isEmpty()) {
             // 캠페인 타입별 조회
-            return campaignRepository.findByApprovalStatusAndCampaignType(
-                    APPROVED_STATUS, campaignType, pageable);
-        } else if (onlyActive) {
-            // 마감되지 않은 캠페인만 조회
-            return campaignRepository.findByApprovalStatusAndApplicationDeadlineDateGreaterThanEqual(
-                    APPROVED_STATUS, LocalDate.now(), pageable);
-        } else {
-            // 모든 승인된 캠페인 조회
-            return campaignRepository.findByApprovalStatus(APPROVED_STATUS, pageable);
+            return campaignRepository.findByCampaignType(campaignType, pageable);
         }
+        // 모든 캠페인 조회
+        return campaignRepository.findAll(pageable);
     }
 
     // ===== 캠페인 상세 조회 메서드들 =====
 
     /**
-     * 캠페인 썸네일 조회 (승인된 캠페인만)
+     * 캠페인 썸네일 조회 (모든 캠페인)
      */
     @Transactional(readOnly = true)
-    public ThumbnailResponse getThumbnail(Long campaignId) {
-        Campaign campaign = findApprovedCampaignById(campaignId);
-        return ThumbnailResponse.fromEntity(campaign);
+    public CampaignThumbnailResponse getCampaignThumbnail(Long campaignId) {
+        Campaign campaign = findCampaignById(campaignId);
+        return CampaignThumbnailResponse.fromEntity(campaign);
     }
 
     /**
-     * 캠페인 기본 정보 조회 (승인된 캠페인만)
+     * 캠페인 기본 정보 조회 (모든 캠페인)
      */
     @Transactional(readOnly = true)
-    public BasicInfoResponse getBasicInfo(Long campaignId) {
-        Campaign campaign = findApprovedCampaignById(campaignId);
-        return BasicInfoResponse.fromEntity(campaign);
+    public CampaignBasicInfoResponse getCampaignBasicInfo(Long campaignId) {
+        Campaign campaign = findCampaignById(campaignId);
+        return CampaignBasicInfoResponse.fromEntity(campaign);
     }
 
     /**
-     * 캠페인 제품 및 일정 정보 조회 (승인된 캠페인만)
+     * 캠페인 상세 정보 조회 (모든 캠페인)
      */
     @Transactional(readOnly = true)
-    public ProductAndScheduleResponse getProductAndSchedule(Long campaignId) {
-        Campaign campaign = findApprovedCampaignById(campaignId);
-        return ProductAndScheduleResponse.fromEntity(campaign);
+    public CampaignDetailInfoResponse getCampaignDetailInfo(Long campaignId) {
+        Campaign campaign = findCampaignById(campaignId);
+        return CampaignDetailInfoResponse.fromEntity(campaign);
     }
 
     /**
-     * 캠페인 업체 정보 조회 (승인된 캠페인만)
+     * 캠페인 미션 가이드 조회 (모든 캠페인)
      */
     @Transactional(readOnly = true)
-    public CompanyInfoResponse getCompanyInfo(Long campaignId) {
-        Campaign campaign = findApprovedCampaignById(campaignId);
-        return CompanyInfoResponse.fromEntity(campaign);
+    public CampaignMissionGuideResponse getCampaignMissionGuide(Long campaignId) {
+        Campaign campaign = findCampaignById(campaignId);
+        return CampaignMissionGuideResponse.fromEntity(campaign);
     }
 
     /**
-     * 캠페인 미션 가이드 조회 (승인된 캠페인만)
+     * 캠페인 미션 키워드 조회 (모든 캠페인)
      */
     @Transactional(readOnly = true)
-    public MissionGuideResponse getMissionGuide(Long campaignId) {
-        Campaign campaign = findApprovedCampaignById(campaignId);
-        return MissionGuideResponse.fromEntity(campaign);
+    public CampaignKeywordsResponse getCampaignKeywords(Long campaignId) {
+        Campaign campaign = findCampaignById(campaignId);
+        return CampaignKeywordsResponse.fromEntity(campaign);
     }
 
     /**
-     * 캠페인 미션 키워드 조회 (승인된 캠페인만)
+     * ID로 캠페인 조회 (승인 상태 무관)
      */
-    @Transactional(readOnly = true)
-    public MissionKeywordsResponse getMissionKeywords(Long campaignId) {
-        Campaign campaign = findApprovedCampaignById(campaignId);
-        return MissionKeywordsResponse.fromEntity(campaign);
+    private Campaign findCampaignById(Long campaignId) {
+        return campaignRepository.findById(campaignId)
+                .orElseThrow(() -> new ResourceNotFoundException("캠페인을 찾을 수 없습니다."));
     }
 
     /**
-     * 캠페인 위치 정보 조회 (승인된 캠페인만)
-     */
-    @Transactional(readOnly = true)
-    public LocationInfoResponse getLocationInfo(Long campaignId) {
-        Campaign campaign = findApprovedCampaignById(campaignId);
-        return LocationInfoResponse.fromEntity(campaign);
-    }
-
-    /**
-     * ID로 승인된 캠페인 조회
+     * ID로 승인된 캠페인 조회 (기존 메서드 유지)
      */
     private Campaign findApprovedCampaignById(Long campaignId) {
         return campaignRepository.findByIdAndApprovalStatus(campaignId, APPROVED_STATUS)
                 .orElseThrow(() -> new ResourceNotFoundException("승인된 캠페인을 찾을 수 없습니다."));
+    }
+
+    /**
+     * 디버그용: 모든 캠페인 조회 (승인 상태 무관)
+     */
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getAllCampaignsForDebug() {
+        var campaigns = campaignRepository.findAll();
+        return campaigns.stream()
+                .map(campaign -> {
+                    Map<String, Object> campaignInfo = new java.util.HashMap<>();
+                    campaignInfo.put("id", campaign.getId());
+                    campaignInfo.put("title", campaign.getTitle());
+                    campaignInfo.put("approvalStatus", campaign.getApprovalStatus().name());
+                    campaignInfo.put("applicationDeadlineDate", campaign.getApplicationDeadlineDate());
+                    campaignInfo.put("categoryType", campaign.getCategory() != null ? 
+                        campaign.getCategory().getCategoryType().name() : null);
+                    campaignInfo.put("categoryName", campaign.getCategory() != null ? 
+                        campaign.getCategory().getCategoryName() : null);
+                    campaignInfo.put("createdAt", campaign.getCreatedAt());
+                    return campaignInfo;
+                })
+                .collect(java.util.stream.Collectors.toList());
     }
 }

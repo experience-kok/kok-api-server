@@ -3,7 +3,6 @@ package com.example.auth.controller;
 import com.example.auth.common.BaseResponse;
 import com.example.auth.constant.PlatformType;
 import com.example.auth.domain.UserSnsPlatform;
-import com.example.auth.dto.ApiResponseSchema;
 import com.example.auth.dto.FollowerCountUpdateRequest;
 import com.example.auth.dto.PlatformConnectRequest;
 import com.example.auth.repository.UserSnsPlatformRepository;

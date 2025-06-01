@@ -19,7 +19,8 @@ public class CampaignCompanyInfoResponse {
     public static CampaignCompanyInfoResponse fromEntity(Campaign campaign) {
         return CampaignCompanyInfoResponse.builder()
                 .id(campaign.getId())
-                .companyInfo(campaign.getCompanyInfo())
+                .companyInfo(campaign.getCompany() != null ? 
+                    campaign.getCompany().getCompanyName() : null)
                 .creator(UserDTO.fromEntity(campaign.getCreator()))
                 .build();
     }

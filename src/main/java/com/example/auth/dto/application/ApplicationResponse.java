@@ -7,7 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 
 /**
  * 캠페인 신청 응답 DTO
@@ -72,7 +72,7 @@ public class ApplicationResponse {
         title = "생성 시간",
         format = "date-time"
     )
-    private LocalDateTime createdAt;
+    private ZonedDateTime createdAt;
 
     @Schema(
         description = "신청 정보 마지막 수정 시간", 
@@ -80,7 +80,7 @@ public class ApplicationResponse {
         title = "수정 시간",
         format = "date-time"
     )
-    private LocalDateTime updatedAt;
+    private ZonedDateTime updatedAt;
 
     /**
      * 엔티티를 DTO로 변환합니다.
@@ -94,7 +94,7 @@ public class ApplicationResponse {
                 .campaignTitle(application.getCampaign().getTitle())
                 .userId(application.getUser().getId())
                 .userNickname(application.getUser().getNickname())
-                .status(application.getStatus())
+                .status(application.getStatus().name())
                 .createdAt(application.getCreatedAt())
                 .updatedAt(application.getUpdatedAt())
                 .build();

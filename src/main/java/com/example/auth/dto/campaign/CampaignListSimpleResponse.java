@@ -78,7 +78,7 @@ public class CampaignListSimpleResponse {
         // 카테고리 정보가 있으면 추가
         if (campaign.getCategory() != null) {
             CategoryInfo categoryInfo = CategoryInfo.builder()
-                    .type(campaign.getCategory().getCategoryType())
+                    .type(campaign.getCategory().getCategoryType().name())
                     .name(campaign.getCategory().getCategoryName())
                     .build();
             builder.category(categoryInfo);

@@ -57,11 +57,12 @@ public interface CampaignApplicationRepository extends JpaRepository<CampaignApp
     /**
      * 특정 캠페인의 상태별 신청 수를 조회합니다.
      * @param campaignId 캠페인 ID
-     * @param status 신청 상태
+     * @param applicationStatus 신청 상태
      * @return 해당 상태의 신청 수
      */
-    @Query("SELECT COUNT(ca) FROM CampaignApplication ca WHERE ca.campaign.id = :campaignId AND ca.status = :status")
-    long countByCampaignIdAndStatus(@Param("campaignId") Long campaignId, @Param("status") String status);
+    @Query("SELECT COUNT(ca) FROM CampaignApplication ca WHERE ca.campaign.id = :campaignId AND ca.applicationStatus = :applicationStatus")
+    long countByCampaignIdAndApplicationStatus(@Param("campaignId") Long campaignId, 
+                                              @Param("applicationStatus") CampaignApplication.ApplicationStatus applicationStatus);
 
     /**
      * 특정 캠페인의 모든 신청 수를 조회합니다.
@@ -72,24 +73,42 @@ public interface CampaignApplicationRepository extends JpaRepository<CampaignApp
 
     /**
      * 특정 상태의 모든 신청 정보를 조회합니다.
-     * @param status 신청 상태
+     * @param applicationStatus 신청 상태
      * @return 해당 상태의 신청 목록
      */
-    List<CampaignApplication> findByStatus(String status);
+    List<CampaignApplication> findByApplicationStatus(CampaignApplication.ApplicationStatus applicationStatus);
 
     /**
      * 특정 캠페인의 특정 상태 신청 정보를 조회합니다.
      * @param campaign 캠페인
-     * @param status 신청 상태
+     * @param applicationStatus 신청 상태
      * @return 해당 캠페인의 해당 상태 신청 목록
      */
-    List<CampaignApplication> findByCampaignAndStatus(Campaign campaign, String status);
+    List<CampaignApplication> findByCampaignAndApplicationStatus(Campaign campaign, 
+                                                               CampaignApplication.ApplicationStatus applicationStatus);
 
     /**
      * 특정 사용자의 특정 상태 신청 정보를 조회합니다.
      * @param user 사용자
-     * @param status 신청 상태
+     * @param applicationStatus 신청 상태
      * @return 해당 사용자의 해당 상태 신청 목록
      */
-    List<CampaignApplication> findByUserAndStatus(User user, String status);
+    List<CampaignApplication> findByUserAndApplicationStatus(User user, 
+                                                           CampaignApplication.ApplicationStatus applicationStatus);
+
+    /**
+     * 특정 캠페인에 특정 사용자가 신청했는지 확인합니다.
+     * @param user 사용자
+     * @param campaign 캠페인
+     * @return 신청 여부
+     */
+    boolean existsByUserAndCampaign(User user, Campaign campaign);
+
+    /**
+     * 특정 캠페인의 현재 유효한 신청 수를 조회합니다. (APPLIED 상태만)
+     * @param campaignId 캠페인 ID
+     * @return 현재 신청 수
+     */
+    @Query("SELECT COUNT(ca) FROM CampaignApplication ca WHERE ca.campaign.id = :campaignId AND ca.applicationStatus = 'APPLIED'")
+    long countCurrentApplicantsByCampaignId(@Param("campaignId") Long campaignId);
 }

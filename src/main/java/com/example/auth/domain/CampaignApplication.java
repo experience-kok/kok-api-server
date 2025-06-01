@@ -3,13 +3,15 @@ package com.example.auth.domain;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 
 /**
- * 캠페인 신청 정보를 저장하는 엔티티 클래스
+ * 캠페인 신청 엔티티
+ * 캠페인 신청자 수 추적을 위한 테이블
  */
 @Entity
-@Table(name = "campaign_applications")
+@Table(name = "campaign_applications", 
+       uniqueConstraints = @UniqueConstraint(columnNames = {"campaign_id", "user_id"}))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -19,56 +21,107 @@ public class CampaignApplication {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;  // 신청 고유 식별자
+    private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "campaign_id", nullable = false)
-    private Campaign campaign;  // 신청한 캠페인
+    private Campaign campaign;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    private User user;  // 신청한 사용자
+    private User user;
 
-    @Column(name = "status", nullable = false, length = 20)
+    @Column(name = "application_status", nullable = false, length = 20)
+    @Enumerated(EnumType.STRING)
     @Builder.Default
-    private String status = "pending";  // 신청 상태: 'pending', 'rejected', 'completed'
+    private ApplicationStatus applicationStatus = ApplicationStatus.APPLIED;
 
-    @Column(name = "created_at")
+    @Column(name = "applied_at", columnDefinition = "TIMESTAMP WITH TIME ZONE")
     @Builder.Default
-    private LocalDateTime createdAt = LocalDateTime.now();  // 신청 시간
+    private ZonedDateTime appliedAt = ZonedDateTime.now();
 
-    @Column(name = "updated_at")
+    @Column(name = "updated_at", columnDefinition = "TIMESTAMP WITH TIME ZONE")
     @Builder.Default
-    private LocalDateTime updatedAt = LocalDateTime.now();  // 신청 정보 최종 수정 시간
+    private ZonedDateTime updatedAt = ZonedDateTime.now();
 
     @PrePersist
     protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
+        if (this.appliedAt == null) {
+            this.appliedAt = ZonedDateTime.now();
+        }
+        if (this.updatedAt == null) {
+            this.updatedAt = ZonedDateTime.now();
+        }
     }
 
     @PreUpdate
     protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = ZonedDateTime.now();
     }
 
     /**
-     * 신청 상태를 업데이트합니다.
-     * @param status 새로운 상태 ('pending', 'rejected', 'completed')
+     * 신청 상태 열거형
      */
-    public void updateStatus(String status) {
-        if (status == null || !isValidStatus(status)) {
-            throw new IllegalArgumentException("유효하지 않은 상태값입니다: " + status);
+    public enum ApplicationStatus {
+        APPLIED("신청됨"),
+        SELECTED("선정됨"),
+        REJECTED("거절됨"),
+        CANCELLED("취소됨");
+
+        private final String description;
+
+        ApplicationStatus(String description) {
+            this.description = description;
         }
-        this.status = status;
+
+        public String getDescription() {
+            return description;
+        }
     }
 
     /**
-     * 상태값이 유효한지 확인합니다.
-     * @param status 확인할 상태값
-     * @return 유효 여부
+     * 신청 상태를 변경합니다.
      */
-    private boolean isValidStatus(String status) {
-        return "pending".equals(status) || "rejected".equals(status) || "completed".equals(status);
+    public void updateStatus(ApplicationStatus status) {
+        this.applicationStatus = status;
+        this.updatedAt = ZonedDateTime.now();
+    }
+
+    /**
+     * 신청을 취소합니다.
+     */
+    public void cancel() {
+        this.applicationStatus = ApplicationStatus.CANCELLED;
+        this.updatedAt = ZonedDateTime.now();
+    }
+
+    /**
+     * 신청자를 선정합니다.
+     */
+    public void select() {
+        this.applicationStatus = ApplicationStatus.SELECTED;
+        this.updatedAt = ZonedDateTime.now();
+    }
+
+    /**
+     * 신청을 거절합니다.
+     */
+    public void reject() {
+        this.applicationStatus = ApplicationStatus.REJECTED;
+        this.updatedAt = ZonedDateTime.now();
+    }
+
+    /**
+     * 신청 상태를 반환합니다. (ApplicationResponse 호환성을 위해)
+     */
+    public ApplicationStatus getStatus() {
+        return this.applicationStatus;
+    }
+
+    /**
+     * 생성 시간을 반환합니다. (ApplicationResponse 호환성을 위해)
+     */
+    public ZonedDateTime getCreatedAt() {
+        return this.appliedAt;
     }
 }

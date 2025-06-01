@@ -3,17 +3,17 @@ package com.example.auth.domain;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 
 /**
- * 캠페인 카테고리 정보를 저장하는 엔티티 클래스
- * 
- * 캠페인은 카페, 맛집, 뷰티 등 다양한 카테고리로 분류될 수 있으며,
- * 이 클래스는 그러한 카테고리 정보를 관리합니다.
+ * 캠페인 카테고리 엔티티
+ * 방문/배송 유형과 세부 카테고리를 관리
  */
 @Entity
-@Table(name = "campaign_categories")
+@Table(name = "campaign_categories", 
+       uniqueConstraints = @UniqueConstraint(columnNames = {"category_type", "category_name"}))
 @Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -21,34 +21,53 @@ public class CampaignCategory {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;  // 카테고리 고유 식별자
+    private Long id;
 
-    @Column(name = "category_type", nullable = false)
-    private String categoryType;  // 카테고리 유형 (예: 카페, 맛집, 뷰티 등)
+    @Column(name = "category_type", nullable = false, length = 20)
+    @Enumerated(EnumType.STRING)
+    private CategoryType categoryType;
 
-    @Column(name = "category_name", nullable = false)
-    private String categoryName;  // 카테고리 이름
+    @Column(name = "category_name", nullable = false, length = 50)
+    private String categoryName;
 
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;  // 카테고리 생성 시간
+    @Column(name = "created_at", columnDefinition = "TIMESTAMP WITH TIME ZONE")
+    @Builder.Default
+    private ZonedDateTime createdAt = ZonedDateTime.now();
 
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;  // 카테고리 정보 수정 시간
+    @Column(name = "updated_at", columnDefinition = "TIMESTAMP WITH TIME ZONE")
+    @Builder.Default
+    private ZonedDateTime updatedAt = ZonedDateTime.now();
 
-    /**
-     * 카테고리가 처음 생성될 때 호출되어 생성 시간과 수정 시간을 설정합니다.
-     */
     @PrePersist
-    public void prePersist() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
+    protected void onCreate() {
+        if (this.createdAt == null) {
+            this.createdAt = ZonedDateTime.now();
+        }
+        if (this.updatedAt == null) {
+            this.updatedAt = ZonedDateTime.now();
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = ZonedDateTime.now();
     }
 
     /**
-     * 카테고리 정보가 업데이트될 때 호출되어 수정 시간을 현재 시간으로 업데이트합니다.
+     * 카테고리 타입 열거형
      */
-    @PreUpdate
-    public void preUpdate() {
-        this.updatedAt = LocalDateTime.now();
+    public enum CategoryType {
+        방문("방문"),
+        배송("배송");
+
+        private final String value;
+
+        CategoryType(String value) {
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
     }
 }

@@ -58,9 +58,6 @@ public class CreateCampaignResponse {
     
     @Schema(description = "캠페인 등록 사용자 정보")
     private UserDTO user;
-    
-    @Schema(description = "방문 위치 정보 목록")
-    private List<VisitLocationDTO> visitLocations;
 
     @Data
     @NoArgsConstructor
@@ -69,7 +66,7 @@ public class CreateCampaignResponse {
     @Schema(description = "카테고리 정보")
     public static class CategoryDTO {
         @Schema(description = "카테고리 ID", example = "1")
-        private Integer id;
+        private Long id;
         
         @Schema(description = "카테고리 타입", example = "방문")
         private String type;
@@ -78,39 +75,7 @@ public class CreateCampaignResponse {
         private String name;
     }
 
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @Builder
-    @Schema(description = "방문 위치 정보")
-    public static class VisitLocationDTO {
-        @Schema(description = "방문 위치 ID", example = "1")
-        private Long id;
-        
-        @Schema(description = "방문 장소 주소", example = "서울특별시 강남구 테헤란로 123")
-        private String address;
-        
-        @Schema(description = "위도 좌표", example = "37.498095")
-        private BigDecimal latitude;
-        
-        @Schema(description = "경도 좌표", example = "127.027610")
-        private BigDecimal longitude;
-        
-        @Schema(description = "추가 장소 정보", example = "영업시간: 10:00-22:00, 주차 가능")
-        private String additionalInfo;
-    }
-
     public static CreateCampaignResponse fromEntity(Campaign campaign) {
-        List<VisitLocationDTO> visitLocationDTOs = campaign.getVisitLocations().stream()
-                .map(location -> VisitLocationDTO.builder()
-                        .id(location.getId())
-                        .address(location.getAddress())
-                        .latitude(location.getLatitude())
-                        .longitude(location.getLongitude())
-                        .additionalInfo(location.getAdditionalInfo())
-                        .build())
-                .collect(Collectors.toList());
-
         return CreateCampaignResponse.builder()
                 .id(campaign.getId())
                 .thumbnailUrl(campaign.getThumbnailUrl())
@@ -122,14 +87,13 @@ public class CreateCampaignResponse {
                 .recruitmentEndDate(campaign.getRecruitmentEndDate())
                 .selectionDate(campaign.getSelectionDate())
                 .reviewDeadlineDate(campaign.getReviewDeadlineDate())
-                .approvalStatus(campaign.getApprovalStatus())
+                .approvalStatus(campaign.getApprovalStatus().name())
                 .category(CategoryDTO.builder()
                         .id(campaign.getCategory().getId())
-                        .type(campaign.getCategory().getCategoryType())
+                        .type(campaign.getCategory().getCategoryType().name())
                         .name(campaign.getCategory().getCategoryName())
                         .build())
                 .user(UserDTO.fromEntity(campaign.getCreator()))
-                .visitLocations(visitLocationDTOs)
                 .build();
     }
 }
