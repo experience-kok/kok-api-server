@@ -25,7 +25,7 @@ public class PageResponse<T> {
     @Schema(description = "조회된 데이터 목록")
     private List<T> content;
 
-    @Schema(description = "현재 페이지 번호 (0부터 시작)", example = "0")
+    @Schema(description = "현재 페이지 번호 (1부터 시작)", example = "1")
     private int pageNumber;
 
     @Schema(description = "페이지 크기", example = "10")
@@ -52,7 +52,7 @@ public class PageResponse<T> {
     public static <T> PageResponse<T> from(Page<T> page) {
         return PageResponse.<T>builder()
                 .content(page.getContent())
-                .pageNumber(page.getNumber())
+                .pageNumber(page.getNumber() + 1)  // 0-based를 1-based로 변환
                 .pageSize(page.getSize())
                 .totalPages(page.getTotalPages())
                 .totalElements(page.getTotalElements())
@@ -76,7 +76,7 @@ public class PageResponse<T> {
                 
         return PageResponse.<T>builder()
                 .content(content)
-                .pageNumber(page.getNumber())
+                .pageNumber(page.getNumber() + 1)  // 0-based를 1-based로 변환
                 .pageSize(page.getSize())
                 .totalPages(page.getTotalPages())
                 .totalElements(page.getTotalElements())
