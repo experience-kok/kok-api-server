@@ -40,7 +40,7 @@ public class ImageUploadController {
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
-    @PostMapping("/presigned-url")
+    @PostMapping("/common/presigned-url")
     public ResponseEntity<?> generatePresignedUrl(
             @Parameter(description = "Bearer 토큰", required = true)
             @RequestHeader("Authorization") String bearerToken,
