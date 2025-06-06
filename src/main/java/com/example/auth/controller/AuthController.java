@@ -78,7 +78,7 @@ public class AuthController {
     ) throws IOException {
         List<String> allowedUris = List.of(
                 "http://localhost:3000/login/oauth2/code/kakao",
-                "https://ckok.kr/login/oauth2/code/kakao"
+                "https://chkok.kr/login/oauth2/code/kakao"
         );
 
         if (!allowedUris.contains(redirectUri)) {
@@ -116,7 +116,7 @@ public class AuthController {
         // 허용된 리다이렉트 URI인지 검증
         List<String> allowedUris = List.of(
                 "http://localhost:3000/login/oauth2/code/kakao",
-                "https://ckok.kr/login/oauth2/code/kakao"
+                "https://chkok.kr/login/oauth2/code/kakao"
         );
 
         if (!allowedUris.contains(request.getRedirectUri())) {
