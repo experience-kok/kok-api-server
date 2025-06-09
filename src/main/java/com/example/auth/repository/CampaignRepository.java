@@ -329,11 +329,10 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
     // ===== 캠페인 검색 메소드들 =====
     
     /**
-     * 키워드로 캠페인 검색 (제목에서만 검색)
+     * 키워드로 캠페인 검색 (제목에서만 검색, 승인 상태 무관)
      */
     @Query("SELECT c FROM Campaign c " +
-           "WHERE c.approvalStatus = 'APPROVED' " +
-           "AND LOWER(c.title) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+           "WHERE LOWER(c.title) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
            "AND (:categoryType IS NULL OR c.category.categoryType = :categoryType) " +
            "AND (:categoryName IS NULL OR c.category.categoryName = :categoryName) " +
            "AND (:campaignType IS NULL OR c.campaignType = :campaignType) " +
@@ -346,12 +345,11 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
             Pageable pageable);
     
     /**
-     * 키워드로 캠페인 검색 (제목에서만 검색, 인기순 정렬)
+     * 키워드로 캠페인 검색 (제목에서만 검색, 인기순 정렬, 승인 상태 무관)
      */
     @Query("SELECT c FROM Campaign c " +
            "LEFT JOIN c.applications ca " +
-           "WHERE c.approvalStatus = 'APPROVED' " +
-           "AND LOWER(c.title) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+           "WHERE LOWER(c.title) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
            "AND (:categoryType IS NULL OR c.category.categoryType = :categoryType) " +
            "AND (:categoryName IS NULL OR c.category.categoryName = :categoryName) " +
            "AND (:campaignType IS NULL OR c.campaignType = :campaignType) " +

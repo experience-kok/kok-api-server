@@ -209,6 +209,112 @@ public class CampaignViewService {
     }
 
     /**
+     * 카테고리명 포함하여 캠페인 목록 조회 (페이징 처리) - 간소화된 응답
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<CampaignListSimpleResponse> getCampaignListWithFilters(int page, int size, String sort, boolean onlyActive,
+                                                                    String categoryType, String categoryName, String campaignType) {
+        // 정렬 기준에 따라 페이지 정보 생성
+        Pageable pageable;
+        boolean sortByCurrentApplicants = "currentApplicants".equals(sort);
+
+        if (sortByCurrentApplicants) {
+            // currentApplicants로 정렬하는 경우 쿼리에서 ORDER BY를 처리하므로 Pageable에는 정렬 없이 생성
+            pageable = PageRequest.of(page, size);
+        } else {
+            // 기본 정렬 처리
+            pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, sort != null ? sort : "createdAt"));
+        }
+
+        Page<Campaign> campaignPage;
+
+        if (sortByCurrentApplicants) {
+            // 신청 인원수 기준 정렬 (신청 많은 순)
+            campaignPage = getCampaignPageSortedByCurrentApplicantsWithFilters(categoryType, categoryName, campaignType, onlyActive, pageable);
+        } else {
+            // 기존 정렬 방식
+            campaignPage = getCampaignPageWithStandardSortWithFilters(categoryType, categoryName, campaignType, onlyActive, pageable);
+        }
+
+        // 엔티티를 간소화된 DTO로 변환
+        Page<CampaignListSimpleResponse> responsePage = campaignPage.map(campaign -> {
+            CampaignListSimpleResponse response = CampaignListSimpleResponse.fromEntity(campaign);
+            return response;
+        });
+
+        // 신청 인원수를 실제 데이터로 설정
+        List<CampaignListSimpleResponse> campaigns = responsePage.getContent();
+        if (!campaigns.isEmpty()) {
+            campaigns.forEach(campaignResponse -> {
+                // 실제 캠페인에서 신청자 수를 가져와 설정
+                Campaign actualCampaign = campaignPage.getContent().stream()
+                    .filter(c -> c.getId().equals(campaignResponse.getId()))
+                    .findFirst()
+                    .orElse(null);
+                if (actualCampaign != null) {
+                    campaignResponse.setCurrentApplicants(actualCampaign.getCurrentApplicantCount());
+                }
+            });
+        }
+
+        return PageResponse.from(responsePage);
+    }
+
+    /**
+     * 카테고리명 포함하여 마감 임박순 캠페인 목록 조회 (페이징 처리) - 활성 캠페인만
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<CampaignListSimpleResponse> getCampaignListByDeadlineSoonWithFilters(int page, int size,
+                                                                                  String categoryType, String categoryName, String campaignType) {
+        // 마감일 오름차순 정렬 (마감 가까운 순)
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "applicationDeadlineDate"));
+
+        Page<Campaign> campaignPage;
+        CampaignCategory.CategoryType categoryTypeEnum = convertCategoryType(categoryType);
+
+        // 카테고리 타입과 카테고리명 모두 있는 경우
+        if (categoryTypeEnum != null && categoryName != null && !categoryName.isEmpty()) {
+            campaignPage = campaignRepository.findByCategoryCategoryTypeAndCategoryCategoryName(
+                    categoryTypeEnum, categoryName, pageable);
+        }
+        // 카테고리 타입만 있는 경우
+        else if (categoryTypeEnum != null) {
+            campaignPage = campaignRepository.findByCategoryCategoryType(categoryTypeEnum, pageable);
+        }
+        // 캠페인 타입만 있는 경우
+        else if (campaignType != null && !campaignType.isEmpty()) {
+            campaignPage = campaignRepository.findByCampaignType(campaignType, pageable);
+        }
+        // 필터 없이 모든 캠페인
+        else {
+            campaignPage = campaignRepository.findAll(pageable);
+        }
+
+        // 엔티티를 간소화된 DTO로 변환
+        Page<CampaignListSimpleResponse> responsePage = campaignPage.map(campaign -> {
+            CampaignListSimpleResponse response = CampaignListSimpleResponse.fromEntity(campaign);
+            return response;
+        });
+
+        // 신청 인원수를 실제 데이터로 설정
+        List<CampaignListSimpleResponse> campaigns = responsePage.getContent();
+        if (!campaigns.isEmpty()) {
+            campaigns.forEach(campaignResponse -> {
+                // 실제 캠페인에서 신청자 수를 가져와 설정
+                Campaign actualCampaign = campaignPage.getContent().stream()
+                    .filter(c -> c.getId().equals(campaignResponse.getId()))
+                    .findFirst()
+                    .orElse(null);
+                if (actualCampaign != null) {
+                    campaignResponse.setCurrentApplicants(actualCampaign.getCurrentApplicantCount());
+                }
+            });
+        }
+
+        return PageResponse.from(responsePage);
+    }
+
+    /**
      * 정렬 파라미터 변환
      */
     private String convertSortParameter(String sort) {
@@ -318,6 +424,58 @@ public class CampaignViewService {
         return campaignRepository.findAll(pageable);
     }
 
+    /**
+     * 카테고리명 포함하여 신청자 수 기준으로 정렬된 캠페인 페이지 조회
+     */
+    private Page<Campaign> getCampaignPageSortedByCurrentApplicantsWithFilters(String categoryType, String categoryName, String campaignType,
+                                                                    boolean onlyActive, Pageable pageable) {
+        CampaignCategory.CategoryType categoryTypeEnum = convertCategoryType(categoryType);
+        
+        // 카테고리 타입과 카테고리명 모두 있는 경우
+        if (categoryTypeEnum != null && categoryName != null && !categoryName.isEmpty()) {
+            return campaignRepository.findByCategoryCategoryTypeAndCategoryCategoryNameOrderByCurrentApplicantsDesc(
+                    categoryTypeEnum, categoryName, pageable);
+        }
+        // 카테고리 타입만 있는 경우
+        else if (categoryTypeEnum != null) {
+            return campaignRepository.findByCategoryCategoryTypeOrderByCurrentApplicantsDesc(categoryTypeEnum, pageable);
+        }
+        // 캠페인 타입만 있는 경우
+        else if (campaignType != null && !campaignType.isEmpty()) {
+            return campaignRepository.findByCampaignTypeOrderByCurrentApplicantsDesc(campaignType, pageable);
+        }
+        // 필터 없이 모든 캠페인
+        else {
+            return campaignRepository.findAllOrderByCurrentApplicantsDesc(pageable);
+        }
+    }
+
+    /**
+     * 카테고리명 포함하여 기본 정렬 방식으로 캠페인 페이지 조회
+     */
+    private Page<Campaign> getCampaignPageWithStandardSortWithFilters(String categoryType, String categoryName, String campaignType,
+                                                           boolean onlyActive, Pageable pageable) {
+        CampaignCategory.CategoryType categoryTypeEnum = convertCategoryType(categoryType);
+        
+        // 카테고리 타입과 카테고리명 모두 있는 경우
+        if (categoryTypeEnum != null && categoryName != null && !categoryName.isEmpty()) {
+            return campaignRepository.findByCategoryCategoryTypeAndCategoryCategoryName(
+                    categoryTypeEnum, categoryName, pageable);
+        }
+        // 카테고리 타입만 있는 경우
+        else if (categoryTypeEnum != null) {
+            return campaignRepository.findByCategoryCategoryType(categoryTypeEnum, pageable);
+        }
+        // 캠페인 타입만 있는 경우
+        else if (campaignType != null && !campaignType.isEmpty()) {
+            return campaignRepository.findByCampaignType(campaignType, pageable);
+        }
+        // 필터 없이 모든 캠페인
+        else {
+            return campaignRepository.findAll(pageable);
+        }
+    }
+
     // ===== 캠페인 상세 조회 메서드들 =====
 
     /**
@@ -411,9 +569,13 @@ public class CampaignViewService {
     public PageResponse<CampaignListSimpleResponse> searchCampaigns(
             String keyword, int page, int size, String sort) {
         
+        log.info("캠페인 검색 실행 - keyword: {}, page: {}, size: {}, sort: {}", keyword, page, size, sort);
+        
         // 정렬 기준 변환
         String actualSort = convertSortParameter(sort);
         boolean sortByCurrentApplicants = "currentApplicants".equals(actualSort);
+
+        log.info("정렬 기준 변환 - actualSort: {}, sortByCurrentApplicants: {}", actualSort, sortByCurrentApplicants);
 
         // 페이지 정보 생성
         Pageable pageable;
@@ -427,13 +589,18 @@ public class CampaignViewService {
 
         if (sortByCurrentApplicants) {
             // 인기순 정렬로 검색
+            log.info("인기순 정렬로 검색 실행");
             campaignPage = campaignRepository.searchByKeywordOrderByPopularity(
                     keyword, null, null, null, pageable);
         } else {
             // 일반 정렬로 검색
+            log.info("일반 정렬로 검색 실행");
             campaignPage = campaignRepository.searchByKeyword(
                     keyword, null, null, null, pageable);
         }
+
+        log.info("검색 결과 - 총 {}개 캠페인 발견, 현재 페이지 {}개", 
+                campaignPage.getTotalElements(), campaignPage.getNumberOfElements());
 
         // DTO 변환
         Page<CampaignListSimpleResponse> responsePage = campaignPage.map(CampaignListSimpleResponse::fromEntity);
@@ -452,6 +619,7 @@ public class CampaignViewService {
             });
         }
 
+        log.info("최종 응답 준비 완료 - {}개 캠페인", campaigns.size());
         return PageResponse.from(responsePage);
     }
 }

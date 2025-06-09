@@ -32,6 +32,10 @@ public class CampaignViewController {
     @Operation(
             summary = "인기 캠페인 목록 조회",
             description = "신청 인원이 많은 순으로 캠페인을 조회합니다."
+                    + "\n\n### 필터링 옵션:"
+                    + "\n- **카테고리 타입**: categoryType=방문 또는 categoryType=배송"
+                    + "\n- **카테고리명**: categoryName=맛집, 카페, 뷰티, 숙박, 식품, 화장품 등"
+                    + "\n- **캠페인 타입**: campaignType=인스타그램, 블로그, 유튜브 등"
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공"),
@@ -48,6 +52,9 @@ public class CampaignViewController {
             @Parameter(description = "카테고리 타입 (방문, 배송)")
             @RequestParam(required = false) String categoryType,
 
+            @Parameter(description = "카테고리명 (맛집, 카페, 뷰티, 숙박, 식품, 화장품 등)")
+            @RequestParam(required = false) String categoryName,
+
             @Parameter(description = "캠페인 타입 (인스타그램, 블로그, 유튜브 등)")
             @RequestParam(required = false) String campaignType,
 
@@ -55,10 +62,10 @@ public class CampaignViewController {
             @RequestParam(required = false, defaultValue = "true") boolean includePaging
     ) {
         try {
-            log.info("인기 캠페인 목록 조회 요청 - page: {}, size: {}, categoryType: {}, campaignType: {}, includePaging: {}",
-                    page, size, categoryType, campaignType, includePaging);
+            log.info("인기 캠페인 목록 조회 요청 - page: {}, size: {}, categoryType: {}, categoryName: {}, campaignType: {}, includePaging: {}",
+                    page, size, categoryType, categoryName, campaignType, includePaging);
 
-            var pageResponse = viewService.getCampaignList(Math.max(0, page - 1), size, "currentApplicants", true, categoryType, campaignType);
+            var pageResponse = viewService.getCampaignListWithFilters(Math.max(0, page - 1), size, "currentApplicants", true, categoryType, categoryName, campaignType);
             List<CampaignListSimpleResponse> campaigns = pageResponse.getContent();
 
             if (includePaging) {
@@ -92,6 +99,10 @@ public class CampaignViewController {
     @Operation(
             summary = "마감 임박 캠페인 목록 조회",
             description = "신청 마감일이 가까운 순으로 캠페인을 조회합니다."
+                    + "\n\n### 필터링 옵션:"
+                    + "\n- **카테고리 타입**: categoryType=방문 또는 categoryType=배송"
+                    + "\n- **카테고리명**: categoryName=맛집, 카페, 뷰티, 숙박, 식품, 화장품 등"
+                    + "\n- **캠페인 타입**: campaignType=인스타그램, 블로그, 유튜브 등"
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공"),
@@ -108,6 +119,9 @@ public class CampaignViewController {
             @Parameter(description = "카테고리 타입 (방문, 배송)")
             @RequestParam(required = false) String categoryType,
 
+            @Parameter(description = "카테고리명 (맛집, 카페, 뷰티, 숙박, 식품, 화장품 등)")
+            @RequestParam(required = false) String categoryName,
+
             @Parameter(description = "캠페인 타입 (인스타그램, 블로그, 유튜브 등)")
             @RequestParam(required = false) String campaignType,
 
@@ -115,10 +129,10 @@ public class CampaignViewController {
             @RequestParam(required = false, defaultValue = "true") boolean includePaging
     ) {
         try {
-            log.info("마감 임박 캠페인 목록 조회 요청 - page: {}, size: {}, categoryType: {}, campaignType: {}, includePaging: {}",
-                    page, size, categoryType, campaignType, includePaging);
+            log.info("마감 임박 캠페인 목록 조회 요청 - page: {}, size: {}, categoryType: {}, categoryName: {}, campaignType: {}, includePaging: {}",
+                    page, size, categoryType, categoryName, campaignType, includePaging);
 
-            var pageResponse = viewService.getCampaignListByDeadlineSoon(Math.max(0, page - 1), size, categoryType, campaignType);
+            var pageResponse = viewService.getCampaignListByDeadlineSoonWithFilters(Math.max(0, page - 1), size, categoryType, categoryName, campaignType);
             List<CampaignListSimpleResponse> campaigns = pageResponse.getContent();
 
             if (includePaging) {
@@ -152,6 +166,10 @@ public class CampaignViewController {
     @Operation(
             summary = "최신 캠페인 목록 조회",
             description = "최신 등록순으로 캠페인을 조회합니다."
+                    + "\n\n### 필터링 옵션:"
+                    + "\n- **카테고리 타입**: categoryType=방문 또는 categoryType=배송"
+                    + "\n- **카테고리명**: categoryName=맛집, 카페, 뷰티, 숙박, 식품, 화장품 등"
+                    + "\n- **캠페인 타입**: campaignType=인스타그램, 블로그, 유튜브 등"
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공"),
@@ -168,6 +186,9 @@ public class CampaignViewController {
             @Parameter(description = "카테고리 타입 (방문, 배송)")
             @RequestParam(required = false) String categoryType,
 
+            @Parameter(description = "카테고리명 (맛집, 카페, 뷰티, 숙박, 식품, 화장품 등)")
+            @RequestParam(required = false) String categoryName,
+
             @Parameter(description = "캠페인 타입 (인스타그램, 블로그, 유튜브 등)")
             @RequestParam(required = false) String campaignType,
 
@@ -175,10 +196,10 @@ public class CampaignViewController {
             @RequestParam(required = false, defaultValue = "true") boolean includePaging
     ) {
         try {
-            log.info("최신 캠페인 목록 조회 요청 - page: {}, size: {}, categoryType: {}, campaignType: {}, includePaging: {}",
-                    page, size, categoryType, campaignType, includePaging);
+            log.info("최신 캠페인 목록 조회 요청 - page: {}, size: {}, categoryType: {}, categoryName: {}, campaignType: {}, includePaging: {}",
+                    page, size, categoryType, categoryName, campaignType, includePaging);
 
-            var pageResponse = viewService.getCampaignList(Math.max(0, page - 1), size, "createdAt", true, categoryType, campaignType);
+            var pageResponse = viewService.getCampaignListWithFilters(Math.max(0, page - 1), size, "createdAt", true, categoryType, categoryName, campaignType);
             List<CampaignListSimpleResponse> campaigns = pageResponse.getContent();
 
             if (includePaging) {
