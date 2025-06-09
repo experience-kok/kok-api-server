@@ -233,7 +233,7 @@ public class S3Service {
      * 원본 이미지 URL 또는 키에서 폴더에 맞는 리사이징된 이미지 URL을 생성합니다.
      * 
      * @param objectKeyOrUrl 원본 이미지 URL 또는 객체 키
-     * @return 리사이징된 이미지 URL
+     * @return 리사이징된 이미지 URL (리사이징이 완료되지 않은 경우 원본 URL 반환)
      */
     public String getResizedImageUrl(String objectKeyOrUrl) {
         if (objectKeyOrUrl == null || objectKeyOrUrl.isEmpty()) {
@@ -296,8 +296,21 @@ public class S3Service {
         // 리사이징된 이미지 객체 키 생성
         String resizedKey = String.format("resized/%s/%s/%s", folderPath, sizeStr, filename);
         
-        // 리사이징된 이미지 URL 반환
-        return getImageUrl(resizedKey);
+        // 리사이징된 이미지가 존재하는지 확인
+        try {
+            if (amazonS3Client.doesObjectExist(bucketName, resizedKey)) {
+                // 리사이징된 이미지가 존재하면 해당 URL 반환
+                log.info("리사이징된 이미지 사용: {}", resizedKey);
+                return getImageUrl(resizedKey);
+            } else {
+                // 리사이징된 이미지가 아직 없으면 원본 URL 반환 (Lambda 처리 대기 중)
+                log.info("리사이징 대기 중 - 원본 이미지 URL 반환: {}", objectKey);
+                return getImageUrl(objectKey);
+            }
+        } catch (Exception e) {
+            log.warn("리사이징된 이미지 존재 확인 중 오류 - 원본 URL 반환: {}", e.getMessage());
+            return getImageUrl(objectKey);
+        }
     }
 
     /**

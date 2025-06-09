@@ -1,6 +1,7 @@
 package com.example.auth.repository;
 
 import com.example.auth.domain.Company;
+import com.example.auth.domain.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -32,4 +33,25 @@ public interface CompanyRepository extends JpaRepository<Company, Long> {
      * @return 존재 여부
      */
     boolean existsByBusinessRegistrationNumber(String businessRegistrationNumber);
+    
+    /**
+     * 특정 사용자의 업체 정보를 조회합니다.
+     * @param user 사용자 객체
+     * @return 업체 정보
+     */
+    Optional<Company> findByUser(User user);
+    
+    /**
+     * 특정 사용자 ID의 업체 정보를 조회합니다.
+     * @param userId 사용자 ID
+     * @return 업체 정보
+     */
+    Optional<Company> findByUserId(Long userId);
+    
+    /**
+     * 특정 사용자의 업체 정보를 삭제합니다.
+     * @param userId 사용자 ID
+     */
+    void deleteByUserId(Long userId);
 }
+

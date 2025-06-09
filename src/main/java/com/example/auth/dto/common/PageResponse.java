@@ -44,6 +44,34 @@ public class PageResponse<T> {
     private boolean last;
     
     /**
+     * 페이징 정보만을 담는 내부 클래스
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Schema(description = "페이징 정보")
+    public static class PaginationInfo {
+        @Schema(description = "현재 페이지 번호 (0부터 시작)", example = "0")
+        private int pageNumber;
+
+        @Schema(description = "페이지 크기", example = "10")
+        private int pageSize;
+
+        @Schema(description = "전체 페이지 수", example = "5")
+        private int totalPages;
+
+        @Schema(description = "전체 항목 수", example = "42")
+        private long totalElements;
+
+        @Schema(description = "첫 페이지 여부", example = "true")
+        private boolean first;
+
+        @Schema(description = "마지막 페이지 여부", example = "false")
+        private boolean last;
+    }
+    
+    /**
      * Spring Data의 Page 객체로부터 PageResponse 객체를 생성합니다.
      * @param page Spring Data Page 객체
      * @param <T> 데이터 타입

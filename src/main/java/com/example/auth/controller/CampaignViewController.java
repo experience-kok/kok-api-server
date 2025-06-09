@@ -39,8 +39,8 @@ public class CampaignViewController {
     })
     @GetMapping("/popular")
     public ResponseEntity<?> getPopularCampaigns(
-            @Parameter(description = "페이지 번호 (0부터 시작)")
-            @RequestParam(required = false, defaultValue = "0") int page,
+            @Parameter(description = "페이지 번호 (1부터 시작)")
+            @RequestParam(required = false, defaultValue = "1") int page,
 
             @Parameter(description = "요청할 캠페인 갯수")
             @RequestParam(required = false, defaultValue = "10") int size,
@@ -58,7 +58,7 @@ public class CampaignViewController {
             log.info("인기 캠페인 목록 조회 요청 - page: {}, size: {}, categoryType: {}, campaignType: {}, includePaging: {}",
                     page, size, categoryType, campaignType, includePaging);
 
-            var pageResponse = viewService.getCampaignList(page, size, "currentApplicants", true, categoryType, campaignType);
+            var pageResponse = viewService.getCampaignList(Math.max(0, page - 1), size, "currentApplicants", true, categoryType, campaignType);
             List<CampaignListSimpleResponse> campaigns = pageResponse.getContent();
 
             if (includePaging) {
@@ -99,8 +99,8 @@ public class CampaignViewController {
     })
     @GetMapping("/deadline-soon")
     public ResponseEntity<?> getDeadlineSoonCampaigns(
-            @Parameter(description = "페이지 번호 (0부터 시작)")
-            @RequestParam(required = false, defaultValue = "0") int page,
+            @Parameter(description = "페이지 번호 (1부터 시작)")
+            @RequestParam(required = false, defaultValue = "1") int page,
 
             @Parameter(description = "요청할 캠페인 갯수")
             @RequestParam(required = false, defaultValue = "10") int size,
@@ -118,7 +118,7 @@ public class CampaignViewController {
             log.info("마감 임박 캠페인 목록 조회 요청 - page: {}, size: {}, categoryType: {}, campaignType: {}, includePaging: {}",
                     page, size, categoryType, campaignType, includePaging);
 
-            var pageResponse = viewService.getCampaignListByDeadlineSoon(page, size, categoryType, campaignType);
+            var pageResponse = viewService.getCampaignListByDeadlineSoon(Math.max(0, page - 1), size, categoryType, campaignType);
             List<CampaignListSimpleResponse> campaigns = pageResponse.getContent();
 
             if (includePaging) {
@@ -159,8 +159,8 @@ public class CampaignViewController {
     })
     @GetMapping("/latest")
     public ResponseEntity<?> getLatestCampaigns(
-            @Parameter(description = "페이지 번호 (0부터 시작)")
-            @RequestParam(required = false, defaultValue = "0") int page,
+            @Parameter(description = "페이지 번호 (1부터 시작)")
+            @RequestParam(required = false, defaultValue = "1") int page,
 
             @Parameter(description = "요청할 캠페인 갯수")
             @RequestParam(required = false, defaultValue = "10") int size,
@@ -178,7 +178,7 @@ public class CampaignViewController {
             log.info("최신 캠페인 목록 조회 요청 - page: {}, size: {}, categoryType: {}, campaignType: {}, includePaging: {}",
                     page, size, categoryType, campaignType, includePaging);
 
-            var pageResponse = viewService.getCampaignList(page, size, "createdAt", true, categoryType, campaignType);
+            var pageResponse = viewService.getCampaignList(Math.max(0, page - 1), size, "createdAt", true, categoryType, campaignType);
             List<CampaignListSimpleResponse> campaigns = pageResponse.getContent();
 
             if (includePaging) {
@@ -235,8 +235,8 @@ public class CampaignViewController {
     })
     @GetMapping("/visit")
     public ResponseEntity<?> getVisitCampaigns(
-            @Parameter(description = "페이지 번호 (0부터 시작)")
-            @RequestParam(required = false, defaultValue = "0") int page,
+            @Parameter(description = "페이지 번호 (1부터 시작)")
+            @RequestParam(required = false, defaultValue = "1") int page,
 
             @Parameter(description = "요청할 캠페인 갯수")
             @RequestParam(required = false, defaultValue = "10") int size,
@@ -258,7 +258,7 @@ public class CampaignViewController {
                     page, size, categoryName, campaignTypes, sort, includePaging);
 
             var pageResponse = viewService.getFilteredCampaignList(
-                    page, size, "방문", categoryName, campaignTypes, sort);
+                    Math.max(0, page - 1), size, "방문", categoryName, campaignTypes, sort);
 
             List<CampaignListSimpleResponse> campaigns = pageResponse.getContent();
 
@@ -315,8 +315,8 @@ public class CampaignViewController {
     })
     @GetMapping("/delivery")
     public ResponseEntity<?> getDeliveryCampaigns(
-            @Parameter(description = "페이지 번호 (0부터 시작)")
-            @RequestParam(required = false, defaultValue = "0") int page,
+            @Parameter(description = "페이지 번호 (1부터 시작)")
+            @RequestParam(required = false, defaultValue = "1") int page,
 
             @Parameter(description = "요청할 캠페인 갯수")
             @RequestParam(required = false, defaultValue = "10") int size,
@@ -338,7 +338,7 @@ public class CampaignViewController {
                     page, size, categoryName, campaignTypes, sort, includePaging);
 
             var pageResponse = viewService.getFilteredCampaignList(
-                    page, size, "배송", categoryName, campaignTypes, sort);
+                    Math.max(0, page - 1), size, "배송", categoryName, campaignTypes, sort);
 
             List<CampaignListSimpleResponse> campaigns = pageResponse.getContent();
 

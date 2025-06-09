@@ -7,6 +7,7 @@ import java.time.ZonedDateTime;
 
 /**
  * 업체 정보 엔티티
+ * 사용자와 1:1 관계 (CLIENT 권한 사용자만 업체 정보 보유 가능)
  * 하나의 업체는 여러 개의 캠페인을 생성할 수 있음 (1:N 관계)
  */
 @Entity
@@ -21,6 +22,10 @@ public class Company {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false, unique = true)
+    private User user;
 
     @Column(name = "company_name", nullable = false, length = 100)
     private String companyName;

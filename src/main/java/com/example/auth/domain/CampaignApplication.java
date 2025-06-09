@@ -1,5 +1,6 @@
 package com.example.auth.domain;
 
+import com.example.auth.constant.ApplicationStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -34,20 +35,20 @@ public class CampaignApplication {
     @Column(name = "application_status", nullable = false, length = 20)
     @Enumerated(EnumType.STRING)
     @Builder.Default
-    private ApplicationStatus applicationStatus = ApplicationStatus.APPLIED;
+    private ApplicationStatus applicationStatus = ApplicationStatus.PENDING;
 
-    @Column(name = "applied_at", columnDefinition = "TIMESTAMP WITH TIME ZONE")
+    @Column(name = "created_at", columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     @Builder.Default
-    private ZonedDateTime appliedAt = ZonedDateTime.now();
+    private ZonedDateTime createdAt = ZonedDateTime.now();
 
-    @Column(name = "updated_at", columnDefinition = "TIMESTAMP WITH TIME ZONE")
+    @Column(name = "updated_at", columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     @Builder.Default
     private ZonedDateTime updatedAt = ZonedDateTime.now();
 
     @PrePersist
     protected void onCreate() {
-        if (this.appliedAt == null) {
-            this.appliedAt = ZonedDateTime.now();
+        if (this.createdAt == null) {
+            this.createdAt = ZonedDateTime.now();
         }
         if (this.updatedAt == null) {
             this.updatedAt = ZonedDateTime.now();
@@ -57,26 +58,6 @@ public class CampaignApplication {
     @PreUpdate
     protected void onUpdate() {
         this.updatedAt = ZonedDateTime.now();
-    }
-
-    /**
-     * 신청 상태 열거형
-     */
-    public enum ApplicationStatus {
-        APPLIED("신청됨"),
-        SELECTED("선정됨"),
-        REJECTED("거절됨"),
-        CANCELLED("취소됨");
-
-        private final String description;
-
-        ApplicationStatus(String description) {
-            this.description = description;
-        }
-
-        public String getDescription() {
-            return description;
-        }
     }
 
     /**
@@ -91,7 +72,7 @@ public class CampaignApplication {
      * 신청을 취소합니다.
      */
     public void cancel() {
-        this.applicationStatus = ApplicationStatus.CANCELLED;
+        this.applicationStatus = ApplicationStatus.REJECTED;
         this.updatedAt = ZonedDateTime.now();
     }
 
@@ -99,7 +80,7 @@ public class CampaignApplication {
      * 신청자를 선정합니다.
      */
     public void select() {
-        this.applicationStatus = ApplicationStatus.SELECTED;
+        this.applicationStatus = ApplicationStatus.APPROVED;
         this.updatedAt = ZonedDateTime.now();
     }
 
@@ -112,16 +93,16 @@ public class CampaignApplication {
     }
 
     /**
-     * 신청 상태를 반환합니다. (ApplicationResponse 호환성을 위해)
+     * 하위 호환성을 위한 getStatus 메소드
      */
     public ApplicationStatus getStatus() {
         return this.applicationStatus;
     }
 
     /**
-     * 생성 시간을 반환합니다. (ApplicationResponse 호환성을 위해)
+     * 하위 호환성을 위한 setStatus 메소드  
      */
-    public ZonedDateTime getCreatedAt() {
-        return this.appliedAt;
+    public void setStatus(ApplicationStatus status) {
+        this.applicationStatus = status;
     }
 }

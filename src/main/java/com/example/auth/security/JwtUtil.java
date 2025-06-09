@@ -49,7 +49,7 @@ public class JwtUtil {
                 .setSubject(String.valueOf(userId))
                 .setIssuedAt(Date.from(now))
                 .setExpiration(Date.from(expiry))
-                .signWith(key)  // 수정된 부분: SignatureAlgorithm 매개변수 제거
+                .signWith(key)
                 .compact();
     }
 

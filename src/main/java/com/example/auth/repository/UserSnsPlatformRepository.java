@@ -30,4 +30,10 @@ public interface UserSnsPlatformRepository extends JpaRepository<UserSnsPlatform
 
     // 특정 플랫폼 타입과 팔로워 수 이상인 플랫폼 조회
     List<UserSnsPlatform> findByPlatformTypeAndFollowerCountGreaterThanEqual(String platformType, Integer followerCount);
+    
+    /**
+     * 특정 사용자의 모든 SNS 플랫폼 정보를 삭제합니다.
+     * @param userId 사용자 ID
+     */
+    void deleteByUserId(Long userId);
 }

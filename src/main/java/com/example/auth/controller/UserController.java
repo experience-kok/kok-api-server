@@ -328,7 +328,8 @@ public class UserController {
         try {
             Long userId = tokenUtils.getUserIdFromToken(bearerToken);
 
-            userRepository.deleteById(userId);
+            // UserService의 deleteUserAccount 메서드 사용
+            userService.deleteUserAccount(userId);
             tokenService.deleteRefreshToken(userId);
 
             String token = bearerToken.replace("Bearer ", "");

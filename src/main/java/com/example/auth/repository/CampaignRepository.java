@@ -20,6 +20,7 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
     
     // 생성자별 캠페인 조회
     List<Campaign> findByCreator(User creator);
+    Page<Campaign> findByCreator(User creator, Pageable pageable);
     List<Campaign> findByCreatorId(Long creatorId);
     
     // 업체별 캠페인 조회 (1:N 관계)
@@ -50,20 +51,20 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
     Page<Campaign> findByApprovalStatusAndCampaignTypeAndApplicationDeadlineDateGreaterThanEqual(
             Campaign.ApprovalStatus approvalStatus, String campaignType, LocalDate currentDate, Pageable pageable);
     
-    // 현재 유효한 신청 인원수 조회를 위한 쿼리 (APPLIED 상태만)
-    @Query("SELECT COUNT(ca) FROM CampaignApplication ca WHERE ca.campaign.id = :campaignId AND ca.applicationStatus = 'APPLIED'")
+    // 현재 유효한 신청 인원수 조회를 위한 쿼리 (PENDING 상태만)
+    @Query("SELECT COUNT(ca) FROM CampaignApplication ca WHERE ca.campaign.id = :campaignId AND ca.applicationStatus = 'PENDING'")
     Integer countCurrentApplicationsByCampaignId(@Param("campaignId") Long campaignId);
     
     // 여러 캠페인의 현재 신청 인원수를 배치로 조회
     @Query("SELECT ca.campaign.id, COUNT(ca) FROM CampaignApplication ca " +
-           "WHERE ca.campaign.id IN :campaignIds AND ca.applicationStatus = 'APPLIED' " +
+           "WHERE ca.campaign.id IN :campaignIds AND ca.applicationStatus = 'PENDING' " +
            "GROUP BY ca.campaign.id")
     List<Object[]> countCurrentApplicationsByCampaignIds(@Param("campaignIds") List<Long> campaignIds);
     
     // 신청 인원수로 정렬된 승인된 캠페인 조회 (신청 많은 순)
     @Query("SELECT c FROM Campaign c " +
            "LEFT JOIN c.applications ca " +
-           "WHERE c.approvalStatus = :approvalStatus AND (ca.applicationStatus = 'APPLIED' OR ca IS NULL) " +
+           "WHERE c.approvalStatus = :approvalStatus AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
            "GROUP BY c.id " +
            "ORDER BY COUNT(ca.id) DESC, c.createdAt DESC")
     Page<Campaign> findByApprovalStatusOrderByCurrentApplicantsDesc(
@@ -74,7 +75,7 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
            "LEFT JOIN c.applications ca " +
            "WHERE c.approvalStatus = :approvalStatus " +
            "AND c.applicationDeadlineDate >= :currentDate " +
-           "AND (ca.applicationStatus = 'APPLIED' OR ca IS NULL) " +
+           "AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
            "GROUP BY c.id " +
            "ORDER BY COUNT(ca.id) DESC, c.createdAt DESC")
     Page<Campaign> findByApprovalStatusAndApplicationDeadlineDateGreaterThanEqualOrderByCurrentApplicantsDesc(
@@ -86,7 +87,7 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
            "LEFT JOIN c.applications ca " +
            "WHERE c.approvalStatus = :approvalStatus " +
            "AND c.category.categoryType = :categoryType " +
-           "AND (ca.applicationStatus = 'APPLIED' OR ca IS NULL) " +
+           "AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
            "GROUP BY c.id " +
            "ORDER BY COUNT(ca.id) DESC, c.createdAt DESC")
     Page<Campaign> findByApprovalStatusAndCategoryCategoryTypeOrderByCurrentApplicantsDesc(
@@ -98,7 +99,7 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
            "LEFT JOIN c.applications ca " +
            "WHERE c.approvalStatus = :approvalStatus " +
            "AND c.campaignType = :campaignType " +
-           "AND (ca.applicationStatus = 'APPLIED' OR ca IS NULL) " +
+           "AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
            "GROUP BY c.id " +
            "ORDER BY COUNT(ca.id) DESC, c.createdAt DESC")
     Page<Campaign> findByApprovalStatusAndCampaignTypeOrderByCurrentApplicantsDesc(
@@ -167,7 +168,7 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
            "AND c.category.categoryName = :categoryName " +
            "AND c.campaignType IN :campaignTypes " +
            "AND c.applicationDeadlineDate >= :currentDate " +
-           "AND (ca.applicationStatus = 'APPLIED' OR ca IS NULL) " +
+           "AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
            "GROUP BY c.id " +
            "ORDER BY COUNT(ca.id) DESC, c.createdAt DESC")
     Page<Campaign> findFilteredCampaignsOrderByPopularity(
@@ -185,7 +186,7 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
            "AND c.category.categoryType = :categoryType " +
            "AND c.campaignType IN :campaignTypes " +
            "AND c.applicationDeadlineDate >= :currentDate " +
-           "AND (ca.applicationStatus = 'APPLIED' OR ca IS NULL) " +
+           "AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
            "GROUP BY c.id " +
            "ORDER BY COUNT(ca.id) DESC, c.createdAt DESC")
     Page<Campaign> findFilteredCampaignsByTypesOrderByPopularity(
@@ -201,7 +202,7 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
            "WHERE c.approvalStatus = :approvalStatus " +
            "AND c.category.categoryName = :categoryName " +
            "AND c.applicationDeadlineDate >= :currentDate " +
-           "AND (ca.applicationStatus = 'APPLIED' OR ca IS NULL) " +
+           "AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
            "GROUP BY c.id " +
            "ORDER BY COUNT(ca.id) DESC, c.createdAt DESC")
     Page<Campaign> findByApprovalStatusAndCategoryCategoryNameAndApplicationDeadlineDateGreaterThanEqualOrderByPopularity(
@@ -215,7 +216,7 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
            "WHERE c.approvalStatus = :approvalStatus " +
            "AND c.category.categoryType = :categoryType " +
            "AND c.applicationDeadlineDate >= :currentDate " +
-           "AND (ca.applicationStatus = 'APPLIED' OR ca IS NULL) " +
+           "AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
            "GROUP BY c.id " +
            "ORDER BY COUNT(ca.id) DESC, c.createdAt DESC")
     Page<Campaign> findByApprovalStatusAndCategoryCategoryTypeAndApplicationDeadlineDateGreaterThanEqualOrderByPopularity(
@@ -262,7 +263,7 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
     // 모든 캠페인을 신청자 수 기준으로 정렬 (승인 상태 무관)
     @Query("SELECT c FROM Campaign c " +
            "LEFT JOIN c.applications ca " +
-           "WHERE (ca.applicationStatus = 'APPLIED' OR ca IS NULL) " +
+           "WHERE (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
            "GROUP BY c.id " +
            "ORDER BY COUNT(ca.id) DESC, c.createdAt DESC")
     Page<Campaign> findAllOrderByCurrentApplicantsDesc(Pageable pageable);
@@ -271,7 +272,7 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
     @Query("SELECT c FROM Campaign c " +
            "LEFT JOIN c.applications ca " +
            "WHERE c.category.categoryType = :categoryType " +
-           "AND (ca.applicationStatus = 'APPLIED' OR ca IS NULL) " +
+           "AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
            "GROUP BY c.id " +
            "ORDER BY COUNT(ca.id) DESC, c.createdAt DESC")
     Page<Campaign> findByCategoryCategoryTypeOrderByCurrentApplicantsDesc(
@@ -281,7 +282,7 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
     @Query("SELECT c FROM Campaign c " +
            "LEFT JOIN c.applications ca " +
            "WHERE c.campaignType = :campaignType " +
-           "AND (ca.applicationStatus = 'APPLIED' OR ca IS NULL) " +
+           "AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
            "GROUP BY c.id " +
            "ORDER BY COUNT(ca.id) DESC, c.createdAt DESC")
     Page<Campaign> findByCampaignTypeOrderByCurrentApplicantsDesc(
@@ -292,7 +293,7 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
            "LEFT JOIN c.applications ca " +
            "WHERE c.category.categoryType = :categoryType " +
            "AND c.category.categoryName = :categoryName " +
-           "AND (ca.applicationStatus = 'APPLIED' OR ca IS NULL) " +
+           "AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
            "GROUP BY c.id " +
            "ORDER BY COUNT(ca.id) DESC, c.createdAt DESC")
     Page<Campaign> findByCategoryCategoryTypeAndCategoryCategoryNameOrderByCurrentApplicantsDesc(
@@ -304,7 +305,7 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
            "LEFT JOIN c.applications ca " +
            "WHERE c.category.categoryType = :categoryType " +
            "AND c.campaignType IN :campaignTypes " +
-           "AND (ca.applicationStatus = 'APPLIED' OR ca IS NULL) " +
+           "AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
            "GROUP BY c.id " +
            "ORDER BY COUNT(ca.id) DESC, c.createdAt DESC")
     Page<Campaign> findByCategoryCategoryTypeAndCampaignTypeInOrderByCurrentApplicantsDesc(
@@ -317,11 +318,114 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
            "WHERE c.category.categoryType = :categoryType " +
            "AND c.category.categoryName = :categoryName " +
            "AND c.campaignType IN :campaignTypes " +
-           "AND (ca.applicationStatus = 'APPLIED' OR ca IS NULL) " +
+           "AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
            "GROUP BY c.id " +
            "ORDER BY COUNT(ca.id) DESC, c.createdAt DESC")
     Page<Campaign> findByCategoryCategoryTypeAndCategoryCategoryNameAndCampaignTypeInOrderByCurrentApplicantsDesc(
             @Param("categoryType") CampaignCategory.CategoryType categoryType, 
             @Param("categoryName") String categoryName, 
             @Param("campaignTypes") List<String> campaignTypes, Pageable pageable);
+    
+    // ===== 캠페인 검색 메소드들 =====
+    
+    /**
+     * 키워드로 캠페인 검색 (제목에서만 검색)
+     */
+    @Query("SELECT c FROM Campaign c " +
+           "WHERE c.approvalStatus = 'APPROVED' " +
+           "AND LOWER(c.title) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+           "AND (:categoryType IS NULL OR c.category.categoryType = :categoryType) " +
+           "AND (:categoryName IS NULL OR c.category.categoryName = :categoryName) " +
+           "AND (:campaignType IS NULL OR c.campaignType = :campaignType) " +
+           "ORDER BY c.createdAt DESC")
+    Page<Campaign> searchByKeyword(
+            @Param("keyword") String keyword,
+            @Param("categoryType") CampaignCategory.CategoryType categoryType,
+            @Param("categoryName") String categoryName,
+            @Param("campaignType") String campaignType,
+            Pageable pageable);
+    
+    /**
+     * 키워드로 캠페인 검색 (제목에서만 검색, 인기순 정렬)
+     */
+    @Query("SELECT c FROM Campaign c " +
+           "LEFT JOIN c.applications ca " +
+           "WHERE c.approvalStatus = 'APPROVED' " +
+           "AND LOWER(c.title) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+           "AND (:categoryType IS NULL OR c.category.categoryType = :categoryType) " +
+           "AND (:categoryName IS NULL OR c.category.categoryName = :categoryName) " +
+           "AND (:campaignType IS NULL OR c.campaignType = :campaignType) " +
+           "AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
+           "GROUP BY c.id " +
+           "ORDER BY COUNT(ca.id) DESC, c.createdAt DESC")
+    Page<Campaign> searchByKeywordOrderByPopularity(
+            @Param("keyword") String keyword,
+            @Param("categoryType") CampaignCategory.CategoryType categoryType,
+            @Param("categoryName") String categoryName,
+            @Param("campaignType") String campaignType,
+            Pageable pageable);
+    
+    /**
+     * CLIENT용 - 특정 생성자의 승인 상태별 캠페인 카운트를 조회합니다.
+     */
+    @Query("SELECT c.approvalStatus as status, COUNT(c) as count " +
+           "FROM Campaign c " +
+           "WHERE c.creator.id = :creatorId " +
+           "GROUP BY c.approvalStatus")
+    List<Object[]> countByCreatorIdGroupByApprovalStatus(@Param("creatorId") Long creatorId);
+    
+    /**
+     * CLIENT용 - 특정 생성자의 만료된 캠페인 카운트를 조회합니다.
+     */
+    @Query("SELECT COUNT(c) FROM Campaign c " +
+           "WHERE c.creator.id = :creatorId " +
+           "AND c.approvalStatus = 'APPROVED' " +
+           "AND c.recruitmentEndDate < :currentDate")
+    Long countExpiredByCreatorId(@Param("creatorId") Long creatorId, @Param("currentDate") LocalDate currentDate);
+    
+    /**
+     * CLIENT용 - 특정 생성자의 승인 상태별 캠페인 목록을 페이징 조회합니다.
+     */
+    @Query("SELECT c FROM Campaign c " +
+           "JOIN FETCH c.company comp " +
+           "WHERE c.creator.id = :creatorId " +
+           "AND c.approvalStatus = :approvalStatus " +
+           "ORDER BY c.createdAt DESC")
+    Page<Campaign> findByCreatorIdAndApprovalStatus(@Param("creatorId") Long creatorId, 
+                                                   @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus, 
+                                                   Pageable pageable);
+    
+    /**
+     * CLIENT용 - 특정 생성자의 만료된 캠페인 목록을 페이징 조회합니다.
+     */
+    @Query("SELECT c FROM Campaign c " +
+           "JOIN FETCH c.company comp " +
+           "WHERE c.creator.id = :creatorId " +
+           "AND c.approvalStatus = 'APPROVED' " +
+           "AND c.recruitmentEndDate < :currentDate " +
+           "ORDER BY c.createdAt DESC")
+    Page<Campaign> findExpiredByCreatorId(@Param("creatorId") Long creatorId, 
+                                        @Param("currentDate") LocalDate currentDate, 
+                                        Pageable pageable);
+    
+    /**
+     * CLIENT용 - 특정 생성자의 모든 캠페인 목록을 페이징 조회합니다.
+     */
+    @Query("SELECT c FROM Campaign c " +
+           "JOIN FETCH c.company comp " +
+           "WHERE c.creator.id = :creatorId " +
+           "ORDER BY c.createdAt DESC")
+    Page<Campaign> findByCreatorIdWithCompany(@Param("creatorId") Long creatorId, Pageable pageable);
+    
+    /**
+     * 특정 캠페인의 신청 통계를 조회합니다.
+     */
+    @Query("SELECT " +
+           "COUNT(ca) as totalApplications, " +
+           "SUM(CASE WHEN ca.applicationStatus = 'APPROVED' THEN 1 ELSE 0 END) as selectedCount, " +
+           "SUM(CASE WHEN ca.applicationStatus = 'COMPLETED' THEN 1 ELSE 0 END) as completedCount, " +
+           "SUM(CASE WHEN ca.applicationStatus = 'PENDING' THEN 1 ELSE 0 END) as pendingCount " +
+           "FROM CampaignApplication ca " +
+           "WHERE ca.campaign.id = :campaignId")
+    Object[] getCampaignStatistics(@Param("campaignId") Long campaignId);
 }

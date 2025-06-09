@@ -1,5 +1,6 @@
 package com.example.auth.dto.application;
 
+import com.example.auth.constant.ApplicationStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -34,7 +35,7 @@ public class ApplicationListResponseWrapper {
     @AllArgsConstructor
     @Schema(description = "페이징 정보")
     public static class PaginationInfo {
-        @Schema(description = "현재 페이지 번호 (0부터 시작)", example = "0")
+        @Schema(description = "현재 페이지 번호 (1부터 시작)", example = "1")
         private int pageNumber;
         
         @Schema(description = "페이지 크기", example = "10")
@@ -65,8 +66,11 @@ public class ApplicationListResponseWrapper {
         @Schema(description = "신청 ID", example = "15")
         private Long id;
         
-        @Schema(description = "신청 상태", example = "pending")
+        @Schema(description = "신청 상태", example = "PENDING")
         private String status;
+        
+        @Schema(description = "신청 여부", example = "true")
+        private Boolean hasApplied;
         
         @Schema(description = "신청 생성 시간")
         private String createdAt;
@@ -118,7 +122,8 @@ public class ApplicationListResponseWrapper {
         public static ApplicationInfoDTO fromApplicationResponse(ApplicationResponse response) {
             return ApplicationInfoDTO.builder()
                     .id(response.getId())
-                    .status(response.getStatus())
+                    .status(response.getStatus().toUpperCase()) // 상태를 대문자로 정규화
+                    .hasApplied(true) // 신청 정보가 존재하면 항상 true
                     .createdAt(response.getCreatedAt() != null ? response.getCreatedAt().toString() : null)
                     .updatedAt(response.getUpdatedAt() != null ? response.getUpdatedAt().toString() : null)
                     .campaign(CampaignInfo.builder()
@@ -129,6 +134,15 @@ public class ApplicationListResponseWrapper {
                             .id(response.getUserId())
                             .nickname(response.getUserNickname())
                             .build())
+                    .build();
+        }
+        
+        /**
+         * 신청하지 않은 경우의 DTO 생성
+         */
+        public static ApplicationInfoDTO notApplied() {
+            return ApplicationInfoDTO.builder()
+                    .hasApplied(false)
                     .build();
         }
     }

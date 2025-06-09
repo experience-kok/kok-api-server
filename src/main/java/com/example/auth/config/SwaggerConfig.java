@@ -37,7 +37,7 @@ public class SwaggerConfig {
                         .version("v1.0.0")
                         .description("체험단 모집 및 관리 서비스 API"))
                 .servers(List.of(
-                        new io.swagger.v3.oas.models.servers.Server().url("https://ckok.kr").description("운영 서버"),
+                        new io.swagger.v3.oas.models.servers.Server().url("https://chkok.kr").description("운영 서버"),
                         new io.swagger.v3.oas.models.servers.Server().url("http://localhost:8080").description("로컬 서버")
                 ));
     }

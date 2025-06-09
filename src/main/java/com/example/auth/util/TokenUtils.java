@@ -1,10 +1,12 @@
 package com.example.auth.util;
 
+import com.example.auth.domain.User;
 import com.example.auth.exception.JwtValidationException;
 import com.example.auth.exception.TokenErrorType;
 import com.example.auth.exception.UnauthorizedException;
 import com.example.auth.security.JwtUtil;
 import com.example.auth.service.TokenService;
+import com.example.auth.service.UserService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,7 @@ public class TokenUtils {
 
     private final JwtUtil jwtUtil;
     private final TokenService tokenService;
+    private final UserService userService;
 
     /**
      * Authorization 헤더에서 Bearer 토큰을 추출하고 사용자 ID를 반환
@@ -57,6 +60,30 @@ public class TokenUtils {
             throw new UnauthorizedException("유효하지 않은 토큰입니다.");
         }
     }
+    
+    /**
+     * Authorization 헤더에서 Bearer 토큰을 추출하고 DB에서 사용자 역할을 조회하여 반환
+     *
+     * @param bearerToken Authorization 헤더 값 (Bearer 포함)
+     * @return DB에서 조회한 사용자 역할
+     * @throws UnauthorizedException 토큰이 유효하지 않거나 사용자를 찾을 수 없는 경우
+     */
+    public String getRoleFromToken(String bearerToken) {
+        Long userId = getUserIdFromToken(bearerToken);
+        
+        // DB에서 사용자 정보 조회
+        User user = userService.findUserById(userId);
+        if (user == null) {
+            log.warn("토큰의 사용자 ID로 사용자를 찾을 수 없음: userId={}", userId);
+            throw new UnauthorizedException("존재하지 않는 사용자입니다.");
+        }
+        
+        String role = user.getRole();
+        log.debug("DB에서 조회한 사용자 역할: userId={}, role={}", userId, role);
+        
+        return role;
+    }
+    
     /**
      * 토큰이 유효한지 확인 (컨트롤러에서 상태코드 확인용)
      *

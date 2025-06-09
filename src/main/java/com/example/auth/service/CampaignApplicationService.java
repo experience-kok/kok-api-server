@@ -1,5 +1,6 @@
 package com.example.auth.service;
 
+import com.example.auth.constant.ApplicationStatus;
 import com.example.auth.domain.Campaign;
 import com.example.auth.domain.CampaignApplication;
 import com.example.auth.domain.User;
@@ -68,7 +69,7 @@ public class CampaignApplicationService {
         CampaignApplication application = CampaignApplication.builder()
                 .campaign(campaign)
                 .user(user)
-                .applicationStatus(CampaignApplication.ApplicationStatus.APPLIED)
+                .applicationStatus(ApplicationStatus.PENDING)
                 .build();
         
         CampaignApplication savedApplication = applicationRepository.save(application);
@@ -109,6 +110,40 @@ public class CampaignApplicationService {
     }
 
     /**
+     * CLIENT 역할 사용자가 자신이 만든 캠페인 목록을 조회합니다.
+     * @param clientUserId CLIENT 사용자 ID
+     * @param page 페이지 번호 (0부터 시작)
+     * @param size 페이지 크기
+     * @return 페이징된 캠페인 목록 (ApplicationResponse 형태로 변환)
+     * @throws ResourceNotFoundException 사용자를 찾을 수 없는 경우
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<ApplicationResponse> getClientCampaigns(Long clientUserId, int page, int size) {
+        User clientUser = userRepository.findById(clientUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("사용자를 찾을 수 없습니다. ID: " + clientUserId));
+        
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        
+        // CLIENT가 만든 캠페인들을 조회
+        Page<Campaign> campaigns = campaignRepository.findByCreator(clientUser, pageable);
+        
+        // Campaign을 ApplicationResponse 형태로 변환 (일관된 응답 구조를 위해)
+        List<ApplicationResponse> content = campaigns.getContent().stream()
+                .map(campaign -> ApplicationResponse.fromCampaign(campaign, clientUser))
+                .collect(Collectors.toList());
+        
+        return new PageResponse<>(
+                content,
+                campaigns.getNumber(),
+                campaigns.getSize(),
+                campaigns.getTotalPages(),
+                campaigns.getTotalElements(),
+                campaigns.isFirst(),
+                campaigns.isLast()
+        );
+    }
+
+    /**
      * 캠페인 신청을 취소합니다. (신청자 본인만 가능)
      * @param applicationId 취소할 신청 ID
      * @param currentUserId 현재 로그인한 사용자 ID (권한 체크용)
@@ -127,7 +162,7 @@ public class CampaignApplicationService {
         }
         
         // 대기 상태인 경우만 취소 가능
-        if (application.getApplicationStatus() != CampaignApplication.ApplicationStatus.APPLIED) {
+        if (application.getApplicationStatus() != ApplicationStatus.PENDING) {
             throw new IllegalStateException("이미 처리된 신청은 취소할 수 없습니다.");
         }
         

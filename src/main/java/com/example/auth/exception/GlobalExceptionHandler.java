@@ -10,6 +10,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.stream.Collectors;
 
@@ -75,6 +76,21 @@ public class GlobalExceptionHandler {
         log.warn("유효성 검증 오류: {}", errorMessage);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(BaseResponse.fail(errorMessage, "VALIDATION_ERROR", HttpStatus.BAD_REQUEST.value()));
+    }
+
+    // 타입 변환 오류 (잘못된 파라미터 타입)
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<?> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        String parameterName = ex.getName();
+        String inputValue = ex.getValue() != null ? ex.getValue().toString() : "null";
+        String requiredType = ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "unknown";
+        
+        String errorMessage = String.format("잘못된 파라미터 값이에요. '%s'에 '%s'을(를) 입력했는데, %s 타입이 필요해요", 
+                                           parameterName, inputValue, requiredType);
+        
+        log.warn("파라미터 타입 변환 오류: {} = {} (required: {})", parameterName, inputValue, requiredType);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(BaseResponse.fail(errorMessage, "INVALID_PARAMETER", HttpStatus.BAD_REQUEST.value()));
     }
 
     //  기타 예외

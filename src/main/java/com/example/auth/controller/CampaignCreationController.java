@@ -3,8 +3,7 @@ package com.example.auth.controller;
 import com.example.auth.common.BaseResponse;
 import com.example.auth.dto.campaign.CreateCampaignRequest;
 import com.example.auth.dto.campaign.CreateCampaignResponse;
-import com.example.auth.exception.AccessDeniedException;
-import com.example.auth.exception.ResourceNotFoundException;
+import com.example.auth.exception.*;
 import com.example.auth.service.CampaignCreationService;
 import com.example.auth.util.TokenUtils;
 import io.swagger.v3.oas.annotations.Operation;
@@ -149,15 +148,28 @@ public class CampaignCreationController {
         try {
             // 토큰에서 사용자 ID 추출
             Long userId = tokenUtils.getUserIdFromToken(bearerToken);
-            
+
             // 캠페인 생성 서비스 호출
             CreateCampaignResponse response = campaignCreationService.createCampaign(userId, request);
-            
+
             log.info("캠페인 생성 성공: userId={}, campaignId={}", userId, response.getId());
-            
+
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(BaseResponse.success(response, "캠페인이 성공적으로 등록되었습니다.", HttpStatus.CREATED.value()));
-                    
+
+
+
+        }// 추가해야 할 catch 블록들:
+
+        catch (JwtValidationException e) {
+            log.warn("토큰 검증 실패: {}", e.getMessage());
+            String errorCode = e.getErrorType() == TokenErrorType.EXPIRED ? "TOKEN_EXPIRED" : "TOKEN_INVALID";
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(BaseResponse.fail(e.getMessage(), errorCode, HttpStatus.UNAUTHORIZED.value()));
+        } catch (UnauthorizedException e) {
+            log.warn("인증 실패: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(BaseResponse.fail(e.getMessage(), "UNAUTHORIZED", HttpStatus.UNAUTHORIZED.value()));
         } catch (AccessDeniedException e) {
             log.warn("캠페인 등록 권한 없음: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -211,7 +223,19 @@ public class CampaignCreationController {
             return ResponseEntity.ok(
                     BaseResponse.success(response, "캠페인이 성공적으로 수정되었습니다."));
                     
-        } catch (AccessDeniedException e) {
+        }
+        // 추가해야 할 catch 블록들:
+
+        catch (JwtValidationException e) {
+            log.warn("토큰 검증 실패: {}", e.getMessage());
+            String errorCode = e.getErrorType() == TokenErrorType.EXPIRED ? "TOKEN_EXPIRED" : "TOKEN_INVALID";
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(BaseResponse.fail(e.getMessage(), errorCode, HttpStatus.UNAUTHORIZED.value()));
+        } catch (UnauthorizedException e) {
+            log.warn("인증 실패: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(BaseResponse.fail(e.getMessage(), "UNAUTHORIZED", HttpStatus.UNAUTHORIZED.value()));
+        }catch (AccessDeniedException e) {
             log.warn("캠페인 수정 권한 없음: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(BaseResponse.fail(e.getMessage(), "FORBIDDEN", HttpStatus.FORBIDDEN.value()));

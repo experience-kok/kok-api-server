@@ -38,6 +38,8 @@ public class CampaignCreationService {
     private final CompanyRepository companyRepository;
     private final CompanyService companyService;
     private final UserRepository userRepository;
+    private final S3Service s3Service;
+    private final ImageProcessingService imageProcessingService;
 
     /**
      * 캠페인 생성 메서드
@@ -79,8 +81,21 @@ public class CampaignCreationService {
         // Campaign 엔티티 생성
         Campaign campaign = request.toEntity(user, category, company);
         
+        // 썸네일 URL 처리 (일단 원본 CloudFront URL로 저장)
+        if (request.getThumbnailUrl() != null && !request.getThumbnailUrl().isEmpty()) {
+            String cleanUrl = cleanPresignedUrl(request.getThumbnailUrl());
+            String originalCloudFrontUrl = s3Service.getImageUrl(cleanUrl);
+            campaign.setThumbnailUrl(originalCloudFrontUrl);
+        }
+        
         // 캠페인 저장
         Campaign savedCampaign = campaignRepository.save(campaign);
+        
+        // 비동기로 리사이징 완료 후 썸네일 URL 업데이트
+        if (request.getThumbnailUrl() != null && !request.getThumbnailUrl().isEmpty()) {
+            String cleanUrl = cleanPresignedUrl(request.getThumbnailUrl());
+            imageProcessingService.updateCampaignThumbnailWhenReady(savedCampaign.getId(), cleanUrl);
+        }
         
         log.info("캠페인이 성공적으로 생성되었습니다. ID: {}, 제목: {}, 생성자: {}", 
                 savedCampaign.getId(), savedCampaign.getTitle(), user.getNickname());
@@ -168,6 +183,16 @@ public class CampaignCreationService {
 
         // 캠페인 정보 업데이트
         updateCampaignFields(campaign, request, category, company);
+        
+        // 썸네일 URL 처리 (일단 원본 CloudFront URL로 저장)
+        if (request.getThumbnailUrl() != null && !request.getThumbnailUrl().isEmpty()) {
+            String cleanUrl = cleanPresignedUrl(request.getThumbnailUrl());
+            String originalCloudFrontUrl = s3Service.getImageUrl(cleanUrl);
+            campaign.setThumbnailUrl(originalCloudFrontUrl);
+            
+            // 비동기로 리사이징 완료 후 썸네일 URL 업데이트
+            imageProcessingService.updateCampaignThumbnailWhenReady(campaign.getId(), cleanUrl);
+        }
 
         // 승인 상태를 다시 PENDING으로 변경
         campaign.resetApprovalStatus();
@@ -219,5 +244,24 @@ public class CampaignCreationService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                     String.format("카테고리를 찾을 수 없습니다. (타입: %s, 이름: %s)", 
                     categoryInfo.getType(), categoryInfo.getName())));
+    }
+    
+    /**
+     * Presigned URL에서 쿼리 파라미터를 제거하여 깨끗한 S3 URL을 반환
+     * @param url Presigned URL 또는 일반 URL
+     * @return 쿼리 파라미터가 제거된 깨끗한 URL
+     */
+    private String cleanPresignedUrl(String url) {
+        if (url == null || url.isEmpty()) {
+            return url;
+        }
+        
+        // 쿼리 파라미터가 있는 경우 제거
+        int queryIndex = url.indexOf('?');
+        if (queryIndex > 0) {
+            return url.substring(0, queryIndex);
+        }
+        
+        return url;
     }
 }

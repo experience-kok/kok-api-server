@@ -264,7 +264,7 @@ public class Campaign {
     @Transient
     public int getCurrentApplicantCount() {
         return (int) applications.stream()
-                .filter(app -> app.getApplicationStatus() == CampaignApplication.ApplicationStatus.APPLIED)
+                .filter(app -> app.getApplicationStatus() == com.example.auth.constant.ApplicationStatus.PENDING)
                 .count();
     }
 

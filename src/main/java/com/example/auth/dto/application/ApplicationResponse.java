@@ -94,9 +94,40 @@ public class ApplicationResponse {
                 .campaignTitle(application.getCampaign().getTitle())
                 .userId(application.getUser().getId())
                 .userNickname(application.getUser().getNickname())
-                .status(application.getStatus().name())
+                .status(application.getApplicationStatus().name().toLowerCase())
                 .createdAt(application.getCreatedAt())
                 .updatedAt(application.getUpdatedAt())
+                .build();
+    }
+
+    /**
+     * Campaign을 ApplicationResponse 형태로 변환합니다. (CLIENT용)
+     * CLIENT가 자신의 캠페인 목록을 볼 때 일관된 응답 구조를 위해 사용됩니다.
+     * @param campaign 변환할 캠페인 엔티티
+     * @param creator 캠페인 생성자
+     * @return 변환된 DTO
+     */
+    public static ApplicationResponse fromCampaign(com.example.auth.domain.Campaign campaign, com.example.auth.domain.User creator) {
+        // 캠페인 상태 결정 (만료 여부 체크)
+        String campaignStatus;
+        if (campaign.getApprovalStatus() == com.example.auth.domain.Campaign.ApprovalStatus.APPROVED 
+            && campaign.getRecruitmentEndDate().isBefore(java.time.LocalDate.now())) {
+            // 승인됐지만 모집기간이 끝난 경우 EXPIRED로 변환
+            campaignStatus = "EXPIRED";
+        } else {
+            // 그 외의 경우는 원래 상태 그대로
+            campaignStatus = campaign.getApprovalStatus().name();
+        }
+        
+        return ApplicationResponse.builder()
+                .id(campaign.getId()) // 캠페인 ID를 신청 ID 자리에
+                .campaignId(campaign.getId())
+                .campaignTitle(campaign.getTitle())
+                .userId(creator.getId())
+                .userNickname(creator.getNickname())
+                .status(campaignStatus.toLowerCase()) // 캠페인 상태 (만료 체크 포함)
+                .createdAt(campaign.getCreatedAt())
+                .updatedAt(campaign.getUpdatedAt())
                 .build();
     }
 }
