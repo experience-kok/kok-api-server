@@ -403,4 +403,55 @@ public class CampaignViewService {
                 })
                 .collect(java.util.stream.Collectors.toList());
     }
+
+    /**
+     * 키워드로 캠페인 검색
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<CampaignListSimpleResponse> searchCampaigns(
+            String keyword, int page, int size, String sort) {
+        
+        // 정렬 기준 변환
+        String actualSort = convertSortParameter(sort);
+        boolean sortByCurrentApplicants = "currentApplicants".equals(actualSort);
+
+        // 페이지 정보 생성
+        Pageable pageable;
+        if (sortByCurrentApplicants) {
+            pageable = PageRequest.of(page, size);
+        } else {
+            pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        }
+
+        Page<Campaign> campaignPage;
+
+        if (sortByCurrentApplicants) {
+            // 인기순 정렬로 검색
+            campaignPage = campaignRepository.searchByKeywordOrderByPopularity(
+                    keyword, null, null, null, pageable);
+        } else {
+            // 일반 정렬로 검색
+            campaignPage = campaignRepository.searchByKeyword(
+                    keyword, null, null, null, pageable);
+        }
+
+        // DTO 변환
+        Page<CampaignListSimpleResponse> responsePage = campaignPage.map(CampaignListSimpleResponse::fromEntity);
+
+        // 신청 인원수를 실제 데이터로 설정
+        List<CampaignListSimpleResponse> campaigns = responsePage.getContent();
+        if (!campaigns.isEmpty()) {
+            campaigns.forEach(campaignResponse -> {
+                Campaign actualCampaign = campaignPage.getContent().stream()
+                    .filter(c -> c.getId().equals(campaignResponse.getId()))
+                    .findFirst()
+                    .orElse(null);
+                if (actualCampaign != null) {
+                    campaignResponse.setCurrentApplicants(actualCampaign.getCurrentApplicantCount());
+                }
+            });
+        }
+
+        return PageResponse.from(responsePage);
+    }
 }

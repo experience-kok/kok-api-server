@@ -502,5 +502,83 @@ public class CampaignViewController {
         }
     }
 
+    // ===== 캠페인 검색 API =====
+
+    @Operation(
+            summary = "캠페인 검색",
+            description = "키워드로 캠페인을 검색합니다."
+                    + "\n\n### 검색 기능:"
+                    + "\n- **키워드**: 캠페인 제목에서 검색"
+                    + "\n- **정렬 옵션**: latest(최신순), popular(인기순)"
+                    + "\n- **페이징**: 페이지별 조회 지원"
+                    + "\n\n### 사용 예시:"
+                    + "\n- `keyword=맛집` - '맛집'이 포함된 캠페인 검색"
+                    + "\n- `keyword=화장품&sort=popular` - '화장품' 캠페인을 인기순으로 검색"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "검색 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 (키워드 누락)"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    @GetMapping("/search")
+    public ResponseEntity<?> searchCampaigns(
+            @Parameter(description = "검색 키워드 (필수)", required = true)
+            @RequestParam String keyword,
+
+            @Parameter(description = "페이지 번호 (1부터 시작)")
+            @RequestParam(required = false, defaultValue = "1") int page,
+
+            @Parameter(description = "요청할 캠페인 갯수")
+            @RequestParam(required = false, defaultValue = "10") int size,
+
+            @Parameter(description = "정렬 기준 (latest: 최신순, popular: 인기순)")
+            @RequestParam(required = false, defaultValue = "latest") String sort,
+
+            @Parameter(description = "페이징 정보 포함 여부")
+            @RequestParam(required = false, defaultValue = "true") boolean includePaging
+    ) {
+        try {
+            // 키워드 검증
+            if (keyword == null || keyword.trim().isEmpty()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(BaseResponse.fail("검색 키워드는 필수입니다.", "INVALID_KEYWORD", HttpStatus.BAD_REQUEST.value()));
+            }
+
+            log.info("캠페인 검색 요청 - keyword: {}, page: {}, size: {}, sort: {}, includePaging: {}",
+                    keyword, page, size, sort, includePaging);
+
+            var pageResponse = viewService.searchCampaigns(
+                    keyword.trim(), Math.max(0, page - 1), size, sort);
+
+            List<CampaignListSimpleResponse> campaigns = pageResponse.getContent();
+
+            if (includePaging) {
+                CampaignListResponseWrapper responseWrapper = new CampaignListResponseWrapper();
+                responseWrapper.setCampaigns(campaigns);
+
+                CampaignListResponseWrapper.PaginationInfo paginationInfo =
+                        CampaignListResponseWrapper.PaginationInfo.builder()
+                                .pageNumber(pageResponse.getPageNumber())
+                                .pageSize(pageResponse.getPageSize())
+                                .totalPages(pageResponse.getTotalPages())
+                                .totalElements(pageResponse.getTotalElements())
+                                .first(pageResponse.isFirst())
+                                .last(pageResponse.isLast())
+                                .build();
+
+                responseWrapper.setPagination(paginationInfo);
+
+                return ResponseEntity.ok(BaseResponse.success(responseWrapper, "캠페인 검색 성공"));
+            } else {
+                Map<String, Object> responseData = Map.of("campaigns", campaigns);
+                return ResponseEntity.ok(BaseResponse.success(responseData, "캠페인 검색 성공"));
+            }
+        } catch (Exception e) {
+            log.error("캠페인 검색 중 오류 발생: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(BaseResponse.fail("캠페인 검색 중 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
+        }
+    }
+
 
 }
