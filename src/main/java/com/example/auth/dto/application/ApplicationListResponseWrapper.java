@@ -67,16 +67,7 @@ public class ApplicationListResponseWrapper {
         private Long id;
         
         @Schema(description = "신청 상태", example = "PENDING")
-        private String status;
-        
-        @Schema(description = "신청 여부", example = "true")
-        private Boolean hasApplied;
-        
-        @Schema(description = "신청 생성 시간")
-        private String createdAt;
-        
-        @Schema(description = "신청 마지막 수정 시간")
-        private String updatedAt;
+        private String applicationStatus;
         
         @Schema(description = "캠페인 정보")
         private CampaignInfo campaign;
@@ -122,10 +113,7 @@ public class ApplicationListResponseWrapper {
         public static ApplicationInfoDTO fromApplicationResponse(ApplicationResponse response) {
             return ApplicationInfoDTO.builder()
                     .id(response.getId())
-                    .status(response.getStatus().toUpperCase()) // 상태를 대문자로 정규화
-                    .hasApplied(true) // 신청 정보가 존재하면 항상 true
-                    .createdAt(response.getCreatedAt() != null ? response.getCreatedAt().toString() : null)
-                    .updatedAt(response.getUpdatedAt() != null ? response.getUpdatedAt().toString() : null)
+                    .applicationStatus(response.getApplicationStatus().toUpperCase()) // 상태를 대문자로 정규화
                     .campaign(CampaignInfo.builder()
                             .id(response.getCampaignId())
                             .title(response.getCampaignTitle())
@@ -142,7 +130,6 @@ public class ApplicationListResponseWrapper {
          */
         public static ApplicationInfoDTO notApplied() {
             return ApplicationInfoDTO.builder()
-                    .hasApplied(false)
                     .build();
         }
     }

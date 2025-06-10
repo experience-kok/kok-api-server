@@ -563,41 +563,20 @@ public class CampaignViewService {
     }
 
     /**
-     * 키워드로 캠페인 검색
+     * 키워드로 캠페인 검색 (최신순 고정)
      */
     @Transactional(readOnly = true)
     public PageResponse<CampaignListSimpleResponse> searchCampaigns(
             String keyword, int page, int size, String sort) {
         
-        log.info("캠페인 검색 실행 - keyword: {}, page: {}, size: {}, sort: {}", keyword, page, size, sort);
+        log.info("캠페인 검색 실행 - keyword: {}, page: {}, size: {}", keyword, page, size);
         
-        // 정렬 기준 변환
-        String actualSort = convertSortParameter(sort);
-        boolean sortByCurrentApplicants = "currentApplicants".equals(actualSort);
-
-        log.info("정렬 기준 변환 - actualSort: {}, sortByCurrentApplicants: {}", actualSort, sortByCurrentApplicants);
-
-        // 페이지 정보 생성
-        Pageable pageable;
-        if (sortByCurrentApplicants) {
-            pageable = PageRequest.of(page, size);
-        } else {
-            pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        }
-
-        Page<Campaign> campaignPage;
-
-        if (sortByCurrentApplicants) {
-            // 인기순 정렬로 검색
-            log.info("인기순 정렬로 검색 실행");
-            campaignPage = campaignRepository.searchByKeywordOrderByPopularity(
-                    keyword, null, null, null, pageable);
-        } else {
-            // 일반 정렬로 검색
-            log.info("일반 정렬로 검색 실행");
-            campaignPage = campaignRepository.searchByKeyword(
-                    keyword, null, null, null, pageable);
-        }
+        // 최신순으로 고정
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        
+        log.info("최신순 정렬로 검색 실행");
+        Page<Campaign> campaignPage = campaignRepository.searchByKeyword(
+                keyword, null, null, null, pageable);
 
         log.info("검색 결과 - 총 {}개 캠페인 발견, 현재 페이지 {}개", 
                 campaignPage.getTotalElements(), campaignPage.getNumberOfElements());

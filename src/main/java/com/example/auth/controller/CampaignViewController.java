@@ -247,7 +247,6 @@ public class CampaignViewController {
                     + "\n- **전체 플랫폼**: campaignTypes 파라미터 생략"
                     + "\n\n### 정렬 옵션:"
                     + "\n- **최신순**: sort=latest (기본값)"
-                    + "\n- **인기순**: sort=popular"
                     + "\n- **선정 마감순**: sort=deadline"
     )
     @ApiResponses(value = {
@@ -268,7 +267,7 @@ public class CampaignViewController {
             @Parameter(description = "캠페인 플랫폼 (쉼표로 구분): 블로그, 인스타그램, 유튜브")
             @RequestParam(required = false) String campaignTypes,
 
-            @Parameter(description = "정렬 기준 (latest, popular, deadline)")
+            @Parameter(description = "정렬 기준 (latest, deadline)")
             @RequestParam(required = false, defaultValue = "latest") String sort,
 
             @Parameter(description = "페이징 정보 포함 여부")
@@ -327,7 +326,6 @@ public class CampaignViewController {
                     + "\n- **전체 플랫폼**: campaignTypes 파라미터 생략"
                     + "\n\n### 정렬 옵션:"
                     + "\n- **최신순**: sort=latest (기본값)"
-                    + "\n- **인기순**: sort=popular"
                     + "\n- **선정 마감순**: sort=deadline"
     )
     @ApiResponses(value = {
@@ -348,7 +346,7 @@ public class CampaignViewController {
             @Parameter(description = "캠페인 플랫폼 (쉼표로 구분): 블로그, 인스타그램, 유튜브")
             @RequestParam(required = false) String campaignTypes,
 
-            @Parameter(description = "정렬 기준 (latest, popular, deadline)")
+            @Parameter(description = "정렬 기준 (latest, deadline)")
             @RequestParam(required = false, defaultValue = "latest") String sort,
 
             @Parameter(description = "페이징 정보 포함 여부")
@@ -530,11 +528,11 @@ public class CampaignViewController {
             description = "키워드로 캠페인을 검색합니다."
                     + "\n\n### 검색 기능:"
                     + "\n- **키워드**: 캠페인 제목에서 검색"
-                    + "\n- **정렬 옵션**: latest(최신순), popular(인기순)"
+                    + "\n- **정렬**: 최신순으로 고정"
                     + "\n- **페이징**: 페이지별 조회 지원"
                     + "\n\n### 사용 예시:"
                     + "\n- `keyword=맛집` - '맛집'이 포함된 캠페인 검색"
-                    + "\n- `keyword=화장품&sort=popular` - '화장품' 캠페인을 인기순으로 검색"
+                    + "\n- `keyword=화장품` - '화장품' 캠페인을 최신순으로 검색"
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "검색 성공"),
@@ -552,9 +550,6 @@ public class CampaignViewController {
             @Parameter(description = "요청할 캠페인 갯수")
             @RequestParam(required = false, defaultValue = "10") int size,
 
-            @Parameter(description = "정렬 기준 (latest: 최신순, popular: 인기순)")
-            @RequestParam(required = false, defaultValue = "latest") String sort,
-
             @Parameter(description = "페이징 정보 포함 여부")
             @RequestParam(required = false, defaultValue = "true") boolean includePaging
     ) {
@@ -565,11 +560,12 @@ public class CampaignViewController {
                         .body(BaseResponse.fail("검색 키워드는 필수입니다.", "INVALID_KEYWORD", HttpStatus.BAD_REQUEST.value()));
             }
 
-            log.info("캠페인 검색 요청 - keyword: {}, page: {}, size: {}, sort: {}, includePaging: {}",
-                    keyword, page, size, sort, includePaging);
+            log.info("캠페인 검색 요청 - keyword: {}, page: {}, size: {}, includePaging: {}",
+                    keyword, page, size, includePaging);
 
+            // 최신순으로 고정
             var pageResponse = viewService.searchCampaigns(
-                    keyword.trim(), Math.max(0, page - 1), size, sort);
+                    keyword.trim(), Math.max(0, page - 1), size, "latest");
 
             List<CampaignListSimpleResponse> campaigns = pageResponse.getContent();
 

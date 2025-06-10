@@ -23,6 +23,18 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
     Page<Campaign> findByCreator(User creator, Pageable pageable);
     List<Campaign> findByCreatorId(Long creatorId);
     
+    // 생성자와 승인 상태별 캠페인 조회
+    List<Campaign> findByCreatorAndApprovalStatus(User creator, Campaign.ApprovalStatus approvalStatus);
+    Page<Campaign> findByCreatorAndApprovalStatus(User creator, Campaign.ApprovalStatus approvalStatus, Pageable pageable);
+    
+    // 생성자, 승인 상태, 모집 마감일로 캠페인 조회 (EXPIRED 필터용)
+    List<Campaign> findByCreatorAndApprovalStatusAndRecruitmentEndDateBefore(User creator, Campaign.ApprovalStatus approvalStatus, LocalDate date);
+    Page<Campaign> findByCreatorAndApprovalStatusAndRecruitmentEndDateBefore(User creator, Campaign.ApprovalStatus approvalStatus, LocalDate date, Pageable pageable);
+    
+    // 생성자, 승인 상태, 모집 마감일로 캠페인 조회 (APPROVED 필터용 - 아직 만료되지 않은 캠페인)
+    List<Campaign> findByCreatorAndApprovalStatusAndRecruitmentEndDateGreaterThanEqual(User creator, Campaign.ApprovalStatus approvalStatus, LocalDate date);
+    Page<Campaign> findByCreatorAndApprovalStatusAndRecruitmentEndDateGreaterThanEqual(User creator, Campaign.ApprovalStatus approvalStatus, LocalDate date, Pageable pageable);
+    
     // 업체별 캠페인 조회 (1:N 관계)
     List<Campaign> findByCompany(Company company);
     Page<Campaign> findByCompanyOrderByCreatedAtDesc(Company company, Pageable pageable);

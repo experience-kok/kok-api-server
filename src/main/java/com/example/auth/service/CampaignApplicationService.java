@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -79,7 +80,7 @@ public class CampaignApplicationService {
     }
 
     /**
-     * 특정 사용자의 모든 캠페인 신청 목록을 조회합니다.
+     * 특정 사용자의 모든 캠페인 신청 목록을 조회합니다. (기존 버전 - 호환성 유지)
      * @param userId 사용자 ID
      * @param page 페이지 번호 (0부터 시작)
      * @param size 페이지 크기
@@ -88,11 +89,40 @@ public class CampaignApplicationService {
      */
     @Transactional(readOnly = true)
     public PageResponse<ApplicationResponse> getUserApplications(Long userId, int page, int size) {
+        return getUserApplications(userId, page, size, null);
+    }
+
+    /**
+     * 특정 사용자의 모든 캠페인 신청 목록을 조회합니다.
+     * @param userId 사용자 ID
+     * @param page 페이지 번호 (0부터 시작)
+     * @param size 페이지 크기
+     * @param applicationStatus 신청 상태 필터 (선택사항)
+     * @return 페이징된 신청 목록
+     * @throws ResourceNotFoundException 사용자를 찾을 수 없는 경우
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<ApplicationResponse> getUserApplications(Long userId, int page, int size, String applicationStatus) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("사용자를 찾을 수 없습니다. ID: " + userId));
         
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<CampaignApplication> applications = applicationRepository.findByUser(user, pageable);
+        Page<CampaignApplication> applications;
+        
+        // applicationStatus 필터링
+        if (applicationStatus != null && !applicationStatus.trim().isEmpty()) {
+            try {
+                ApplicationStatus status = ApplicationStatus.valueOf(applicationStatus.toUpperCase());
+                applications = applicationRepository.findByUserAndApplicationStatus(user, status, pageable);
+            } catch (IllegalArgumentException e) {
+                log.warn("잘못된 신청 상태 값: {}", applicationStatus);
+                // 잘못된 상태값인 경우 빈 결과 반환
+                applications = Page.empty(pageable);
+            }
+        } else {
+            // 필터링 없이 모든 신청 조회
+            applications = applicationRepository.findByUser(user, pageable);
+        }
         
         List<ApplicationResponse> content = applications.getContent().stream()
                 .map(ApplicationResponse::fromEntity)
@@ -110,7 +140,99 @@ public class CampaignApplicationService {
     }
 
     /**
-     * CLIENT 역할 사용자가 자신이 만든 캠페인 목록을 조회합니다.
+     * 특정 사용자의 모든 캠페인 신청 목록을 리스트로 조회합니다. (페이징 없음)
+     * @param userId 사용자 ID
+     * @param applicationStatus 신청 상태 필터 (선택사항)
+     * @return 신청 목록
+     * @throws ResourceNotFoundException 사용자를 찾을 수 없는 경우
+     */
+    @Transactional(readOnly = true)
+    public List<ApplicationResponse> getUserApplicationsList(Long userId, String applicationStatus) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("사용자를 찾을 수 없습니다. ID: " + userId));
+        
+        List<CampaignApplication> applications;
+        
+        // applicationStatus 필터링
+        if (applicationStatus != null && !applicationStatus.trim().isEmpty()) {
+            try {
+                ApplicationStatus status = ApplicationStatus.valueOf(applicationStatus.toUpperCase());
+                applications = applicationRepository.findByUserAndApplicationStatus(user, status);
+            } catch (IllegalArgumentException e) {
+                log.warn("잘못된 신청 상태 값: {}", applicationStatus);
+                // 잘못된 상태값인 경우 빈 결과 반환
+                return Collections.emptyList();
+            }
+        } else {
+            // 필터링 없이 모든 신청 조회
+            applications = applicationRepository.findByUser(user);
+        }
+        
+        return applications.stream()
+                .map(ApplicationResponse::fromEntity)
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt())) // 최신순 정렬
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * CLIENT 역할 사용자가 자신이 만든 캠페인 목록을 리스트로 조회합니다. (페이징 없음)
+     * @param clientUserId CLIENT 사용자 ID
+     * @param applicationStatus 캠페인 승인 상태 필터 (선택사항)
+     * @return 캠페인 목록 (ApplicationResponse 형태로 변환)
+     * @throws ResourceNotFoundException 사용자를 찾을 수 없는 경우
+     */
+    @Transactional(readOnly = true)
+    public List<ApplicationResponse> getClientCampaignsList(Long clientUserId, String applicationStatus) {
+        User clientUser = userRepository.findById(clientUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("사용자를 찾을 수 없습니다. ID: " + clientUserId));
+        
+        List<Campaign> campaigns;
+        
+        // applicationStatus 필터링 (CLIENT의 경우 캠페인 승인 상태로 필터링)
+        if (applicationStatus != null && !applicationStatus.trim().isEmpty()) {
+            String statusFilter = applicationStatus.toUpperCase();
+            
+            if ("EXPIRED".equals(statusFilter)) {
+                // EXPIRED 상태: 승인됐지만 모집기간이 끝난 캠페인
+                campaigns = campaignRepository.findByCreatorAndApprovalStatusAndRecruitmentEndDateBefore(
+                    clientUser, 
+                    Campaign.ApprovalStatus.APPROVED, 
+                    LocalDate.now()
+                );
+            } else {
+                try {
+                    Campaign.ApprovalStatus approvalStatus = Campaign.ApprovalStatus.valueOf(statusFilter);
+                    if (approvalStatus == Campaign.ApprovalStatus.APPROVED) {
+                        // APPROVED 상태: 승인되고 아직 모집기간이 끝나지 않은 캠페인
+                        campaigns = campaignRepository.findByCreatorAndApprovalStatusAndRecruitmentEndDateGreaterThanEqual(
+                            clientUser, 
+                            approvalStatus, 
+                            LocalDate.now()
+                        );
+                    } else {
+                        // PENDING, REJECTED 상태
+                        campaigns = campaignRepository.findByCreatorAndApprovalStatus(clientUser, approvalStatus);
+                    }
+                } catch (IllegalArgumentException e) {
+                    log.warn("잘못된 캠페인 상태 값: {}", applicationStatus);
+                    // 잘못된 상태값인 경우 빈 결과 반환
+                    return Collections.emptyList();
+                }
+            }
+        } else {
+            // 필터링 없이 모든 캠페인 조회
+            campaigns = campaignRepository.findByCreator(clientUser);
+        }
+        
+        // Campaign을 ApplicationResponse 형태로 변환 (일관된 응답 구조를 위해)
+        return campaigns.stream()
+                .map(campaign -> ApplicationResponse.fromCampaign(campaign, clientUser))
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt())) // 최신순 정렬
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * CLIENT 역할 사용자가 자신이 만든 캠페인 목록을 조회합니다. (기존 버전 - 호환성 유지)
      * @param clientUserId CLIENT 사용자 ID
      * @param page 페이지 번호 (0부터 시작)
      * @param size 페이지 크기
@@ -119,13 +241,63 @@ public class CampaignApplicationService {
      */
     @Transactional(readOnly = true)
     public PageResponse<ApplicationResponse> getClientCampaigns(Long clientUserId, int page, int size) {
+        return getClientCampaigns(clientUserId, page, size, null);
+    }
+
+    /**
+     * CLIENT 역할 사용자가 자신이 만든 캠페인 목록을 조회합니다.
+     * @param clientUserId CLIENT 사용자 ID
+     * @param page 페이지 번호 (0부터 시작)
+     * @param size 페이지 크기
+     * @param applicationStatus 캠페인 승인 상태 필터 (선택사항)
+     * @return 페이징된 캠페인 목록 (ApplicationResponse 형태로 변환)
+     * @throws ResourceNotFoundException 사용자를 찾을 수 없는 경우
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<ApplicationResponse> getClientCampaigns(Long clientUserId, int page, int size, String applicationStatus) {
         User clientUser = userRepository.findById(clientUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("사용자를 찾을 수 없습니다. ID: " + clientUserId));
         
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<Campaign> campaigns;
         
-        // CLIENT가 만든 캠페인들을 조회
-        Page<Campaign> campaigns = campaignRepository.findByCreator(clientUser, pageable);
+        // applicationStatus 필터링 (CLIENT의 경우 캠페인 승인 상태로 필터링)
+        if (applicationStatus != null && !applicationStatus.trim().isEmpty()) {
+            String statusFilter = applicationStatus.toUpperCase();
+            
+            if ("EXPIRED".equals(statusFilter)) {
+                // EXPIRED 상태: 승인됐지만 모집기간이 끝난 캠페인
+                campaigns = campaignRepository.findByCreatorAndApprovalStatusAndRecruitmentEndDateBefore(
+                    clientUser, 
+                    Campaign.ApprovalStatus.APPROVED, 
+                    LocalDate.now(), 
+                    pageable
+                );
+            } else {
+                try {
+                    Campaign.ApprovalStatus approvalStatus = Campaign.ApprovalStatus.valueOf(statusFilter);
+                    if (approvalStatus == Campaign.ApprovalStatus.APPROVED) {
+                        // APPROVED 상태: 승인되고 아직 모집기간이 끝나지 않은 캠페인
+                        campaigns = campaignRepository.findByCreatorAndApprovalStatusAndRecruitmentEndDateGreaterThanEqual(
+                            clientUser, 
+                            approvalStatus, 
+                            LocalDate.now(), 
+                            pageable
+                        );
+                    } else {
+                        // PENDING, REJECTED 상태
+                        campaigns = campaignRepository.findByCreatorAndApprovalStatus(clientUser, approvalStatus, pageable);
+                    }
+                } catch (IllegalArgumentException e) {
+                    log.warn("잘못된 캠페인 상태 값: {}", applicationStatus);
+                    // 잘못된 상태값인 경우 빈 결과 반환
+                    campaigns = Page.empty(pageable);
+                }
+            }
+        } else {
+            // 필터링 없이 모든 캠페인 조회
+            campaigns = campaignRepository.findByCreator(clientUser, pageable);
+        }
         
         // Campaign을 ApplicationResponse 형태로 변환 (일관된 응답 구조를 위해)
         List<ApplicationResponse> content = campaigns.getContent().stream()

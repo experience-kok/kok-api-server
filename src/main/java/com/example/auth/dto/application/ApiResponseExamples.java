@@ -115,8 +115,11 @@ public class ApiResponseExamples {
         @Data
         @Schema(description = "신청 상태 확인 데이터")
         public static class ApplicationCheckData {
-            @Schema(description = "신청 여부", example = "true")
-            private boolean hasApplied;
+            @Schema(description = "신청 ID", example = "15")
+            private Long id;
+            
+            @Schema(description = "신청 상태", example = "PENDING")
+            private String applicationStatus;
         }
     }
 

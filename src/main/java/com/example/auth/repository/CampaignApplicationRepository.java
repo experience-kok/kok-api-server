@@ -48,6 +48,15 @@ public interface CampaignApplicationRepository extends JpaRepository<CampaignApp
     Page<CampaignApplication> findByUser(User user, Pageable pageable);
 
     /**
+     * 특정 사용자의 특정 상태 신청 정보를 페이징하여 조회합니다.
+     * @param user 조회할 사용자
+     * @param applicationStatus 신청 상태
+     * @param pageable 페이징 정보
+     * @return 페이징된 신청 목록
+     */
+    Page<CampaignApplication> findByUserAndApplicationStatus(User user, ApplicationStatus applicationStatus, Pageable pageable);
+
+    /**
      * 특정 사용자와 캠페인의 신청 정보를 조회합니다.
      * @param user 사용자
      * @param campaign 캠페인

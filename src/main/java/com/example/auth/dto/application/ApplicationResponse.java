@@ -64,7 +64,7 @@ public class ApplicationResponse {
         allowableValues = {"pending", "approved", "rejected", "completed"},
         title = "신청 상태"
     )
-    private String status;
+    private String applicationStatus;
 
     @Schema(
         description = "신청 생성 시간", 
@@ -94,7 +94,7 @@ public class ApplicationResponse {
                 .campaignTitle(application.getCampaign().getTitle())
                 .userId(application.getUser().getId())
                 .userNickname(application.getUser().getNickname())
-                .status(application.getApplicationStatus().name().toLowerCase())
+                .applicationStatus(application.getApplicationStatus().name().toLowerCase())
                 .createdAt(application.getCreatedAt())
                 .updatedAt(application.getUpdatedAt())
                 .build();
@@ -125,7 +125,7 @@ public class ApplicationResponse {
                 .campaignTitle(campaign.getTitle())
                 .userId(creator.getId())
                 .userNickname(creator.getNickname())
-                .status(campaignStatus.toLowerCase()) // 캠페인 상태 (만료 체크 포함)
+                .applicationStatus(campaignStatus.toLowerCase()) // 캠페인 상태 (만료 체크 포함)
                 .createdAt(campaign.getCreatedAt())
                 .updatedAt(campaign.getUpdatedAt())
                 .build();
