@@ -365,4 +365,77 @@ public class AuthController {
                     .body(BaseResponse.fail("권한 검사 중 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
         }
     }
+
+    @Operation(summary = "USER 권한 검사", description = "현재 사용자가 USER 권한을 가지고 있는지 확인합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "권한 검사 완료",
+                    content = @Content(schema = @Schema(implementation = BaseResponse.Success.class))),
+            @ApiResponse(responseCode = "401", description = "토큰 인증 실패",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(responseCode = "403", description = "USER 권한 없음",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
+    })
+    @GetMapping("/check-user")
+    public ResponseEntity<?> checkUserRole(@RequestHeader("Authorization") String bearerToken) {
+        // 토큰 형식 확인
+        if (bearerToken == null || !bearerToken.startsWith("Bearer ")) {
+            log.warn("유효하지 않은 토큰 형식으로 CLIENT 권한 검사 시도");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(BaseResponse.fail("유효하지 않은 토큰 형식입니다.", "UNAUTHORIZED", HttpStatus.UNAUTHORIZED.value()));
+        }
+
+        String token = bearerToken.replace("Bearer ", "");
+
+        // 블랙리스트 토큰 확인
+        if (tokenService.isBlacklisted(token)) {
+            log.warn("블랙리스트된 토큰으로 USER 권한 검사 시도");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(BaseResponse.fail("만료된 토큰입니다.", "TOKEN_EXPIRED", HttpStatus.UNAUTHORIZED.value()));
+        }
+
+        try {
+            // 토큰 유효성 검증 및 사용자 ID 추출
+            Claims claims = jwtUtil.getClaims(token);
+            Long userId = Long.valueOf(claims.getSubject());
+
+            // 사용자 정보 조회
+            User user = userService.findUserById(userId);
+            if (user == null) {
+                log.warn("존재하지 않는 사용자로 USER 권한 검사 시도: userId={}", userId);
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(BaseResponse.fail("존재하지 않는 사용자입니다.", "USER_NOT_FOUND", HttpStatus.UNAUTHORIZED.value()));
+            }
+
+            // CLIENT 권한 확인
+            boolean isClient = "USER".equals(user.getRole());
+
+            log.info("USER 권한 검사 완료: userId={}, isClient={}, userRole={}", userId, isClient, user.getRole());
+
+            if (!isClient) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(BaseResponse.fail("USER 권한이 필요합니다.", "INSUFFICIENT_PERMISSION", HttpStatus.FORBIDDEN.value()));
+            }
+
+            return ResponseEntity.ok(BaseResponse.success(null, "USER 권한 확인 완료"));
+
+        } catch (ExpiredJwtException e) {
+            log.warn("만료된 토큰으로 USER 권한 검사 시도: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(BaseResponse.fail("만료된 토큰입니다.", "TOKEN_EXPIRED", HttpStatus.UNAUTHORIZED.value()));
+        } catch (JwtValidationException e) {
+            log.warn("JWT 검증 오류 - USER 권한 검사: {}, 타입: {}", e.getMessage(), e.getErrorType());
+
+            String errorCode = "UNAUTHORIZED";
+            if (e.getErrorType() == TokenErrorType.EXPIRED) {
+                errorCode = "TOKEN_EXPIRED";
+            }
+
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(BaseResponse.fail(e.getMessage(), errorCode, HttpStatus.UNAUTHORIZED.value()));
+        } catch (Exception e) {
+            log.error("USER 권한 검사 중 오류: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(BaseResponse.fail("권한 검사 중 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
+        }
+    }
 }
