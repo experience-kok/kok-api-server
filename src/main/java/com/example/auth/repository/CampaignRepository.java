@@ -18,6 +18,20 @@ import java.util.Optional;
 @Repository
 public interface CampaignRepository extends JpaRepository<Campaign, Long> {
     
+    // ===== 자동완성용 제목만 조회 메서드 =====
+    
+    /**
+     * 자동완성을 위한 모든 캠페인 제목만 조회 (성능 최적화)
+     */
+    @Query("SELECT c.title FROM Campaign c WHERE c.title IS NOT NULL AND c.title != ''")
+    List<String> findAllTitles();
+    
+    /**
+     * 승인된 캠페인의 제목만 조회 (자동완성 품질 향상)
+     */
+    @Query("SELECT c.title FROM Campaign c WHERE c.title IS NOT NULL AND c.title != '' AND c.approvalStatus = 'APPROVED'")
+    List<String> findApprovedTitles();
+    
     // 생성자별 캠페인 조회
     List<Campaign> findByCreator(User creator);
     Page<Campaign> findByCreator(User creator, Pageable pageable);
@@ -438,4 +452,69 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
            "FROM CampaignApplication ca " +
            "WHERE ca.campaign.id = :campaignId")
     Object[] getCampaignStatistics(@Param("campaignId") Long campaignId);
+    
+    // ===== 모집 기간 우선 정렬 메소드들 =====
+    
+    // 모든 캠페인을 모집상태 + 인기순으로 정렬 (승인 상태 무관)
+    @Query("SELECT c FROM Campaign c " +
+           "LEFT JOIN c.applications ca " +
+           "WHERE (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
+           "GROUP BY c.id " +
+           "ORDER BY " +
+           "CASE WHEN c.recruitmentEndDate >= :currentDate THEN 0 ELSE 1 END, " +
+           "COUNT(ca.id) DESC, " +
+           "c.createdAt DESC")
+    Page<Campaign> findAllOrderByRecruitmentStatusAndPopularity(
+            @Param("currentDate") LocalDate currentDate, Pageable pageable);
+    
+    // 모든 캠페인을 모집상태 + 최신순으로 정렬 (승인 상태 무관)
+    @Query("SELECT c FROM Campaign c " +
+           "ORDER BY " +
+           "CASE WHEN c.recruitmentEndDate >= :currentDate THEN 0 ELSE 1 END, " +
+           "c.createdAt DESC")
+    Page<Campaign> findAllOrderByRecruitmentStatusAndLatest(
+            @Param("currentDate") LocalDate currentDate, Pageable pageable);
+    
+    // 카테고리별 모집상태 + 인기순 정렬 (승인 상태 무관)
+    @Query("SELECT c FROM Campaign c " +
+           "LEFT JOIN c.applications ca " +
+           "WHERE c.category.categoryType = :categoryType " +
+           "AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
+           "GROUP BY c.id " +
+           "ORDER BY " +
+           "CASE WHEN c.recruitmentEndDate >= :currentDate THEN 0 ELSE 1 END, " +
+           "COUNT(ca.id) DESC, " +
+           "c.createdAt DESC")
+    Page<Campaign> findByCategoryCategoryTypeOrderByRecruitmentStatusAndPopularity(
+            @Param("categoryType") CampaignCategory.CategoryType categoryType,
+            @Param("currentDate") LocalDate currentDate, 
+            Pageable pageable);
+    
+    // 카테고리별 모집상태 + 최신순 정렬 (승인 상태 무관)
+    @Query("SELECT c FROM Campaign c " +
+           "WHERE c.category.categoryType = :categoryType " +
+           "ORDER BY " +
+           "CASE WHEN c.recruitmentEndDate >= :currentDate THEN 0 ELSE 1 END, " +
+           "c.createdAt DESC")
+    Page<Campaign> findByCategoryCategoryTypeOrderByRecruitmentStatusAndLatest(
+            @Param("categoryType") CampaignCategory.CategoryType categoryType,
+            @Param("currentDate") LocalDate currentDate, 
+            Pageable pageable);
+    
+    // 검색 결과를 모집상태 + 최신순으로 정렬 (승인 상태 무관)
+    @Query("SELECT c FROM Campaign c " +
+           "WHERE LOWER(c.title) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+           "AND (:categoryType IS NULL OR c.category.categoryType = :categoryType) " +
+           "AND (:categoryName IS NULL OR c.category.categoryName = :categoryName) " +
+           "AND (:campaignType IS NULL OR c.campaignType = :campaignType) " +
+           "ORDER BY " +
+           "CASE WHEN c.recruitmentEndDate >= :currentDate THEN 0 ELSE 1 END, " +
+           "c.createdAt DESC")
+    Page<Campaign> searchByKeywordOrderByRecruitmentStatusAndLatest(
+            @Param("keyword") String keyword,
+            @Param("categoryType") CampaignCategory.CategoryType categoryType,
+            @Param("categoryName") String categoryName,
+            @Param("campaignType") String campaignType,
+            @Param("currentDate") LocalDate currentDate,
+            Pageable pageable);
 }

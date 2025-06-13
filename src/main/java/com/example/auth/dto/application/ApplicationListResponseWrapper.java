@@ -1,6 +1,7 @@
 package com.example.auth.dto.application;
 
 import com.example.auth.constant.ApplicationStatus;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -62,6 +63,7 @@ public class ApplicationListResponseWrapper {
     @NoArgsConstructor
     @AllArgsConstructor
     @Schema(description = "캠페인 신청 정보")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public static class ApplicationInfoDTO {
         @Schema(description = "신청 ID", example = "15")
         private Long id;
@@ -69,14 +71,17 @@ public class ApplicationListResponseWrapper {
         @Schema(description = "신청 상태", example = "PENDING")
         private String applicationStatus;
         
+        @Schema(description = "신청 여부", example = "true")
+        private Boolean hasApplied;
+        
         @Schema(description = "캠페인 정보")
-        private CampaignInfo campaign;
+        private Object campaign;
         
         @Schema(description = "사용자 정보")
         private UserInfo user;
         
         /**
-         * 캠페인 정보
+         * 캠페인 정보 (기본용)
          */
         @Data
         @Builder
@@ -89,6 +94,31 @@ public class ApplicationListResponseWrapper {
             
             @Schema(description = "캠페인 제목", example = "신상 음료 체험단 모집")
             private String title;
+        }
+        
+        /**
+         * 캠페인 정보 (썸네일 포함용 - my-applications 전용)
+         */
+        @Data
+        @Builder
+        @NoArgsConstructor
+        @AllArgsConstructor
+        @Schema(description = "썸네일 포함 캠페인 정보")
+        public static class CampaignInfoWithThumbnail {
+            @Schema(description = "캠페인 ID", example = "42")
+            private Long id;
+            
+            @Schema(description = "캠페인 제목", example = "신상 음료 체험단 모집")
+            private String title;
+            
+            @Schema(description = "캠페인 썸네일 URL", example = "https://example.com/thumbnail.jpg")
+            private String thumbnailUrl;
+            
+            @Schema(description = "제품 간단 정보", example = "시그니처 음료 2잔 무료 제공")
+            private String productShortInfo;
+            
+            @Schema(description = "캠페인 타입", example = "인스타그램")
+            private String campaignType;
         }
         
         /**
@@ -108,12 +138,55 @@ public class ApplicationListResponseWrapper {
         }
         
         /**
-         * ApplicationResponse에서 변환
+         * ApplicationResponse에서 변환 (목록용 - hasApplied 없음)
          */
         public static ApplicationInfoDTO fromApplicationResponse(ApplicationResponse response) {
             return ApplicationInfoDTO.builder()
                     .id(response.getId())
                     .applicationStatus(response.getApplicationStatus().toUpperCase()) // 상태를 대문자로 정규화
+                    .campaign(CampaignInfoWithThumbnail.builder()
+                            .id(response.getCampaignId())
+                            .title(response.getCampaignTitle())
+                            .thumbnailUrl(response.getCampaignThumbnailUrl()) // 썸네일 URL 추가
+                            .productShortInfo(response.getProductShortInfo()) // 제품 간단 정보 추가
+                            .campaignType(response.getCampaignType()) // 캠페인 타입 추가
+                            .build())
+                    .user(UserInfo.builder()
+                            .id(response.getUserId())
+                            .nickname(response.getUserNickname())
+                            .build())
+                    .build();
+        }
+        
+        /**
+         * ApplicationResponse에서 변환 (my-applications용 - 썸네일 포함)
+         */
+        public static ApplicationInfoDTO fromApplicationResponseWithThumbnail(ApplicationResponse response, String thumbnailUrl) {
+            return ApplicationInfoDTO.builder()
+                    .id(response.getId())
+                    .applicationStatus(response.getApplicationStatus().toUpperCase()) // 상태를 대문자로 정규화
+                    .campaign(CampaignInfoWithThumbnail.builder()
+                            .id(response.getCampaignId())
+                            .title(response.getCampaignTitle())
+                            .thumbnailUrl(thumbnailUrl)
+                            .productShortInfo(response.getProductShortInfo()) // 제품 간단 정보 추가
+                            .campaignType(response.getCampaignType()) // 캠페인 타입 추가
+                            .build())
+                    .user(UserInfo.builder()
+                            .id(response.getUserId())
+                            .nickname(response.getUserNickname())
+                            .build())
+                    .build();
+        }
+        
+        /**
+         * ApplicationResponse에서 변환 (신청 성공용 - hasApplied 포함)
+         */
+        public static ApplicationInfoDTO fromApplicationResponseWithApplied(ApplicationResponse response) {
+            return ApplicationInfoDTO.builder()
+                    .id(response.getId())
+                    .applicationStatus(response.getApplicationStatus().toUpperCase()) // 상태를 대문자로 정규화
+                    .hasApplied(true) // 신청 정보가 있으면 true
                     .campaign(CampaignInfo.builder()
                             .id(response.getCampaignId())
                             .title(response.getCampaignTitle())
@@ -126,10 +199,30 @@ public class ApplicationListResponseWrapper {
         }
         
         /**
-         * 신청하지 않은 경우의 DTO 생성
+         * ApplicationResponse에서 변환 (체크용 - hasApplied 포함)
+         */
+        public static ApplicationInfoDTO fromApplicationResponseForCheck(ApplicationResponse response) {
+            return ApplicationInfoDTO.builder()
+                    .id(response.getId())
+                    .applicationStatus(response.getApplicationStatus().toUpperCase()) // 상태를 대문자로 정규화
+                    .hasApplied(true) // 신청 정보가 있으면 true
+                    .campaign(CampaignInfo.builder()
+                            .id(response.getCampaignId())
+                            .title(response.getCampaignTitle())
+                            .build())
+                    .user(UserInfo.builder()
+                            .id(response.getUserId())
+                            .nickname(response.getUserNickname())
+                            .build())
+                    .build();
+        }
+        
+        /**
+         * 신청하지 않은 경우의 DTO 생성 (hasApplied 포함)
          */
         public static ApplicationInfoDTO notApplied() {
             return ApplicationInfoDTO.builder()
+                    .hasApplied(false) // 신청하지 않았으므로 false
                     .build();
         }
     }
