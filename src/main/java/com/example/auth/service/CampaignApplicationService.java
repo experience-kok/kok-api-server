@@ -1,16 +1,20 @@
 package com.example.auth.service;
 
 import com.example.auth.constant.ApplicationStatus;
+import com.example.auth.constant.UserRole;
 import com.example.auth.domain.Campaign;
 import com.example.auth.domain.CampaignApplication;
 import com.example.auth.domain.User;
+import com.example.auth.domain.UserSnsPlatform;
 import com.example.auth.dto.application.ApplicationResponse;
+import com.example.auth.dto.application.CampaignApplicantResponse;
 import com.example.auth.dto.common.PageResponse;
 import com.example.auth.exception.AccessDeniedException;
 import com.example.auth.exception.ResourceNotFoundException;
 import com.example.auth.repository.CampaignApplicationRepository;
 import com.example.auth.repository.CampaignRepository;
 import com.example.auth.repository.UserRepository;
+import com.example.auth.repository.UserSnsPlatformRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -36,6 +40,7 @@ public class CampaignApplicationService {
     private final CampaignApplicationRepository applicationRepository;
     private final CampaignRepository campaignRepository;
     private final UserRepository userRepository;
+    private final UserSnsPlatformRepository userSnsPlatformRepository;
 
     /**
      * 캠페인 신청을 생성합니다.
@@ -44,6 +49,7 @@ public class CampaignApplicationService {
      * @return 생성된 신청 정보
      * @throws ResourceNotFoundException 캠페인이나 사용자를 찾을 수 없는 경우
      * @throws IllegalStateException 이미 신청한 경우, 모집 마감된 경우
+     * @throws AccessDeniedException 권한이 없는 경우 (USER 역할이 아닌 경우)
      */
     @Transactional
     public ApplicationResponse createApplication(Long campaignId, Long userId) {
@@ -54,14 +60,19 @@ public class CampaignApplicationService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("사용자를 찾을 수 없습니다. ID: " + userId));
         
+        // 사용자 권한 검증: USER(인플루언서)만 캠페인 신청 가능
+        if (!UserRole.USER.getValue().equals(user.getRole())) {
+            throw new AccessDeniedException("인플루언서만 캠페인에 신청할 수 있습니다.");
+        }
+        
         // 이미 신청한 경우 체크
         if (applicationRepository.existsByUserAndCampaign(user, campaign)) {
             throw new IllegalStateException("이미 해당 캠페인에 신청하셨습니다.");
         }
         
-        // 모집 마감 체크
-        if (LocalDate.now().isAfter(campaign.getRecruitmentEndDate())) {
-            throw new IllegalStateException("모집이 마감된 캠페인입니다.");
+        // 신청 마감 체크 - applicationDeadlineDate 기준으로 수정
+        if (LocalDate.now().isAfter(campaign.getApplicationDeadlineDate())) {
+            throw new IllegalStateException("신청이 마감된 캠페인입니다.");
         }
         
         // 최대 인원 체크는 제거 - 최대 인원에 상관없이 신청 가능
@@ -193,8 +204,8 @@ public class CampaignApplicationService {
             String statusFilter = applicationStatus.toUpperCase();
             
             if ("EXPIRED".equals(statusFilter)) {
-                // EXPIRED 상태: 승인됐지만 모집기간이 끝난 캠페인
-                campaigns = campaignRepository.findByCreatorAndApprovalStatusAndRecruitmentEndDateBefore(
+                // EXPIRED 상태: 승인됐지만 신청 마감일이 지난 캠페인
+                campaigns = campaignRepository.findByCreatorAndApprovalStatusAndApplicationDeadlineDateBefore(
                     clientUser, 
                     Campaign.ApprovalStatus.APPROVED, 
                     LocalDate.now()
@@ -203,8 +214,8 @@ public class CampaignApplicationService {
                 try {
                     Campaign.ApprovalStatus approvalStatus = Campaign.ApprovalStatus.valueOf(statusFilter);
                     if (approvalStatus == Campaign.ApprovalStatus.APPROVED) {
-                        // APPROVED 상태: 승인되고 아직 모집기간이 끝나지 않은 캠페인
-                        campaigns = campaignRepository.findByCreatorAndApprovalStatusAndRecruitmentEndDateGreaterThanEqual(
+                        // APPROVED 상태: 승인되고 아직 신청 마감일이 지나지 않은 캠페인
+                        campaigns = campaignRepository.findByCreatorAndApprovalStatusAndApplicationDeadlineDateGreaterThanEqual(
                             clientUser, 
                             approvalStatus, 
                             LocalDate.now()
@@ -266,8 +277,8 @@ public class CampaignApplicationService {
             String statusFilter = applicationStatus.toUpperCase();
             
             if ("EXPIRED".equals(statusFilter)) {
-                // EXPIRED 상태: 승인됐지만 모집기간이 끝난 캠페인
-                campaigns = campaignRepository.findByCreatorAndApprovalStatusAndRecruitmentEndDateBefore(
+                // EXPIRED 상태: 승인됐지만 신청 마감일이 지난 캠페인
+                campaigns = campaignRepository.findByCreatorAndApprovalStatusAndApplicationDeadlineDateBefore(
                     clientUser, 
                     Campaign.ApprovalStatus.APPROVED, 
                     LocalDate.now(), 
@@ -277,8 +288,8 @@ public class CampaignApplicationService {
                 try {
                     Campaign.ApprovalStatus approvalStatus = Campaign.ApprovalStatus.valueOf(statusFilter);
                     if (approvalStatus == Campaign.ApprovalStatus.APPROVED) {
-                        // APPROVED 상태: 승인되고 아직 모집기간이 끝나지 않은 캠페인
-                        campaigns = campaignRepository.findByCreatorAndApprovalStatusAndRecruitmentEndDateGreaterThanEqual(
+                        // APPROVED 상태: 승인되고 아직 신청 마감일이 지나지 않은 캠페인
+                        campaigns = campaignRepository.findByCreatorAndApprovalStatusAndApplicationDeadlineDateGreaterThanEqual(
                             clientUser, 
                             approvalStatus, 
                             LocalDate.now(), 
@@ -343,21 +354,66 @@ public class CampaignApplicationService {
     }
 
     /**
-     * 사용자가 특정 캠페인에 이미 신청했는지 확인합니다.
+     * 특정 캠페인의 신청자 목록을 조회합니다. (CLIENT 전용)
      * @param campaignId 캠페인 ID
-     * @param userId 사용자 ID
-     * @return 신청 여부
+     * @param clientUserId CLIENT 사용자 ID (권한 확인용)
+     * @param page 페이지 번호 (0부터 시작)
+     * @param size 페이지 크기
+     * @param applicationStatus 신청 상태 필터 (선택사항)
+     * @return 페이징된 신청자 목록
+     * @throws ResourceNotFoundException 캠페인이나 사용자를 찾을 수 없는 경우
+     * @throws AccessDeniedException 권한이 없는 경우 (본인이 만든 캠페인이 아닌 경우)
      */
     @Transactional(readOnly = true)
-    public boolean hasUserApplied(Long campaignId, Long userId) {
-        Campaign campaign = campaignRepository.findById(campaignId).orElse(null);
-        User user = userRepository.findById(userId).orElse(null);
+    public PageResponse<CampaignApplicantResponse> getCampaignApplicants(Long campaignId, Long clientUserId, int page, int size, String applicationStatus) {
+        // 캠페인 조회 및 소유자 확인
+        Campaign campaign = campaignRepository.findById(campaignId)
+                .orElseThrow(() -> new ResourceNotFoundException("캠페인을 찾을 수 없습니다. ID: " + campaignId));
         
-        if (campaign == null || user == null) {
-            return false;
+        User clientUser = userRepository.findById(clientUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("사용자를 찾을 수 없습니다. ID: " + clientUserId));
+        
+        // 권한 체크: 본인이 만든 캠페인인지 확인
+        if (!campaign.getCreator().getId().equals(clientUserId)) {
+            throw new AccessDeniedException("본인이 만든 캠페인의 신청자만 조회할 수 있습니다.");
         }
         
-        return applicationRepository.existsByUserAndCampaign(user, campaign);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<CampaignApplication> applications;
+        
+        // applicationStatus 필터링
+        if (applicationStatus != null && !applicationStatus.trim().isEmpty()) {
+            try {
+                ApplicationStatus status = ApplicationStatus.valueOf(applicationStatus.toUpperCase());
+                applications = applicationRepository.findByCampaignAndApplicationStatus(campaign, status, pageable);
+            } catch (IllegalArgumentException e) {
+                log.warn("잘못된 신청 상태 값: {}", applicationStatus);
+                // 잘못된 상태값인 경우 빈 결과 반환
+                applications = Page.empty(pageable);
+            }
+        } else {
+            // 필터링 없이 모든 신청 조회
+            applications = applicationRepository.findByCampaign(campaign, pageable);
+        }
+        
+        // ApplicationResponse를 CampaignApplicantResponse로 변환
+        List<CampaignApplicantResponse> content = applications.getContent().stream()
+                .map(application -> {
+                    // 각 신청자의 SNS 플랫폼 정보 조회
+                    List<UserSnsPlatform> snsPlatforms = userSnsPlatformRepository.findByUserId(application.getUser().getId());
+                    return CampaignApplicantResponse.fromEntity(application, snsPlatforms);
+                })
+                .collect(Collectors.toList());
+        
+        return new PageResponse<>(
+                content,
+                applications.getNumber(),
+                applications.getSize(),
+                applications.getTotalPages(),
+                applications.getTotalElements(),
+                applications.isFirst(),
+                applications.isLast()
+        );
     }
     
     /**
@@ -382,5 +438,23 @@ public class CampaignApplicationService {
         return applicationRepository.findByUserAndCampaign(user, campaign)
                 .map(ApplicationResponse::fromEntity)
                 .orElse(null);
+    }
+    
+    /**
+     * 사용자가 특정 캠페인에 이미 신청했는지 확인합니다.
+     * @param campaignId 캠페인 ID
+     * @param userId 사용자 ID
+     * @return 신청 여부
+     */
+    @Transactional(readOnly = true)
+    public boolean hasUserApplied(Long campaignId, Long userId) {
+        Campaign campaign = campaignRepository.findById(campaignId).orElse(null);
+        User user = userRepository.findById(userId).orElse(null);
+        
+        if (campaign == null || user == null) {
+            return false;
+        }
+        
+        return applicationRepository.existsByUserAndCampaign(user, campaign);
     }
 }

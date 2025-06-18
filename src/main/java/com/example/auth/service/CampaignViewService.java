@@ -389,46 +389,53 @@ public class CampaignViewService {
     }
 
     /**
-     * 신청자 수 기준으로 정렬된 캠페인 페이지 조회
+     * 모든 캠페인을 모집상태 + 인기순으로 정렬 (승인 상태 무관)
      */
     private Page<Campaign> getCampaignPageSortedByCurrentApplicants(String categoryType, String campaignType,
                                                                     boolean onlyActive, Pageable pageable) {
+        LocalDate currentDate = LocalDate.now();
+        
         if (categoryType != null && !categoryType.isEmpty()) {
             CampaignCategory.CategoryType categoryTypeEnum = convertCategoryType(categoryType);
             if (categoryTypeEnum != null) {
-                return campaignRepository.findByCategoryCategoryTypeOrderByCurrentApplicantsDesc(categoryTypeEnum, pageable);
+                return campaignRepository.findByCategoryCategoryTypeOrderByRecruitmentStatusAndPopularity(
+                        categoryTypeEnum, currentDate, pageable);
             }
         } else if (campaignType != null && !campaignType.isEmpty()) {
-            // 캠페인 타입별 조회 (신청 많은 순)
+            // 캠페인 타입별 조회는 기존 메소드 사용 (필요시 추가 구현)
             return campaignRepository.findByCampaignTypeOrderByCurrentApplicantsDesc(campaignType, pageable);
         }
-        // 모든 캠페인 조회 (신청 많은 순)
-        return campaignRepository.findAllOrderByCurrentApplicantsDesc(pageable);
+        // 모든 캠페인 조회 (모집상태 + 인기순)
+        return campaignRepository.findAllOrderByRecruitmentStatusAndPopularity(currentDate, pageable);
     }
 
     /**
-     * 기본 정렬 방식으로 캠페인 페이지 조회
+     * 모든 캠페인을 모집상태 + 최신순으로 정렬 (승인 상태 무관)
      */
     private Page<Campaign> getCampaignPageWithStandardSort(String categoryType, String campaignType,
                                                            boolean onlyActive, Pageable pageable) {
+        LocalDate currentDate = LocalDate.now();
+        
         if (categoryType != null && !categoryType.isEmpty()) {
             CampaignCategory.CategoryType categoryTypeEnum = convertCategoryType(categoryType);
             if (categoryTypeEnum != null) {
-                return campaignRepository.findByCategoryCategoryType(categoryTypeEnum, pageable);
+                return campaignRepository.findByCategoryCategoryTypeOrderByRecruitmentStatusAndLatest(
+                        categoryTypeEnum, currentDate, pageable);
             }
         } else if (campaignType != null && !campaignType.isEmpty()) {
-            // 캠페인 타입별 조회
+            // 캠페인 타입별 조회는 기존 메소드 사용 (필요시 추가 구현)
             return campaignRepository.findByCampaignType(campaignType, pageable);
         }
-        // 모든 캠페인 조회
-        return campaignRepository.findAll(pageable);
+        // 모든 캠페인 조회 (모집상태 + 최신순)
+        return campaignRepository.findAllOrderByRecruitmentStatusAndLatest(currentDate, pageable);
     }
 
     /**
-     * 카테고리명 포함하여 신청자 수 기준으로 정렬된 캠페인 페이지 조회
+     * 카테고리명 포함하여 모집상태 + 인기순으로 정렬된 캠페인 페이지 조회
      */
     private Page<Campaign> getCampaignPageSortedByCurrentApplicantsWithFilters(String categoryType, String categoryName, String campaignType,
                                                                     boolean onlyActive, Pageable pageable) {
+        LocalDate currentDate = LocalDate.now();
         CampaignCategory.CategoryType categoryTypeEnum = convertCategoryType(categoryType);
         
         // 카테고리 타입과 카테고리명 모두 있는 경우
@@ -438,7 +445,8 @@ public class CampaignViewService {
         }
         // 카테고리 타입만 있는 경우
         else if (categoryTypeEnum != null) {
-            return campaignRepository.findByCategoryCategoryTypeOrderByCurrentApplicantsDesc(categoryTypeEnum, pageable);
+            return campaignRepository.findByCategoryCategoryTypeOrderByRecruitmentStatusAndPopularity(
+                    categoryTypeEnum, currentDate, pageable);
         }
         // 캠페인 타입만 있는 경우
         else if (campaignType != null && !campaignType.isEmpty()) {
@@ -446,15 +454,16 @@ public class CampaignViewService {
         }
         // 필터 없이 모든 캠페인
         else {
-            return campaignRepository.findAllOrderByCurrentApplicantsDesc(pageable);
+            return campaignRepository.findAllOrderByRecruitmentStatusAndPopularity(currentDate, pageable);
         }
     }
 
     /**
-     * 카테고리명 포함하여 기본 정렬 방식으로 캠페인 페이지 조회
+     * 카테고리명 포함하여 모집상태 + 최신순으로 정렬된 캠페인 페이지 조회
      */
     private Page<Campaign> getCampaignPageWithStandardSortWithFilters(String categoryType, String categoryName, String campaignType,
                                                            boolean onlyActive, Pageable pageable) {
+        LocalDate currentDate = LocalDate.now();
         CampaignCategory.CategoryType categoryTypeEnum = convertCategoryType(categoryType);
         
         // 카테고리 타입과 카테고리명 모두 있는 경우
@@ -464,7 +473,8 @@ public class CampaignViewService {
         }
         // 카테고리 타입만 있는 경우
         else if (categoryTypeEnum != null) {
-            return campaignRepository.findByCategoryCategoryType(categoryTypeEnum, pageable);
+            return campaignRepository.findByCategoryCategoryTypeOrderByRecruitmentStatusAndLatest(
+                    categoryTypeEnum, currentDate, pageable);
         }
         // 캠페인 타입만 있는 경우
         else if (campaignType != null && !campaignType.isEmpty()) {
@@ -472,7 +482,7 @@ public class CampaignViewService {
         }
         // 필터 없이 모든 캠페인
         else {
-            return campaignRepository.findAll(pageable);
+            return campaignRepository.findAllOrderByRecruitmentStatusAndLatest(currentDate, pageable);
         }
     }
 
@@ -563,7 +573,7 @@ public class CampaignViewService {
     }
 
     /**
-     * 키워드로 캠페인 검색 (최신순 고정)
+     * 키워드로 캠페인 검색 (모집상태 + 최신순 고정)
      */
     @Transactional(readOnly = true)
     public PageResponse<CampaignListSimpleResponse> searchCampaigns(
@@ -571,12 +581,13 @@ public class CampaignViewService {
         
         log.info("캠페인 검색 실행 - keyword: {}, page: {}, size: {}", keyword, page, size);
         
-        // 최신순으로 고정
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        // 모집상태 + 최신순으로 고정
+        Pageable pageable = PageRequest.of(page, size);
+        LocalDate currentDate = LocalDate.now();
         
-        log.info("최신순 정렬로 검색 실행");
-        Page<Campaign> campaignPage = campaignRepository.searchByKeyword(
-                keyword, null, null, null, pageable);
+        log.info("모집상태 + 최신순 정렬로 검색 실행");
+        Page<Campaign> campaignPage = campaignRepository.searchByKeywordOrderByRecruitmentStatusAndLatest(
+                keyword, null, null, null, currentDate, pageable);
 
         log.info("검색 결과 - 총 {}개 캠페인 발견, 현재 페이지 {}개", 
                 campaignPage.getTotalElements(), campaignPage.getNumberOfElements());

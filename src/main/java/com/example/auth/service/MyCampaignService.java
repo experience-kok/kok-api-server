@@ -342,11 +342,11 @@ public class MyCampaignService {
         
         LocalDate currentDate = LocalDate.now();
         LocalDate startDate = campaign.getRecruitmentStartDate();
-        LocalDate endDate = campaign.getRecruitmentEndDate();
+        LocalDate deadlineDate = campaign.getApplicationDeadlineDate(); // ✅ 수정: recruitmentEndDate → applicationDeadlineDate
         
         if (currentDate.isBefore(startDate)) {
             return "SCHEDULED"; // 시작 전
-        } else if (currentDate.isAfter(endDate)) {
+        } else if (currentDate.isAfter(deadlineDate)) { // ✅ 수정: endDate → deadlineDate
             return "EXPIRED"; // 만료됨
         } else {
             return "ACTIVE"; // 진행중

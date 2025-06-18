@@ -41,12 +41,24 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
     List<Campaign> findByCreatorAndApprovalStatus(User creator, Campaign.ApprovalStatus approvalStatus);
     Page<Campaign> findByCreatorAndApprovalStatus(User creator, Campaign.ApprovalStatus approvalStatus, Pageable pageable);
     
-    // 생성자, 승인 상태, 모집 마감일로 캠페인 조회 (EXPIRED 필터용)
+    // 생성자, 승인 상태, 신청 마감일로 캠페인 조회 (EXPIRED 필터용)
+    List<Campaign> findByCreatorAndApprovalStatusAndApplicationDeadlineDateBefore(User creator, Campaign.ApprovalStatus approvalStatus, LocalDate date);
+    Page<Campaign> findByCreatorAndApprovalStatusAndApplicationDeadlineDateBefore(User creator, Campaign.ApprovalStatus approvalStatus, LocalDate date, Pageable pageable);
+    
+    // 생성자, 승인 상태, 신청 마감일로 캠페인 조회 (APPROVED 필터용 - 아직 만료되지 않은 캠페인)
+    List<Campaign> findByCreatorAndApprovalStatusAndApplicationDeadlineDateGreaterThanEqual(User creator, Campaign.ApprovalStatus approvalStatus, LocalDate date);
+    Page<Campaign> findByCreatorAndApprovalStatusAndApplicationDeadlineDateGreaterThanEqual(User creator, Campaign.ApprovalStatus approvalStatus, LocalDate date, Pageable pageable);
+    
+    // 생성자, 승인 상태, 모집 마감일로 캠페인 조회 (EXPIRED 필터용) - DEPRECATED: 잘못된 날짜 필드 사용
+    @Deprecated
     List<Campaign> findByCreatorAndApprovalStatusAndRecruitmentEndDateBefore(User creator, Campaign.ApprovalStatus approvalStatus, LocalDate date);
+    @Deprecated
     Page<Campaign> findByCreatorAndApprovalStatusAndRecruitmentEndDateBefore(User creator, Campaign.ApprovalStatus approvalStatus, LocalDate date, Pageable pageable);
     
-    // 생성자, 승인 상태, 모집 마감일로 캠페인 조회 (APPROVED 필터용 - 아직 만료되지 않은 캠페인)
+    // 생성자, 승인 상태, 모집 마감일로 캠페인 조회 (APPROVED 필터용 - 아직 만료되지 않은 캠페인) - DEPRECATED: 잘못된 날짜 필드 사용
+    @Deprecated
     List<Campaign> findByCreatorAndApprovalStatusAndRecruitmentEndDateGreaterThanEqual(User creator, Campaign.ApprovalStatus approvalStatus, LocalDate date);
+    @Deprecated
     Page<Campaign> findByCreatorAndApprovalStatusAndRecruitmentEndDateGreaterThanEqual(User creator, Campaign.ApprovalStatus approvalStatus, LocalDate date, Pageable pageable);
     
     // 업체별 캠페인 조회 (1:N 관계)
@@ -404,7 +416,7 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
     @Query("SELECT COUNT(c) FROM Campaign c " +
            "WHERE c.creator.id = :creatorId " +
            "AND c.approvalStatus = 'APPROVED' " +
-           "AND c.recruitmentEndDate < :currentDate")
+           "AND c.applicationDeadlineDate < :currentDate")
     Long countExpiredByCreatorId(@Param("creatorId") Long creatorId, @Param("currentDate") LocalDate currentDate);
     
     /**
@@ -426,7 +438,7 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
            "JOIN FETCH c.company comp " +
            "WHERE c.creator.id = :creatorId " +
            "AND c.approvalStatus = 'APPROVED' " +
-           "AND c.recruitmentEndDate < :currentDate " +
+           "AND c.applicationDeadlineDate < :currentDate " +
            "ORDER BY c.createdAt DESC")
     Page<Campaign> findExpiredByCreatorId(@Param("creatorId") Long creatorId, 
                                         @Param("currentDate") LocalDate currentDate, 
@@ -461,7 +473,7 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
            "WHERE (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
            "GROUP BY c.id " +
            "ORDER BY " +
-           "CASE WHEN c.recruitmentEndDate >= :currentDate THEN 0 ELSE 1 END, " +
+           "CASE WHEN c.applicationDeadlineDate >= :currentDate THEN 0 ELSE 1 END, " +
            "COUNT(ca.id) DESC, " +
            "c.createdAt DESC")
     Page<Campaign> findAllOrderByRecruitmentStatusAndPopularity(
@@ -470,7 +482,7 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
     // 모든 캠페인을 모집상태 + 최신순으로 정렬 (승인 상태 무관)
     @Query("SELECT c FROM Campaign c " +
            "ORDER BY " +
-           "CASE WHEN c.recruitmentEndDate >= :currentDate THEN 0 ELSE 1 END, " +
+           "CASE WHEN c.applicationDeadlineDate >= :currentDate THEN 0 ELSE 1 END, " +
            "c.createdAt DESC")
     Page<Campaign> findAllOrderByRecruitmentStatusAndLatest(
             @Param("currentDate") LocalDate currentDate, Pageable pageable);
@@ -482,7 +494,7 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
            "AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
            "GROUP BY c.id " +
            "ORDER BY " +
-           "CASE WHEN c.recruitmentEndDate >= :currentDate THEN 0 ELSE 1 END, " +
+           "CASE WHEN c.applicationDeadlineDate >= :currentDate THEN 0 ELSE 1 END, " +
            "COUNT(ca.id) DESC, " +
            "c.createdAt DESC")
     Page<Campaign> findByCategoryCategoryTypeOrderByRecruitmentStatusAndPopularity(
@@ -494,7 +506,7 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
     @Query("SELECT c FROM Campaign c " +
            "WHERE c.category.categoryType = :categoryType " +
            "ORDER BY " +
-           "CASE WHEN c.recruitmentEndDate >= :currentDate THEN 0 ELSE 1 END, " +
+           "CASE WHEN c.applicationDeadlineDate >= :currentDate THEN 0 ELSE 1 END, " +
            "c.createdAt DESC")
     Page<Campaign> findByCategoryCategoryTypeOrderByRecruitmentStatusAndLatest(
             @Param("categoryType") CampaignCategory.CategoryType categoryType,
@@ -508,7 +520,7 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
            "AND (:categoryName IS NULL OR c.category.categoryName = :categoryName) " +
            "AND (:campaignType IS NULL OR c.campaignType = :campaignType) " +
            "ORDER BY " +
-           "CASE WHEN c.recruitmentEndDate >= :currentDate THEN 0 ELSE 1 END, " +
+           "CASE WHEN c.applicationDeadlineDate >= :currentDate THEN 0 ELSE 1 END, " +
            "c.createdAt DESC")
     Page<Campaign> searchByKeywordOrderByRecruitmentStatusAndLatest(
             @Param("keyword") String keyword,

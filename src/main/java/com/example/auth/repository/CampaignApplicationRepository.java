@@ -89,13 +89,15 @@ public interface CampaignApplicationRepository extends JpaRepository<CampaignApp
     List<CampaignApplication> findByApplicationStatus(ApplicationStatus applicationStatus);
 
     /**
-     * 특정 캠페인의 특정 상태 신청 정보를 조회합니다.
+     * 특정 캠페인의 특정 상태 신청 정보를 페이징하여 조회합니다.
      * @param campaign 캠페인
      * @param applicationStatus 신청 상태
-     * @return 해당 캠페인의 해당 상태 신청 목록
+     * @param pageable 페이징 정보
+     * @return 해당 캠페인의 해당 상태 신청 목록 (페이징)
      */
-    List<CampaignApplication> findByCampaignAndApplicationStatus(Campaign campaign, 
-                                                               ApplicationStatus applicationStatus);
+    Page<CampaignApplication> findByCampaignAndApplicationStatus(Campaign campaign, 
+                                                               ApplicationStatus applicationStatus,
+                                                               Pageable pageable);
 
     /**
      * 특정 사용자의 특정 상태 신청 정보를 조회합니다.

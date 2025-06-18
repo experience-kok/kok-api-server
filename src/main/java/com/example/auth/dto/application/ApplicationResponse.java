@@ -45,6 +45,27 @@ public class ApplicationResponse {
     private String campaignTitle;
 
     @Schema(
+        description = "캠페인 썸네일 URL", 
+        example = "https://example.com/thumbnail.jpg",
+        title = "캠페인 썸네일 URL"
+    )
+    private String campaignThumbnailUrl;
+
+    @Schema(
+        description = "제품 간단 정보", 
+        example = "시그니처 음료 2잔 무료 제공",
+        title = "제품 간단 정보"
+    )
+    private String productShortInfo;
+
+    @Schema(
+        description = "캠페인 타입", 
+        example = "인스타그램",
+        title = "캠페인 타입"
+    )
+    private String campaignType;
+
+    @Schema(
         description = "신청한 사용자의 고유 식별자", 
         example = "5",
         title = "사용자 ID"
@@ -92,6 +113,9 @@ public class ApplicationResponse {
                 .id(application.getId())
                 .campaignId(application.getCampaign().getId())
                 .campaignTitle(application.getCampaign().getTitle())
+                .campaignThumbnailUrl(application.getCampaign().getThumbnailUrl())
+                .productShortInfo(application.getCampaign().getProductShortInfo())
+                .campaignType(application.getCampaign().getCampaignType())
                 .userId(application.getUser().getId())
                 .userNickname(application.getUser().getNickname())
                 .applicationStatus(application.getApplicationStatus().name().toLowerCase())
@@ -111,8 +135,8 @@ public class ApplicationResponse {
         // 캠페인 상태 결정 (만료 여부 체크)
         String campaignStatus;
         if (campaign.getApprovalStatus() == com.example.auth.domain.Campaign.ApprovalStatus.APPROVED 
-            && campaign.getRecruitmentEndDate().isBefore(java.time.LocalDate.now())) {
-            // 승인됐지만 모집기간이 끝난 경우 EXPIRED로 변환
+            && campaign.getApplicationDeadlineDate().isBefore(java.time.LocalDate.now())) {
+            // 승인됐지만 신청 마감일이 지난 경우 EXPIRED로 변환
             campaignStatus = "EXPIRED";
         } else {
             // 그 외의 경우는 원래 상태 그대로
@@ -123,6 +147,9 @@ public class ApplicationResponse {
                 .id(campaign.getId()) // 캠페인 ID를 신청 ID 자리에
                 .campaignId(campaign.getId())
                 .campaignTitle(campaign.getTitle())
+                .campaignThumbnailUrl(campaign.getThumbnailUrl())
+                .productShortInfo(campaign.getProductShortInfo())
+                .campaignType(campaign.getCampaignType())
                 .userId(creator.getId())
                 .userNickname(creator.getNickname())
                 .applicationStatus(campaignStatus.toLowerCase()) // 캠페인 상태 (만료 체크 포함)

@@ -1,9 +1,11 @@
 package com.example.auth.controller;
 
 import com.example.auth.common.BaseResponse;
+import com.example.auth.constant.UserRole;
 import com.example.auth.dto.campaign.*;
 import com.example.auth.dto.campaign.view.*;
 import com.example.auth.service.CampaignViewService;
+import com.example.auth.service.SearchAnalyticsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
@@ -26,6 +29,7 @@ import java.util.Map;
 public class CampaignViewController {
 
     private final CampaignViewService viewService;
+    private final SearchAnalyticsService searchAnalyticsService;
 
     // ===== 인기순/마감순 특화 API =====
 
@@ -530,6 +534,7 @@ public class CampaignViewController {
                     + "\n- **키워드**: 캠페인 제목에서 검색"
                     + "\n- **정렬**: 최신순으로 고정"
                     + "\n- **페이징**: 페이지별 조회 지원"
+                    + "\n- **통계 수집**: 검색어를 실시간 인기 검색어에 자동 반영"
                     + "\n\n### 사용 예시:"
                     + "\n- `keyword=맛집` - '맛집'이 포함된 캠페인 검색"
                     + "\n- `keyword=화장품` - '화장품' 캠페인을 최신순으로 검색"
@@ -562,6 +567,9 @@ public class CampaignViewController {
 
             log.info("캠페인 검색 요청 - keyword: {}, page: {}, size: {}, includePaging: {}",
                     keyword, page, size, includePaging);
+
+            // 검색 통계 수집
+            searchAnalyticsService.recordSearch(keyword.trim());
 
             // 최신순으로 고정
             var pageResponse = viewService.searchCampaigns(
