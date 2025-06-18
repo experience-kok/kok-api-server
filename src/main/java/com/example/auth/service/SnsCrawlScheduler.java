@@ -35,7 +35,6 @@ public class SnsCrawlScheduler {
                     // 각 플랫폼별 크롤링 수행
                     snsCrawlService.crawlSnsDataAsync(platform.getId());
                 } catch (Exception e) {
-                    // 개별 플랫폼 크롤링 실패 시 다음 플랫폼으로 진행
                     log.error("플랫폼 크롤링 실패 (작업 계속 진행): platformId={}, error={}",
                             platform.getId(), e.getMessage());
                 }

@@ -78,7 +78,8 @@ public class TrendingKeywordScheduler {
      * 매주 월요일 새벽 2시에 인기 검색어 통계 리셋
      * 오래된 데이터를 정리하여 최신 트렌드를 반영합니다.
      */
-    @Scheduled(cron = "0 0 2 * * MON") // 매주 월요일 새벽 2시
+    //@Scheduled(cron = "0 0 2 * * MON") // 매주 월요일 새벽 2시
+    @Scheduled(cron = "0 */5 * * * *") // 매 5분마다
     public void weeklyTrendingReset() {
         try {
             log.info("주간 인기 검색어 리셋 시작");
