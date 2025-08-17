@@ -44,372 +44,174 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
 
     Page<Campaign> findByCreatorAndApprovalStatus(User creator, Campaign.ApprovalStatus approvalStatus, Pageable pageable);
 
-    // 생성자, 승인 상태, 신청 마감일로 캠페인 조회 (EXPIRED 필터용)
-    List<Campaign> findByCreatorAndApprovalStatusAndApplicationDeadlineDateBefore(User creator, Campaign.ApprovalStatus approvalStatus, LocalDate date);
-
-    Page<Campaign> findByCreatorAndApprovalStatusAndApplicationDeadlineDateBefore(User creator, Campaign.ApprovalStatus approvalStatus, LocalDate date, Pageable pageable);
-
-    // 생성자, 승인 상태, 신청 마감일로 캠페인 조회 (APPROVED 필터용 - 아직 만료되지 않은 캠페인)
-    List<Campaign> findByCreatorAndApprovalStatusAndApplicationDeadlineDateGreaterThanEqual(User creator, Campaign.ApprovalStatus approvalStatus, LocalDate date);
-
-    Page<Campaign> findByCreatorAndApprovalStatusAndApplicationDeadlineDateGreaterThanEqual(User creator, Campaign.ApprovalStatus approvalStatus, LocalDate date, Pageable pageable);
-
-    // 생성자, 승인 상태, 모집 마감일로 캠페인 조회 (EXPIRED 필터용) - DEPRECATED: 잘못된 날짜 필드 사용
-    @Deprecated
+    // 생성자, 승인 상태, 모집 마감일로 캠페인 조회 (EXPIRED 필터용)
     List<Campaign> findByCreatorAndApprovalStatusAndRecruitmentEndDateBefore(User creator, Campaign.ApprovalStatus approvalStatus, LocalDate date);
 
-    @Deprecated
     Page<Campaign> findByCreatorAndApprovalStatusAndRecruitmentEndDateBefore(User creator, Campaign.ApprovalStatus approvalStatus, LocalDate date, Pageable pageable);
 
-    // 생성자, 승인 상태, 모집 마감일로 캠페인 조회 (APPROVED 필터용 - 아직 만료되지 않은 캠페인) - DEPRECATED: 잘못된 날짜 필드 사용
-    @Deprecated
+    // 생성자, 승인 상태, 모집 마감일로 캠페인 조회 (APPROVED 필터용 - 아직 만료되지 않은 캠페인)
     List<Campaign> findByCreatorAndApprovalStatusAndRecruitmentEndDateGreaterThanEqual(User creator, Campaign.ApprovalStatus approvalStatus, LocalDate date);
 
-    @Deprecated
     Page<Campaign> findByCreatorAndApprovalStatusAndRecruitmentEndDateGreaterThanEqual(User creator, Campaign.ApprovalStatus approvalStatus, LocalDate date, Pageable pageable);
 
-    // 업체별 캠페인 조회 (1:N 관계)
-    List<Campaign> findByCompany(Company company);
+    
+    // 브랜드존 전용 쿼리들
+    long countByCompany(Company company);
+    
+    long countByCompanyAndApprovalStatusAndRecruitmentEndDateGreaterThanEqual(
+            Company company, Campaign.ApprovalStatus approvalStatus, LocalDate currentDate);
 
-    Page<Campaign> findByCompanyOrderByCreatedAtDesc(Company company, Pageable pageable);
-
-    // 승인 상태별 캠페인 조회
-    List<Campaign> findByApprovalStatus(Campaign.ApprovalStatus approvalStatus);
 
     Optional<Campaign> findByIdAndApprovalStatus(Long id, Campaign.ApprovalStatus approvalStatus);
 
-    Page<Campaign> findByApprovalStatus(Campaign.ApprovalStatus approvalStatus, Pageable pageable);
+    /**
+     * 특정 승인 상태 목록에 해당하는 캠페인 조회 (거절된 캠페인 제외용)
+     */
+    Optional<Campaign> findByIdAndApprovalStatusIn(Long id, List<Campaign.ApprovalStatus> approvalStatuses);
 
-    // 승인된 활성 캠페인 조회 (마감되지 않은 캠페인)
-    Page<Campaign> findByApprovalStatusAndApplicationDeadlineDateGreaterThanEqual(
-            Campaign.ApprovalStatus approvalStatus, LocalDate currentDate, Pageable pageable);
 
-    // 카테고리별 승인된 캠페인 페이지네이션 조회
-    Page<Campaign> findByApprovalStatusAndCategory(
-            Campaign.ApprovalStatus approvalStatus, CampaignCategory category, Pageable pageable);
-
-    Page<Campaign> findByApprovalStatusAndCategoryCategoryType(
-            Campaign.ApprovalStatus approvalStatus, CampaignCategory.CategoryType categoryType, Pageable pageable);
-
-    // 캠페인 타입별 승인된 캠페인 페이지네이션 조회
-    Page<Campaign> findByApprovalStatusAndCampaignType(
-            Campaign.ApprovalStatus approvalStatus, String campaignType, Pageable pageable);
-
-    // 캠페인 타입별 활성 캠페인 조회
-    Page<Campaign> findByApprovalStatusAndCampaignTypeAndApplicationDeadlineDateGreaterThanEqual(
-            Campaign.ApprovalStatus approvalStatus, String campaignType, LocalDate currentDate, Pageable pageable);
-
-    // 현재 유효한 신청 인원수 조회를 위한 쿼리 (PENDING 상태만)
-    @Query("SELECT COUNT(ca) FROM CampaignApplication ca WHERE ca.campaign.id = :campaignId AND ca.applicationStatus = 'PENDING'")
-    Integer countCurrentApplicationsByCampaignId(@Param("campaignId") Long campaignId);
-
-    // 여러 캠페인의 현재 신청 인원수를 배치로 조회
-    @Query("SELECT ca.campaign.id, COUNT(ca) FROM CampaignApplication ca " +
-            "WHERE ca.campaign.id IN :campaignIds AND ca.applicationStatus = 'PENDING' " +
-            "GROUP BY ca.campaign.id")
-    List<Object[]> countCurrentApplicationsByCampaignIds(@Param("campaignIds") List<Long> campaignIds);
-
-    // 신청 인원수로 정렬된 승인된 캠페인 조회 (신청 많은 순)
+    // 마감 임박 캠페인 조회용 - 복수 캠페인 타입, 상시 캠페인 제외
     @Query("SELECT c FROM Campaign c " +
-            "LEFT JOIN c.applications ca " +
-            "WHERE c.approvalStatus = :approvalStatus AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
-            "GROUP BY c.id " +
-            "ORDER BY COUNT(ca.id) DESC, c.createdAt DESC")
-    Page<Campaign> findByApprovalStatusOrderByCurrentApplicantsDesc(
-            @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus, Pageable pageable);
-
-    // 신청 인원수로 정렬된 활성 캠페인 조회 (신청 많은 순)
-    @Query("SELECT c FROM Campaign c " +
-            "LEFT JOIN c.applications ca " +
             "WHERE c.approvalStatus = :approvalStatus " +
-            "AND c.applicationDeadlineDate >= :currentDate " +
-            "AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
-            "GROUP BY c.id " +
-            "ORDER BY COUNT(ca.id) DESC, c.createdAt DESC")
-    Page<Campaign> findByApprovalStatusAndApplicationDeadlineDateGreaterThanEqualOrderByCurrentApplicantsDesc(
+            "AND c.isAlwaysOpen = false " +
+            "AND c.recruitmentEndDate >= :currentDate " +
+            "AND c.campaignType IN :campaignTypes " +
+            "ORDER BY c.recruitmentEndDate ASC")
+    Page<Campaign> findApprovedActiveByDeadlineSoonWithCampaignTypes(
             @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus,
-            @Param("currentDate") LocalDate currentDate, Pageable pageable);
+            @Param("currentDate") LocalDate currentDate,
+            @Param("campaignTypes") List<String> campaignTypes,
+            Pageable pageable);
 
-    // 카테고리별 신청 인원수로 정렬된 캠페인 조회 (신청 많은 순)
+    // 마감 임박 캠페인 조회용 - 카테고리 타입과 복수 캠페인 타입, 상시 캠페인 제외
     @Query("SELECT c FROM Campaign c " +
-            "LEFT JOIN c.applications ca " +
+            "WHERE c.approvalStatus = :approvalStatus " +
+            "AND c.isAlwaysOpen = false " +
+            "AND c.recruitmentEndDate >= :currentDate " +
+            "AND c.category.categoryType = :categoryType " +
+            "AND c.campaignType IN :campaignTypes " +
+            "ORDER BY c.recruitmentEndDate ASC")
+    Page<Campaign> findApprovedActiveByDeadlineSoonWithCategoryTypeAndCampaignTypes(
+            @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus,
+            @Param("currentDate") LocalDate currentDate,
+            @Param("categoryType") CampaignCategory.CategoryType categoryType,
+            @Param("campaignTypes") List<String> campaignTypes,
+            Pageable pageable);
+
+    // 마감 임박 캠페인 조회용 - 모든 필터 조건, 상시 캠페인 제외
+    @Query("SELECT c FROM Campaign c " +
+            "WHERE c.approvalStatus = :approvalStatus " +
+            "AND c.isAlwaysOpen = false " +
+            "AND c.recruitmentEndDate >= :currentDate " +
+            "AND c.category.categoryType = :categoryType " +
+            "AND c.category.categoryName = :categoryName " +
+            "AND c.campaignType IN :campaignTypes " +
+            "ORDER BY c.recruitmentEndDate ASC")
+    Page<Campaign> findApprovedActiveByDeadlineSoonWithAllFilters(
+            @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus,
+            @Param("currentDate") LocalDate currentDate,
+            @Param("categoryType") CampaignCategory.CategoryType categoryType,
+            @Param("categoryName") String categoryName,
+            @Param("campaignTypes") List<String> campaignTypes,
+            Pageable pageable);
+
+    // 마감 임박 캠페인 조회용 - 상시 캠페인 제외
+    @Query("SELECT c FROM Campaign c " +
+            "WHERE c.approvalStatus = :approvalStatus " +
+            "AND c.isAlwaysOpen = false " +
+            "AND c.recruitmentEndDate >= :currentDate")
+    Page<Campaign> findByApprovalStatusAndIsAlwaysOpenFalseAndRecruitmentEndDateGreaterThanEqual(
+            @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus, 
+            @Param("currentDate") LocalDate currentDate, 
+            Pageable pageable);
+
+    // 카테고리 타입으로 마감 임박 캠페인 조회 - 상시 캠페인 제외
+    @Query("SELECT c FROM Campaign c " +
             "WHERE c.approvalStatus = :approvalStatus " +
             "AND c.category.categoryType = :categoryType " +
-            "AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
-            "GROUP BY c.id " +
-            "ORDER BY COUNT(ca.id) DESC, c.createdAt DESC")
-    Page<Campaign> findByApprovalStatusAndCategoryCategoryTypeOrderByCurrentApplicantsDesc(
-            @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus,
-            @Param("categoryType") CampaignCategory.CategoryType categoryType, Pageable pageable);
+            "AND c.isAlwaysOpen = false " +
+            "AND c.recruitmentEndDate >= :currentDate")
+    Page<Campaign> findByApprovalStatusAndCategoryCategoryTypeAndIsAlwaysOpenFalseAndRecruitmentEndDateGreaterThanEqual(
+            @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus, 
+            @Param("categoryType") CampaignCategory.CategoryType categoryType,
+            @Param("currentDate") LocalDate currentDate, 
+            Pageable pageable);
 
-    // 캠페인 타입별 신청 인원수로 정렬된 캠페인 조회 (신청 많은 순)
+    // 캠페인 타입으로 마감 임박 캠페인 조회 - 상시 캠페인 제외
     @Query("SELECT c FROM Campaign c " +
-            "LEFT JOIN c.applications ca " +
             "WHERE c.approvalStatus = :approvalStatus " +
             "AND c.campaignType = :campaignType " +
-            "AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
-            "GROUP BY c.id " +
-            "ORDER BY COUNT(ca.id) DESC, c.createdAt DESC")
-    Page<Campaign> findByApprovalStatusAndCampaignTypeOrderByCurrentApplicantsDesc(
-            @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus,
-            @Param("campaignType") String campaignType, Pageable pageable);
+            "AND c.isAlwaysOpen = false " +
+            "AND c.recruitmentEndDate >= :currentDate")
+    Page<Campaign> findByApprovalStatusAndCampaignTypeAndIsAlwaysOpenFalseAndRecruitmentEndDateGreaterThanEqual(
+            @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus, 
+            @Param("campaignType") String campaignType, 
+            @Param("currentDate") LocalDate currentDate, 
+            Pageable pageable);
 
-    // ===== 세분화된 필터링을 위한 새로운 메서드들 =====
-
-    // 카테고리명으로 활성 캠페인 조회
-    Page<Campaign> findByApprovalStatusAndCategoryCategoryNameAndApplicationDeadlineDateGreaterThanEqual(
-            Campaign.ApprovalStatus approvalStatus, String categoryName, LocalDate currentDate, Pageable pageable);
-
-    // 카테고리 타입으로 활성 캠페인 조회  
-    Page<Campaign> findByApprovalStatusAndCategoryCategoryTypeAndApplicationDeadlineDateGreaterThanEqual(
-            Campaign.ApprovalStatus approvalStatus, CampaignCategory.CategoryType categoryType,
-            LocalDate currentDate, Pageable pageable);
-
-    // 카테고리 타입과 카테고리명으로 활성 캠페인 조회
-    Page<Campaign> findByApprovalStatusAndCategoryCategoryTypeAndCategoryCategoryNameAndApplicationDeadlineDateGreaterThanEqual(
-            Campaign.ApprovalStatus approvalStatus, CampaignCategory.CategoryType categoryType,
-            String categoryName, LocalDate currentDate, Pageable pageable);
-
-    // 카테고리 타입과 캠페인 타입들로 활성 캠페인 조회
-    Page<Campaign> findByApprovalStatusAndCategoryCategoryTypeAndCampaignTypeInAndApplicationDeadlineDateGreaterThanEqual(
-            Campaign.ApprovalStatus approvalStatus, CampaignCategory.CategoryType categoryType,
-            List<String> campaignTypes, LocalDate currentDate, Pageable pageable);
-
-    // 카테고리 타입, 카테고리명, 캠페인 타입들로 활성 캠페인 조회
-    Page<Campaign> findByApprovalStatusAndCategoryCategoryTypeAndCategoryCategoryNameAndCampaignTypeInAndApplicationDeadlineDateGreaterThanEqual(
-            Campaign.ApprovalStatus approvalStatus, CampaignCategory.CategoryType categoryType,
-            String categoryName, List<String> campaignTypes, LocalDate currentDate, Pageable pageable);
-
-    // 복합 조건 필터링 (카테고리명 + 캠페인 타입들)
+    // 카테고리 타입과 카테고리명으로 마감 임박 캠페인 조회 - 상시 캠페인 제외
     @Query("SELECT c FROM Campaign c " +
             "WHERE c.approvalStatus = :approvalStatus " +
             "AND c.category.categoryType = :categoryType " +
             "AND c.category.categoryName = :categoryName " +
-            "AND c.campaignType IN :campaignTypes " +
-            "AND c.applicationDeadlineDate >= :currentDate")
-    Page<Campaign> findFilteredCampaigns(
-            @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus,
+            "AND c.isAlwaysOpen = false " +
+            "AND c.recruitmentEndDate >= :currentDate")
+    Page<Campaign> findByApprovalStatusAndCategoryCategoryTypeAndCategoryCategoryNameAndIsAlwaysOpenFalseAndRecruitmentEndDateGreaterThanEqual(
+            @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus, 
             @Param("categoryType") CampaignCategory.CategoryType categoryType,
-            @Param("categoryName") String categoryName,
-            @Param("campaignTypes") List<String> campaignTypes,
-            @Param("currentDate") LocalDate currentDate,
+            @Param("categoryName") String categoryName, 
+            @Param("currentDate") LocalDate currentDate, 
             Pageable pageable);
 
-    // 캠페인 타입들만으로 필터링
+    // 승인된 활성 캠페인 조회 (마감되지 않은 캠페인 + 상시 캠페인)
+    @Query("SELECT c FROM Campaign c " +
+            "WHERE c.approvalStatus = :approvalStatus " +
+            "AND (c.isAlwaysOpen = true OR c.recruitmentEndDate >= :currentDate)")
+    Page<Campaign> findByApprovalStatusAndRecruitmentEndDateGreaterThanEqual(
+            @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus, 
+            @Param("currentDate") LocalDate currentDate, 
+            Pageable pageable);
+
+    // 캠페인 타입별 활성 캠페인 조회 (상시 캠페인 포함)
+    @Query("SELECT c FROM Campaign c " +
+            "WHERE c.approvalStatus = :approvalStatus " +
+            "AND c.campaignType = :campaignType " +
+            "AND (c.isAlwaysOpen = true OR c.recruitmentEndDate >= :currentDate)")
+    Page<Campaign> findByApprovalStatusAndCampaignTypeAndRecruitmentEndDateGreaterThanEqual(
+            @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus, 
+            @Param("campaignType") String campaignType, 
+            @Param("currentDate") LocalDate currentDate, 
+            Pageable pageable);
+
+    // 현재 유효한 신청 인원수 조회를 위한 쿼리 (APPLIED 상태)
+    @Query("SELECT COUNT(ca) FROM CampaignApplication ca WHERE ca.campaign.id = :campaignId AND ca.applicationStatus = 'APPLIED'")
+    Integer countCurrentApplicationsByCampaignId(@Param("campaignId") Long campaignId);
+
+
+    // 카테고리 타입으로 활성 캠페인 조회 (상시 캠페인 포함)
     @Query("SELECT c FROM Campaign c " +
             "WHERE c.approvalStatus = :approvalStatus " +
             "AND c.category.categoryType = :categoryType " +
-            "AND c.campaignType IN :campaignTypes " +
-            "AND c.applicationDeadlineDate >= :currentDate")
-    Page<Campaign> findFilteredCampaignsByTypes(
-            @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus,
+            "AND (c.isAlwaysOpen = true OR c.recruitmentEndDate >= :currentDate)")
+    Page<Campaign> findByApprovalStatusAndCategoryCategoryTypeAndRecruitmentEndDateGreaterThanEqual(
+            @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus, 
             @Param("categoryType") CampaignCategory.CategoryType categoryType,
-            @Param("campaignTypes") List<String> campaignTypes,
-            @Param("currentDate") LocalDate currentDate,
+            @Param("currentDate") LocalDate currentDate, 
             Pageable pageable);
 
-    // 복합 조건 + 인기순 정렬
+    // 카테고리 타입과 카테고리명으로 활성 캠페인 조회 (상시 캠페인 포함)
     @Query("SELECT c FROM Campaign c " +
-            "LEFT JOIN c.applications ca " +
             "WHERE c.approvalStatus = :approvalStatus " +
             "AND c.category.categoryType = :categoryType " +
             "AND c.category.categoryName = :categoryName " +
-            "AND c.campaignType IN :campaignTypes " +
-            "AND c.applicationDeadlineDate >= :currentDate " +
-            "AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
-            "GROUP BY c.id " +
-            "ORDER BY COUNT(ca.id) DESC, c.createdAt DESC")
-    Page<Campaign> findFilteredCampaignsOrderByPopularity(
-            @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus,
+            "AND (c.isAlwaysOpen = true OR c.recruitmentEndDate >= :currentDate)")
+    Page<Campaign> findByApprovalStatusAndCategoryCategoryTypeAndCategoryCategoryNameAndRecruitmentEndDateGreaterThanEqual(
+            @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus, 
             @Param("categoryType") CampaignCategory.CategoryType categoryType,
-            @Param("categoryName") String categoryName,
-            @Param("campaignTypes") List<String> campaignTypes,
-            @Param("currentDate") LocalDate currentDate,
+            @Param("categoryName") String categoryName, 
+            @Param("currentDate") LocalDate currentDate, 
             Pageable pageable);
 
-    // 캠페인 타입들만 + 인기순 정렬
-    @Query("SELECT c FROM Campaign c " +
-            "LEFT JOIN c.applications ca " +
-            "WHERE c.approvalStatus = :approvalStatus " +
-            "AND c.category.categoryType = :categoryType " +
-            "AND c.campaignType IN :campaignTypes " +
-            "AND c.applicationDeadlineDate >= :currentDate " +
-            "AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
-            "GROUP BY c.id " +
-            "ORDER BY COUNT(ca.id) DESC, c.createdAt DESC")
-    Page<Campaign> findFilteredCampaignsByTypesOrderByPopularity(
-            @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus,
-            @Param("categoryType") CampaignCategory.CategoryType categoryType,
-            @Param("campaignTypes") List<String> campaignTypes,
-            @Param("currentDate") LocalDate currentDate,
-            Pageable pageable);
-
-    // 카테고리명으로 인기순 정렬
-    @Query("SELECT c FROM Campaign c " +
-            "LEFT JOIN c.applications ca " +
-            "WHERE c.approvalStatus = :approvalStatus " +
-            "AND c.category.categoryName = :categoryName " +
-            "AND c.applicationDeadlineDate >= :currentDate " +
-            "AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
-            "GROUP BY c.id " +
-            "ORDER BY COUNT(ca.id) DESC, c.createdAt DESC")
-    Page<Campaign> findByApprovalStatusAndCategoryCategoryNameAndApplicationDeadlineDateGreaterThanEqualOrderByPopularity(
-            @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus,
-            @Param("categoryName") String categoryName,
-            @Param("currentDate") LocalDate currentDate, Pageable pageable);
-
-    // 카테고리 타입으로 인기순 정렬
-    @Query("SELECT c FROM Campaign c " +
-            "LEFT JOIN c.applications ca " +
-            "WHERE c.approvalStatus = :approvalStatus " +
-            "AND c.category.categoryType = :categoryType " +
-            "AND c.applicationDeadlineDate >= :currentDate " +
-            "AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
-            "GROUP BY c.id " +
-            "ORDER BY COUNT(ca.id) DESC, c.createdAt DESC")
-    Page<Campaign> findByApprovalStatusAndCategoryCategoryTypeAndApplicationDeadlineDateGreaterThanEqualOrderByPopularity(
-            @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus,
-            @Param("categoryType") CampaignCategory.CategoryType categoryType,
-            @Param("currentDate") LocalDate currentDate, Pageable pageable);
-
-    // 관리자용 - 승인 대기 중인 캠페인 조회
-    Page<Campaign> findByApprovalStatusOrderByCreatedAtDesc(
-            Campaign.ApprovalStatus approvalStatus, Pageable pageable);
-
-    // 관리자용 - 특정 사용자의 캠페인 조회
-    Page<Campaign> findByCreatorOrderByCreatedAtDesc(User creator, Pageable pageable);
-
-    // 관리자용 - 특정 기간 내 생성된 캠페인 조회
-    @Query("SELECT c FROM Campaign c WHERE c.createdAt >= :startDate AND c.createdAt <= :endDate ORDER BY c.createdAt DESC")
-    Page<Campaign> findByCreatedAtBetween(
-            @Param("startDate") java.time.ZonedDateTime startDate,
-            @Param("endDate") java.time.ZonedDateTime endDate,
-            Pageable pageable);
-
-    // ===== 승인 상태 무관 조회 메서드들 =====
-
-    // 카테고리 타입별 조회 (승인 상태 무관)
-    Page<Campaign> findByCategoryCategoryType(CampaignCategory.CategoryType categoryType, Pageable pageable);
-
-    // 캠페인 타입별 조회 (승인 상태 무관)
-    Page<Campaign> findByCampaignType(String campaignType, Pageable pageable);
-
-    // 카테고리 타입과 카테고리명으로 조회 (승인 상태 무관)
-    Page<Campaign> findByCategoryCategoryTypeAndCategoryCategoryName(
-            CampaignCategory.CategoryType categoryType, String categoryName, Pageable pageable);
-
-    // 카테고리 타입과 캠페인 타입들로 조회 (승인 상태 무관)
-    Page<Campaign> findByCategoryCategoryTypeAndCampaignTypeIn(
-            CampaignCategory.CategoryType categoryType, List<String> campaignTypes, Pageable pageable);
-
-    // 카테고리 타입, 카테고리명, 캠페인 타입들로 조회 (승인 상태 무관)
-    Page<Campaign> findByCategoryCategoryTypeAndCategoryCategoryNameAndCampaignTypeIn(
-            CampaignCategory.CategoryType categoryType, String categoryName, List<String> campaignTypes, Pageable pageable);
-
-    // ===== 승인 상태 무관 + 신청자 수 기준 정렬 메서드들 =====
-
-    // 모든 캠페인을 신청자 수 기준으로 정렬 (승인 상태 무관)
-    @Query("SELECT c FROM Campaign c " +
-            "LEFT JOIN c.applications ca " +
-            "WHERE (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
-            "GROUP BY c.id " +
-            "ORDER BY COUNT(ca.id) DESC, c.createdAt DESC")
-    Page<Campaign> findAllOrderByCurrentApplicantsDesc(Pageable pageable);
-
-    // 카테고리별 신청자 수 정렬 (승인 상태 무관)
-    @Query("SELECT c FROM Campaign c " +
-            "LEFT JOIN c.applications ca " +
-            "WHERE c.category.categoryType = :categoryType " +
-            "AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
-            "GROUP BY c.id " +
-            "ORDER BY COUNT(ca.id) DESC, c.createdAt DESC")
-    Page<Campaign> findByCategoryCategoryTypeOrderByCurrentApplicantsDesc(
-            @Param("categoryType") CampaignCategory.CategoryType categoryType, Pageable pageable);
-
-    // 캠페인 타입별 신청자 수 정렬 (승인 상태 무관)
-    @Query("SELECT c FROM Campaign c " +
-            "LEFT JOIN c.applications ca " +
-            "WHERE c.campaignType = :campaignType " +
-            "AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
-            "GROUP BY c.id " +
-            "ORDER BY COUNT(ca.id) DESC, c.createdAt DESC")
-    Page<Campaign> findByCampaignTypeOrderByCurrentApplicantsDesc(
-            @Param("campaignType") String campaignType, Pageable pageable);
-
-    // 카테고리 타입과 카테고리명으로 신청자 수 정렬 (승인 상태 무관)
-    @Query("SELECT c FROM Campaign c " +
-            "LEFT JOIN c.applications ca " +
-            "WHERE c.category.categoryType = :categoryType " +
-            "AND c.category.categoryName = :categoryName " +
-            "AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
-            "GROUP BY c.id " +
-            "ORDER BY COUNT(ca.id) DESC, c.createdAt DESC")
-    Page<Campaign> findByCategoryCategoryTypeAndCategoryCategoryNameOrderByCurrentApplicantsDesc(
-            @Param("categoryType") CampaignCategory.CategoryType categoryType,
-            @Param("categoryName") String categoryName, Pageable pageable);
-
-    // 카테고리 타입과 캠페인 타입들로 신청자 수 정렬 (승인 상태 무관)
-    @Query("SELECT c FROM Campaign c " +
-            "LEFT JOIN c.applications ca " +
-            "WHERE c.category.categoryType = :categoryType " +
-            "AND c.campaignType IN :campaignTypes " +
-            "AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
-            "GROUP BY c.id " +
-            "ORDER BY COUNT(ca.id) DESC, c.createdAt DESC")
-    Page<Campaign> findByCategoryCategoryTypeAndCampaignTypeInOrderByCurrentApplicantsDesc(
-            @Param("categoryType") CampaignCategory.CategoryType categoryType,
-            @Param("campaignTypes") List<String> campaignTypes, Pageable pageable);
-
-    // 카테고리 타입, 카테고리명, 캠페인 타입들로 신청자 수 정렬 (승인 상태 무관)
-    @Query("SELECT c FROM Campaign c " +
-            "LEFT JOIN c.applications ca " +
-            "WHERE c.category.categoryType = :categoryType " +
-            "AND c.category.categoryName = :categoryName " +
-            "AND c.campaignType IN :campaignTypes " +
-            "AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
-            "GROUP BY c.id " +
-            "ORDER BY COUNT(ca.id) DESC, c.createdAt DESC")
-    Page<Campaign> findByCategoryCategoryTypeAndCategoryCategoryNameAndCampaignTypeInOrderByCurrentApplicantsDesc(
-            @Param("categoryType") CampaignCategory.CategoryType categoryType,
-            @Param("categoryName") String categoryName,
-            @Param("campaignTypes") List<String> campaignTypes, Pageable pageable);
-
-    // ===== 캠페인 검색 메소드들 =====
-
-    /**
-     * 키워드로 캠페인 검색 (제목에서만 검색, 승인 상태 무관)
-     */
-    @Query("SELECT c FROM Campaign c " +
-            "WHERE LOWER(c.title) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
-            "AND (:categoryType IS NULL OR c.category.categoryType = :categoryType) " +
-            "AND (:categoryName IS NULL OR c.category.categoryName = :categoryName) " +
-            "AND (:campaignType IS NULL OR c.campaignType = :campaignType) " +
-            "ORDER BY c.createdAt DESC")
-    Page<Campaign> searchByKeyword(
-            @Param("keyword") String keyword,
-            @Param("categoryType") CampaignCategory.CategoryType categoryType,
-            @Param("categoryName") String categoryName,
-            @Param("campaignType") String campaignType,
-            Pageable pageable);
-
-    /**
-     * 키워드로 캠페인 검색 (제목에서만 검색, 인기순 정렬, 승인 상태 무관)
-     */
-    @Query("SELECT c FROM Campaign c " +
-            "LEFT JOIN c.applications ca " +
-            "WHERE LOWER(c.title) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
-            "AND (:categoryType IS NULL OR c.category.categoryType = :categoryType) " +
-            "AND (:categoryName IS NULL OR c.category.categoryName = :categoryName) " +
-            "AND (:campaignType IS NULL OR c.campaignType = :campaignType) " +
-            "AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
-            "GROUP BY c.id " +
-            "ORDER BY COUNT(ca.id) DESC, c.createdAt DESC")
-    Page<Campaign> searchByKeywordOrderByPopularity(
-            @Param("keyword") String keyword,
-            @Param("categoryType") CampaignCategory.CategoryType categoryType,
-            @Param("categoryName") String categoryName,
-            @Param("campaignType") String campaignType,
-            Pageable pageable);
 
     /**
      * CLIENT용 - 특정 생성자의 승인 상태별 캠페인 카운트를 조회합니다.
@@ -426,7 +228,7 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
     @Query("SELECT COUNT(c) FROM Campaign c " +
             "WHERE c.creator.id = :creatorId " +
             "AND c.approvalStatus = 'APPROVED' " +
-            "AND c.applicationDeadlineDate < :currentDate")
+            "AND c.recruitmentEndDate < :currentDate")
     Long countExpiredByCreatorId(@Param("creatorId") Long creatorId, @Param("currentDate") LocalDate currentDate);
 
     /**
@@ -448,7 +250,7 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
             "JOIN FETCH c.company comp " +
             "WHERE c.creator.id = :creatorId " +
             "AND c.approvalStatus = 'APPROVED' " +
-            "AND c.applicationDeadlineDate < :currentDate " +
+            "AND c.recruitmentEndDate < :currentDate " +
             "ORDER BY c.createdAt DESC")
     Page<Campaign> findExpiredByCreatorId(@Param("creatorId") Long creatorId,
                                           @Param("currentDate") LocalDate currentDate,
@@ -470,120 +272,196 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
             "COUNT(ca) as totalApplications, " +
             "SUM(CASE WHEN ca.applicationStatus = 'APPROVED' THEN 1 ELSE 0 END) as selectedCount, " +
             "SUM(CASE WHEN ca.applicationStatus = 'COMPLETED' THEN 1 ELSE 0 END) as completedCount, " +
-            "SUM(CASE WHEN ca.applicationStatus = 'PENDING' THEN 1 ELSE 0 END) as pendingCount " +
+            "SUM(CASE WHEN ca.applicationStatus = 'APPLIED' THEN 1 ELSE 0 END) as appliedCount " +
             "FROM CampaignApplication ca " +
             "WHERE ca.campaign.id = :campaignId")
     Object[] getCampaignStatistics(@Param("campaignId") Long campaignId);
 
-    // ===== 모집 기간 우선 정렬 메소드들 =====
 
-    // 모든 캠페인을 모집상태 + 인기순으로 정렬 (승인 상태 무관)
+    // ===== 개선된 두 단계 쿼리 방식 - 인기순 정렬을 위한 메서드들 =====
+
+    /**
+     * 1단계: 인기순으로 정렬된 캠페인 ID 목록 조회 (전체) - H2 호환
+     */
+    @Query(value = """
+        SELECT c.id, COUNT(CASE WHEN ca.application_status = 'APPLIED' THEN 1 END) as app_count
+        FROM campaigns c
+        LEFT JOIN campaign_applications ca ON c.id = ca.campaign_id
+        WHERE c.approval_status = :approvalStatus
+        AND c.recruitment_end_date >= :currentDate
+        GROUP BY c.id, c.created_at
+        ORDER BY app_count DESC, c.created_at DESC
+        LIMIT :limit OFFSET :offset
+    """, nativeQuery = true)
+    List<Object[]> findCampaignIdsOrderByPopularity(
+        @Param("approvalStatus") String approvalStatus,
+        @Param("currentDate") LocalDate currentDate,
+        @Param("limit") int limit,
+        @Param("offset") int offset
+    );
+
+    /**
+     * 1단계: 인기순으로 정렬된 캠페인 ID 목록 조회 (카테고리 타입 필터) - H2 호환
+     */
+    @Query(value = """
+        SELECT c.id, COUNT(CASE WHEN ca.application_status = 'APPLIED' THEN 1 END) as app_count
+        FROM campaigns c
+        JOIN campaign_categories cc ON c.category_id = cc.id
+        LEFT JOIN campaign_applications ca ON c.id = ca.campaign_id
+        WHERE c.approval_status = :approvalStatus
+        AND c.recruitment_end_date >= :currentDate
+        AND cc.category_type = :categoryType
+        GROUP BY c.id, c.created_at
+        ORDER BY app_count DESC, c.created_at DESC
+        LIMIT :limit OFFSET :offset
+    """, nativeQuery = true)
+    List<Object[]> findCampaignIdsByCategoryTypeOrderByPopularity(
+        @Param("approvalStatus") String approvalStatus,
+        @Param("currentDate") LocalDate currentDate,
+        @Param("categoryType") String categoryType,
+        @Param("limit") int limit,
+        @Param("offset") int offset
+    );
+
+    /**
+     * 1단계: 인기순으로 정렬된 캠페인 ID 목록 조회 (카테고리 타입 + 카테고리명 필터) - H2 호환
+     */
+    @Query(value = """
+        SELECT c.id, COUNT(CASE WHEN ca.application_status = 'APPLIED' THEN 1 END) as app_count
+        FROM campaigns c
+        JOIN campaign_categories cc ON c.category_id = cc.id
+        LEFT JOIN campaign_applications ca ON c.id = ca.campaign_id
+        WHERE c.approval_status = :approvalStatus
+        AND c.recruitment_end_date >= :currentDate
+        AND cc.category_type = :categoryType
+        AND cc.category_name = :categoryName
+        GROUP BY c.id, c.created_at
+        ORDER BY app_count DESC, c.created_at DESC
+        LIMIT :limit OFFSET :offset
+    """, nativeQuery = true)
+    List<Object[]> findCampaignIdsByCategoryTypeAndNameOrderByPopularity(
+        @Param("approvalStatus") String approvalStatus,
+        @Param("currentDate") LocalDate currentDate,
+        @Param("categoryType") String categoryType,
+        @Param("categoryName") String categoryName,
+        @Param("limit") int limit,
+        @Param("offset") int offset
+    );
+
+    /**
+     * 1단계: 인기순으로 정렬된 캠페인 ID 목록 조회 (캠페인 타입 필터) - H2 호환
+     */
+    @Query(value = """
+        SELECT c.id, COUNT(CASE WHEN ca.application_status = 'APPLIED' THEN 1 END) as app_count
+        FROM campaigns c
+        LEFT JOIN campaign_applications ca ON c.id = ca.campaign_id
+        WHERE c.approval_status = :approvalStatus
+        AND c.recruitment_end_date >= :currentDate
+        AND c.campaign_type = :campaignType
+        GROUP BY c.id, c.created_at
+        ORDER BY app_count DESC, c.created_at DESC
+        LIMIT :limit OFFSET :offset
+    """, nativeQuery = true)
+    List<Object[]> findCampaignIdsByCampaignTypeOrderByPopularity(
+        @Param("approvalStatus") String approvalStatus,
+        @Param("currentDate") LocalDate currentDate,
+        @Param("campaignType") String campaignType,
+        @Param("limit") int limit,
+        @Param("offset") int offset
+    );
+
+    /**
+     * 2단계: 캠페인 ID 목록으로 실제 캠페인 데이터 조회
+     */
     @Query("SELECT c FROM Campaign c " +
-            "LEFT JOIN c.applications ca " +
-            "WHERE (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
-            "GROUP BY c.id " +
-            "ORDER BY " +
-            "CASE WHEN c.applicationDeadlineDate >= :currentDate THEN 0 ELSE 1 END, " +
-            "COUNT(ca.id) DESC, " +
-            "c.createdAt DESC")
-    Page<Campaign> findAllOrderByRecruitmentStatusAndPopularity(
-            @Param("currentDate") LocalDate currentDate, Pageable pageable);
+           "JOIN FETCH c.category " +
+           "WHERE c.id IN :campaignIds")
+    List<Campaign> findCampaignsByIds(@Param("campaignIds") List<Long> campaignIds);
 
-    // 모든 캠페인을 모집상태 + 최신순으로 정렬 (승인 상태 무관)
-    @Query("SELECT c FROM Campaign c " +
-            "ORDER BY " +
-            "CASE WHEN c.applicationDeadlineDate >= :currentDate THEN 0 ELSE 1 END, " +
-            "c.createdAt DESC")
-    Page<Campaign> findAllOrderByRecruitmentStatusAndLatest(
-            @Param("currentDate") LocalDate currentDate, Pageable pageable);
+    /**
+     * 전체 개수 조회 (인기순용) - 전체
+     */
+    @Query("SELECT COUNT(DISTINCT c.id) " +
+           "FROM Campaign c " +
+           "WHERE c.approvalStatus = :approvalStatus " +
+           "AND c.recruitmentEndDate >= :currentDate")
+    long countCampaignsForPopular(
+        @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus,
+        @Param("currentDate") LocalDate currentDate
+    );
 
-    // 카테고리별 모집상태 + 인기순 정렬 (승인 상태 무관)
-    @Query("SELECT c FROM Campaign c " +
-            "LEFT JOIN c.applications ca " +
-            "WHERE c.category.categoryType = :categoryType " +
-            "AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
-            "GROUP BY c.id " +
-            "ORDER BY " +
-            "CASE WHEN c.applicationDeadlineDate >= :currentDate THEN 0 ELSE 1 END, " +
-            "COUNT(ca.id) DESC, " +
-            "c.createdAt DESC")
-    Page<Campaign> findByCategoryCategoryTypeOrderByRecruitmentStatusAndPopularity(
-            @Param("categoryType") CampaignCategory.CategoryType categoryType,
-            @Param("currentDate") LocalDate currentDate,
-            Pageable pageable);
+    /**
+     * 전체 개수 조회 (인기순용) - 카테고리 타입 필터
+     */
+    @Query("SELECT COUNT(DISTINCT c.id) " +
+           "FROM Campaign c " +
+           "WHERE c.approvalStatus = :approvalStatus " +
+           "AND c.recruitmentEndDate >= :currentDate " +
+           "AND c.category.categoryType = :categoryType")
+    long countCampaignsByCategoryTypeForPopular(
+        @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus,
+        @Param("currentDate") LocalDate currentDate,
+        @Param("categoryType") CampaignCategory.CategoryType categoryType
+    );
 
-    // 카테고리별 모집상태 + 최신순 정렬 (승인 상태 무관)
-    @Query("SELECT c FROM Campaign c " +
-            "WHERE c.category.categoryType = :categoryType " +
-            "ORDER BY " +
-            "CASE WHEN c.applicationDeadlineDate >= :currentDate THEN 0 ELSE 1 END, " +
-            "c.createdAt DESC")
-    Page<Campaign> findByCategoryCategoryTypeOrderByRecruitmentStatusAndLatest(
-            @Param("categoryType") CampaignCategory.CategoryType categoryType,
-            @Param("currentDate") LocalDate currentDate,
-            Pageable pageable);
+    /**
+     * 전체 개수 조회 (인기순용) - 카테고리 타입 + 카테고리명 필터
+     */
+    @Query("SELECT COUNT(DISTINCT c.id) " +
+           "FROM Campaign c " +
+           "WHERE c.approvalStatus = :approvalStatus " +
+           "AND c.recruitmentEndDate >= :currentDate " +
+           "AND c.category.categoryType = :categoryType " +
+           "AND c.category.categoryName = :categoryName")
+    long countCampaignsByCategoryTypeAndNameForPopular(
+        @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus,
+        @Param("currentDate") LocalDate currentDate,
+        @Param("categoryType") CampaignCategory.CategoryType categoryType,
+        @Param("categoryName") String categoryName
+    );
 
-    // 검색 결과를 모집상태 + 최신순으로 정렬 (승인 상태 무관)
-    @Query("SELECT c FROM Campaign c " +
-            "WHERE LOWER(c.title) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
-            "AND (:categoryType IS NULL OR c.category.categoryType = :categoryType) " +
-            "AND (:categoryName IS NULL OR c.category.categoryName = :categoryName) " +
-            "AND (:campaignType IS NULL OR c.campaignType = :campaignType) " +
-            "ORDER BY " +
-            "CASE WHEN c.applicationDeadlineDate >= :currentDate THEN 0 ELSE 1 END, " +
-            "c.createdAt DESC")
-    Page<Campaign> searchByKeywordOrderByRecruitmentStatusAndLatest(
-            @Param("keyword") String keyword,
-            @Param("categoryType") CampaignCategory.CategoryType categoryType,
-            @Param("categoryName") String categoryName,
-            @Param("campaignType") String campaignType,
-            @Param("currentDate") LocalDate currentDate,
-            Pageable pageable);
+    // ===== 기존 승인된 + 활성 캠페인 전용 메서드들 (최신순 정렬용) =====
 
-    // ===== 승인된 + 활성 캠페인 전용 메서드들 (목록 조회 API용) =====
-
-    // 승인된 + 활성 + 인기순 (전체)
+    // 승인된 + 활성 + 인기순 (전체) - 모든 캠페인 포함하도록 수정, 상시 캠페인 포함
     @Query("SELECT c FROM Campaign c " +
             "LEFT JOIN c.applications ca " +
             "WHERE c.approvalStatus = :approvalStatus " +
-            "AND c.applicationDeadlineDate >= :currentDate " +
-            "AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
+            "AND (c.isAlwaysOpen = true OR c.recruitmentEndDate >= :currentDate) " +
             "GROUP BY c.id " +
-            "ORDER BY COUNT(ca.id) DESC, c.createdAt DESC")
+            "ORDER BY COUNT(CASE WHEN ca.applicationStatus = 'APPLIED' THEN 1 END) DESC, c.createdAt DESC")
     Page<Campaign> findApprovedActiveOrderByCurrentApplicantsDesc(
             @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus,
             @Param("currentDate") LocalDate currentDate,
             Pageable pageable);
 
-    // 승인된 + 활성 + 최신순 (전체)
+    // 승인된 + 활성 + 최신순 (전체) - 상시 캠페인 포함
     @Query("SELECT c FROM Campaign c " +
             "WHERE c.approvalStatus = :approvalStatus " +
-            "AND c.applicationDeadlineDate >= :currentDate " +
+            "AND (c.isAlwaysOpen = true OR c.recruitmentEndDate >= :currentDate) " +
             "ORDER BY c.createdAt DESC")
     Page<Campaign> findApprovedActiveOrderByLatest(
             @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus,
             @Param("currentDate") LocalDate currentDate,
             Pageable pageable);
 
-    // 승인된 + 활성 + 카테고리 타입 + 인기순
+    // 승인된 + 활성 + 카테고리 타입 + 인기순 - 모든 캠페인 포함하도록 수정, 상시 캠페인 포함
     @Query("SELECT c FROM Campaign c " +
             "LEFT JOIN c.applications ca " +
             "WHERE c.approvalStatus = :approvalStatus " +
-            "AND c.applicationDeadlineDate >= :currentDate " +
+            "AND (c.isAlwaysOpen = true OR c.recruitmentEndDate >= :currentDate) " +
             "AND c.category.categoryType = :categoryType " +
-            "AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
             "GROUP BY c.id " +
-            "ORDER BY COUNT(ca.id) DESC, c.createdAt DESC")
+            "ORDER BY COUNT(CASE WHEN ca.applicationStatus = 'APPLIED' THEN 1 END) DESC, c.createdAt DESC")
     Page<Campaign> findApprovedActiveByCategoryTypeOrderByCurrentApplicantsDesc(
             @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus,
             @Param("currentDate") LocalDate currentDate,
             @Param("categoryType") CampaignCategory.CategoryType categoryType,
             Pageable pageable);
 
-    // 승인된 + 활성 + 카테고리 타입 + 최신순
+    // 승인된 + 활성 + 카테고리 타입 + 최신순 - 상시 캠페인 포함
     @Query("SELECT c FROM Campaign c " +
             "WHERE c.approvalStatus = :approvalStatus " +
-            "AND c.applicationDeadlineDate >= :currentDate " +
+            "AND (c.isAlwaysOpen = true OR c.recruitmentEndDate >= :currentDate) " +
             "AND c.category.categoryType = :categoryType " +
             "ORDER BY c.createdAt DESC")
     Page<Campaign> findApprovedActiveByCategoryTypeOrderByLatest(
@@ -592,25 +470,24 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
             @Param("categoryType") CampaignCategory.CategoryType categoryType,
             Pageable pageable);
 
-    // 승인된 + 활성 + 캠페인 타입 + 인기순
+    // 승인된 + 활성 + 캠페인 타입 + 인기순 - 상시 캠페인 포함
     @Query("SELECT c FROM Campaign c " +
             "LEFT JOIN c.applications ca " +
             "WHERE c.approvalStatus = :approvalStatus " +
-            "AND c.applicationDeadlineDate >= :currentDate " +
+            "AND (c.isAlwaysOpen = true OR c.recruitmentEndDate >= :currentDate) " +
             "AND c.campaignType = :campaignType " +
-            "AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
             "GROUP BY c.id " +
-            "ORDER BY COUNT(ca.id) DESC, c.createdAt DESC")
+            "ORDER BY COUNT(CASE WHEN ca.applicationStatus = 'APPLIED' THEN 1 END) DESC, c.createdAt DESC")
     Page<Campaign> findApprovedActiveByCampaignTypeOrderByCurrentApplicantsDesc(
             @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus,
             @Param("currentDate") LocalDate currentDate,
             @Param("campaignType") String campaignType,
             Pageable pageable);
 
-    // 승인된 + 활성 + 캠페인 타입 + 최신순
+    // 승인된 + 활성 + 캠페인 타입 + 최신순 - 상시 캠페인 포함
     @Query("SELECT c FROM Campaign c " +
             "WHERE c.approvalStatus = :approvalStatus " +
-            "AND c.applicationDeadlineDate >= :currentDate " +
+            "AND (c.isAlwaysOpen = true OR c.recruitmentEndDate >= :currentDate) " +
             "AND c.campaignType = :campaignType " +
             "ORDER BY c.createdAt DESC")
     Page<Campaign> findApprovedActiveByCampaignTypeOrderByLatest(
@@ -619,16 +496,15 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
             @Param("campaignType") String campaignType,
             Pageable pageable);
 
-    // 승인된 + 활성 + 카테고리 타입과 카테고리명 + 인기순
+    // 승인된 + 활성 + 카테고리 타입과 카테고리명 + 인기순 - 상시 캠페인 포함
     @Query("SELECT c FROM Campaign c " +
             "LEFT JOIN c.applications ca " +
             "WHERE c.approvalStatus = :approvalStatus " +
-            "AND c.applicationDeadlineDate >= :currentDate " +
+            "AND (c.isAlwaysOpen = true OR c.recruitmentEndDate >= :currentDate) " +
             "AND c.category.categoryType = :categoryType " +
             "AND c.category.categoryName = :categoryName " +
-            "AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
             "GROUP BY c.id " +
-            "ORDER BY COUNT(ca.id) DESC, c.createdAt DESC")
+            "ORDER BY COUNT(CASE WHEN ca.applicationStatus = 'APPLIED' THEN 1 END) DESC, c.createdAt DESC")
     Page<Campaign> findApprovedActiveByCategoryTypeAndNameOrderByCurrentApplicantsDesc(
             @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus,
             @Param("currentDate") LocalDate currentDate,
@@ -636,10 +512,10 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
             @Param("categoryName") String categoryName,
             Pageable pageable);
 
-    // 승인된 + 활성 + 카테고리 타입과 카테고리명 + 최신순
+    // 승인된 + 활성 + 카테고리 타입과 카테고리명 + 최신순 - 상시 캠페인 포함
     @Query("SELECT c FROM Campaign c " +
             "WHERE c.approvalStatus = :approvalStatus " +
-            "AND c.applicationDeadlineDate >= :currentDate " +
+            "AND (c.isAlwaysOpen = true OR c.recruitmentEndDate >= :currentDate) " +
             "AND c.category.categoryType = :categoryType " +
             "AND c.category.categoryName = :categoryName " +
             "ORDER BY c.createdAt DESC")
@@ -650,16 +526,15 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
             @Param("categoryName") String categoryName,
             Pageable pageable);
 
-    // 승인된 + 활성 + 카테고리 타입과 캠페인 타입들 + 인기순
+    // 승인된 + 활성 + 카테고리 타입과 캠페인 타입들 + 인기순 - 상시 캠페인 포함
     @Query("SELECT c FROM Campaign c " +
             "LEFT JOIN c.applications ca " +
             "WHERE c.approvalStatus = :approvalStatus " +
-            "AND c.applicationDeadlineDate >= :currentDate " +
+            "AND (c.isAlwaysOpen = true OR c.recruitmentEndDate >= :currentDate) " +
             "AND c.category.categoryType = :categoryType " +
             "AND c.campaignType IN :campaignTypes " +
-            "AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
             "GROUP BY c.id " +
-            "ORDER BY COUNT(ca.id) DESC, c.createdAt DESC")
+            "ORDER BY COUNT(CASE WHEN ca.applicationStatus = 'APPLIED' THEN 1 END) DESC, c.createdAt DESC")
     Page<Campaign> findApprovedActiveByCategoryTypeAndCampaignTypesOrderByCurrentApplicantsDesc(
             @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus,
             @Param("currentDate") LocalDate currentDate,
@@ -667,10 +542,10 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
             @Param("campaignTypes") List<String> campaignTypes,
             Pageable pageable);
 
-    // 승인된 + 활성 + 카테고리 타입과 캠페인 타입들 + 최신순
+    // 승인된 + 활성 + 카테고리 타입과 캠페인 타입들 + 최신순 - 상시 캠페인 포함
     @Query("SELECT c FROM Campaign c " +
             "WHERE c.approvalStatus = :approvalStatus " +
-            "AND c.applicationDeadlineDate >= :currentDate " +
+            "AND (c.isAlwaysOpen = true OR c.recruitmentEndDate >= :currentDate) " +
             "AND c.category.categoryType = :categoryType " +
             "AND c.campaignType IN :campaignTypes " +
             "ORDER BY c.createdAt DESC")
@@ -681,17 +556,16 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
             @Param("campaignTypes") List<String> campaignTypes,
             Pageable pageable);
 
-    // 승인된 + 활성 + 카테고리 타입, 카테고리명, 캠페인 타입들 + 인기순
+    // 승인된 + 활성 + 카테고리 타입, 카테고리명, 캠페인 타입들 + 인기순 - 상시 캠페인 포함
     @Query("SELECT c FROM Campaign c " +
             "LEFT JOIN c.applications ca " +
             "WHERE c.approvalStatus = :approvalStatus " +
-            "AND c.applicationDeadlineDate >= :currentDate " +
+            "AND (c.isAlwaysOpen = true OR c.recruitmentEndDate >= :currentDate) " +
             "AND c.category.categoryType = :categoryType " +
             "AND c.category.categoryName = :categoryName " +
             "AND c.campaignType IN :campaignTypes " +
-            "AND (ca.applicationStatus = 'PENDING' OR ca IS NULL) " +
             "GROUP BY c.id " +
-            "ORDER BY COUNT(ca.id) DESC, c.createdAt DESC")
+            "ORDER BY COUNT(CASE WHEN ca.applicationStatus = 'APPLIED' THEN 1 END) DESC, c.createdAt DESC")
     Page<Campaign> findApprovedActiveByCategoryTypeAndNameAndCampaignTypesOrderByCurrentApplicantsDesc(
             @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus,
             @Param("currentDate") LocalDate currentDate,
@@ -700,10 +574,10 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
             @Param("campaignTypes") List<String> campaignTypes,
             Pageable pageable);
 
-    // 승인된 + 활성 + 카테고리 타입, 카테고리명, 캠페인 타입들 + 최신순
+    // 승인된 + 활성 + 카테고리 타입, 카테고리명, 캠페인 타입들 + 최신순 - 상시 캠페인 포함
     @Query("SELECT c FROM Campaign c " +
             "WHERE c.approvalStatus = :approvalStatus " +
-            "AND c.applicationDeadlineDate >= :currentDate " +
+            "AND (c.isAlwaysOpen = true OR c.recruitmentEndDate >= :currentDate) " +
             "AND c.category.categoryType = :categoryType " +
             "AND c.category.categoryName = :categoryName " +
             "AND c.campaignType IN :campaignTypes " +
@@ -716,10 +590,10 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
             @Param("campaignTypes") List<String> campaignTypes,
             Pageable pageable);
 
-    // 승인된 + 활성 + 검색 + 최신순
+    // 승인된 + 활성 + 검색 + 최신순 - 상시 캠페인 포함
     @Query("SELECT c FROM Campaign c " +
             "WHERE c.approvalStatus = :approvalStatus " +
-            "AND c.applicationDeadlineDate >= :currentDate " +
+            "AND (c.isAlwaysOpen = true OR c.recruitmentEndDate >= :currentDate) " +
             "AND LOWER(c.title) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
             "AND (:categoryType IS NULL OR c.category.categoryType = :categoryType) " +
             "AND (:categoryName IS NULL OR c.category.categoryName = :categoryName) " +
@@ -733,4 +607,385 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
             @Param("categoryName") String categoryName,
             @Param("campaignType") String campaignType,
             Pageable pageable);
+
+    // 승인된 + 활성 + 검색 + 인기순 - 상시 캠페인 포함
+    @Query("SELECT c FROM Campaign c " +
+            "LEFT JOIN c.applications ca " +
+            "WHERE c.approvalStatus = :approvalStatus " +
+            "AND (c.isAlwaysOpen = true OR c.recruitmentEndDate >= :currentDate) " +
+            "AND LOWER(c.title) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+            "GROUP BY c.id " +
+            "ORDER BY COUNT(CASE WHEN ca.applicationStatus = 'APPLIED' THEN 1 END) DESC, c.createdAt DESC")
+    Page<Campaign> searchApprovedActiveByKeywordOrderByPopularity(
+            @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus,
+            @Param("currentDate") LocalDate currentDate,
+            @Param("keyword") String keyword,
+            Pageable pageable);
+
+    // 승인된 + 활성 + 검색 + 플랫폼 필터 + 최신순 - 상시 캠페인 포함
+    @Query("SELECT c FROM Campaign c " +
+            "WHERE c.approvalStatus = :approvalStatus " +
+            "AND (c.isAlwaysOpen = true OR c.recruitmentEndDate >= :currentDate) " +
+            "AND LOWER(c.title) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+            "AND c.campaignType IN :campaignTypes " +
+            "ORDER BY c.createdAt DESC")
+    Page<Campaign> searchApprovedActiveByKeywordAndCampaignTypesOrderByLatest(
+            @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus,
+            @Param("currentDate") LocalDate currentDate,
+            @Param("keyword") String keyword,
+            @Param("campaignTypes") List<String> campaignTypes,
+            Pageable pageable);
+
+    // 승인된 + 활성 + 검색 + 플랫폼 필터 + 인기순 - 상시 캠페인 포함
+    @Query("SELECT c FROM Campaign c " +
+            "LEFT JOIN c.applications ca " +
+            "WHERE c.approvalStatus = :approvalStatus " +
+            "AND (c.isAlwaysOpen = true OR c.recruitmentEndDate >= :currentDate) " +
+            "AND LOWER(c.title) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+            "AND c.campaignType IN :campaignTypes " +
+            "GROUP BY c.id " +
+            "ORDER BY COUNT(CASE WHEN ca.applicationStatus = 'APPLIED' THEN 1 END) DESC, c.createdAt DESC")
+    Page<Campaign> searchApprovedActiveByKeywordAndCampaignTypesOrderByPopularity(
+            @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus,
+            @Param("currentDate") LocalDate currentDate,
+            @Param("keyword") String keyword,
+            @Param("campaignTypes") List<String> campaignTypes,
+            Pageable pageable);
+
+    // ===== N+1 문제 해결을 위한 최적화된 메서드들 =====
+
+    /**
+     * JOIN FETCH로 N+1 문제를 해결한 최적화된 인기순 조회
+     */
+    @Query("SELECT DISTINCT c FROM Campaign c " +
+            "JOIN FETCH c.category " +
+            "LEFT JOIN c.applications ca " +
+            "WHERE c.approvalStatus = :approvalStatus " +
+            "AND c.recruitmentEndDate >= :currentDate " +
+            "AND (:categoryType IS NULL OR c.category.categoryType = :categoryType) " +
+            "GROUP BY c.id, c.category.id " +
+            "ORDER BY COUNT(CASE WHEN ca.applicationStatus = 'APPLIED' THEN 1 END) DESC, c.createdAt DESC")
+    Page<Campaign> findApprovedActiveOrderByPopularityOptimized(
+            @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus,
+            @Param("currentDate") LocalDate currentDate,
+            @Param("categoryType") CampaignCategory.CategoryType categoryType,
+            Pageable pageable);
+
+    /**
+     * JOIN FETCH로 N+1 문제를 해결한 최적화된 최신순 조회
+     */
+    @Query("SELECT c FROM Campaign c " +
+            "JOIN FETCH c.category " +
+            "WHERE c.approvalStatus = :approvalStatus " +
+            "AND c.recruitmentEndDate >= :currentDate " +
+            "AND (:categoryType IS NULL OR c.category.categoryType = :categoryType) " +
+            "ORDER BY c.createdAt DESC")
+    Page<Campaign> findApprovedActiveOrderByLatestOptimized(
+            @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus,
+            @Param("currentDate") LocalDate currentDate,
+            @Param("categoryType") CampaignCategory.CategoryType categoryType,
+            Pageable pageable);
+
+    /**
+     * N+1 문제 해결을 위한 배치 단위 신청자 수 조회
+     */
+    @Query("SELECT ca.campaign.id, COUNT(ca) " +
+           "FROM CampaignApplication ca " +
+           "WHERE ca.campaign.id IN :campaignIds " +
+           "AND ca.applicationStatus = 'APPLIED' " +
+           "GROUP BY ca.campaign.id")
+    List<Object[]> countApplicationsByCampaignIds(@Param("campaignIds") List<Long> campaignIds);
+
+    /**
+     * N+1 문제 해결을 위한 최적화된 캠페인 + 신청자 수 조회 (인기순) - H2 호환, 상시 캠페인 포함
+     */
+    @Query(value = """
+        SELECT 
+            c.id,
+            c.title,
+            c.thumbnail_url,
+            c.recruitment_end_date,
+            c.max_applicants,
+            c.campaign_type,
+            c.product_short_info,
+            c.created_at,
+            cc.category_name,
+            cc.category_type,
+            COALESCE(app_counts.applied_count, 0) as current_applicants
+        FROM campaigns c
+        JOIN campaign_categories cc ON c.category_id = cc.id
+        LEFT JOIN (
+            SELECT 
+                campaign_id,
+                COUNT(*) as applied_count
+            FROM campaign_applications 
+            WHERE application_status = 'APPLIED'
+            GROUP BY campaign_id
+        ) app_counts ON c.id = app_counts.campaign_id
+        WHERE c.approval_status = :approvalStatus
+        AND (c.is_always_open = true OR c.recruitment_end_date >= :currentDate)
+        AND (:categoryType IS NULL OR cc.category_type = :categoryType)
+        AND (:categoryName IS NULL OR cc.category_name = :categoryName)
+        AND (:campaignType IS NULL OR c.campaign_type = :campaignType)
+        ORDER BY app_counts.applied_count DESC NULLS LAST, c.created_at DESC
+        """, 
+        countQuery = """
+            SELECT COUNT(*)
+            FROM campaigns c
+            JOIN campaign_categories cc ON c.category_id = cc.id
+            WHERE c.approval_status = :approvalStatus
+            AND (c.is_always_open = true OR c.recruitment_end_date >= :currentDate)
+            AND (:categoryType IS NULL OR cc.category_type = :categoryType)
+            AND (:categoryName IS NULL OR cc.category_name = :categoryName)
+            AND (:campaignType IS NULL OR c.campaign_type = :campaignType)
+        """,
+        nativeQuery = true)
+    Page<Object[]> findOptimizedCampaignListByPopularity(
+            @Param("approvalStatus") String approvalStatus,
+            @Param("currentDate") LocalDate currentDate,
+            @Param("categoryType") String categoryType,
+            @Param("categoryName") String categoryName,
+            @Param("campaignType") String campaignType,
+            Pageable pageable);
+
+    /**
+     * N+1 문제 해결을 위한 최적화된 캠페인 + 신청자 수 조회 (최신순) - H2 호환, 상시 캠페인 포함
+     */
+    @Query(value = """
+        SELECT 
+            c.id,
+            c.title,
+            c.thumbnail_url,
+            c.recruitment_end_date,
+            c.max_applicants,
+            c.campaign_type,
+            c.product_short_info,
+            c.created_at,
+            cc.category_name,
+            cc.category_type,
+            COALESCE(app_counts.applied_count, 0) as current_applicants
+        FROM campaigns c
+        JOIN campaign_categories cc ON c.category_id = cc.id
+        LEFT JOIN (
+            SELECT 
+                campaign_id,
+                COUNT(*) as applied_count
+            FROM campaign_applications 
+            WHERE application_status = 'APPLIED'
+            GROUP BY campaign_id
+        ) app_counts ON c.id = app_counts.campaign_id
+        WHERE c.approval_status = :approvalStatus
+        AND (c.is_always_open = true OR c.recruitment_end_date >= :currentDate)
+        AND (:categoryType IS NULL OR cc.category_type = :categoryType)
+        AND (:categoryName IS NULL OR cc.category_name = :categoryName)
+        AND (:campaignType IS NULL OR c.campaign_type = :campaignType)
+        ORDER BY c.created_at DESC
+        """, 
+        countQuery = """
+            SELECT COUNT(*)
+            FROM campaigns c
+            JOIN campaign_categories cc ON c.category_id = cc.id
+            WHERE c.approval_status = :approvalStatus
+            AND (c.is_always_open = true OR c.recruitment_end_date >= :currentDate)
+            AND (:categoryType IS NULL OR cc.category_type = :categoryType)
+            AND (:categoryName IS NULL OR cc.category_name = :categoryName)
+            AND (:campaignType IS NULL OR c.campaign_type = :campaignType)
+        """,
+        nativeQuery = true)
+    Page<Object[]> findOptimizedCampaignListByLatest(
+            @Param("approvalStatus") String approvalStatus,
+            @Param("currentDate") LocalDate currentDate,
+            @Param("categoryType") String categoryType,
+            @Param("categoryName") String categoryName,
+            @Param("campaignType") String campaignType,
+            Pageable pageable);
+
+    /**
+     * 복수 캠페인 타입을 지원하는 최적화된 캠페인 + 신청자 수 조회 (인기순) - 상시 캠페인 포함
+     */
+    @Query(value = """
+        SELECT 
+            c.id,
+            c.title,
+            c.thumbnail_url,
+            c.recruitment_end_date,
+            c.max_applicants,
+            c.campaign_type,
+            c.product_short_info,
+            c.created_at,
+            cc.category_name,
+            cc.category_type,
+            COALESCE(app_counts.applied_count, 0) as current_applicants
+        FROM campaigns c
+        JOIN campaign_categories cc ON c.category_id = cc.id
+        LEFT JOIN (
+            SELECT 
+                campaign_id,
+                COUNT(*) as applied_count
+            FROM campaign_applications 
+            WHERE application_status = 'APPLIED'
+            GROUP BY campaign_id
+        ) app_counts ON c.id = app_counts.campaign_id
+        WHERE c.approval_status = :approvalStatus
+        AND (c.is_always_open = true OR c.recruitment_end_date >= :currentDate)
+        AND (:categoryType IS NULL OR cc.category_type = :categoryType)
+        AND (:categoryName IS NULL OR cc.category_name = :categoryName)
+        AND (COALESCE(:campaignTypesSize, 0) = 0 OR c.campaign_type = ANY(CAST(:campaignTypesArray AS text[])))
+        ORDER BY app_counts.applied_count DESC NULLS LAST, c.created_at DESC
+        """, 
+        countQuery = """
+            SELECT COUNT(*)
+            FROM campaigns c
+            JOIN campaign_categories cc ON c.category_id = cc.id
+            WHERE c.approval_status = :approvalStatus
+            AND (c.is_always_open = true OR c.recruitment_end_date >= :currentDate)
+            AND (:categoryType IS NULL OR cc.category_type = :categoryType)
+            AND (:categoryName IS NULL OR cc.category_name = :categoryName)
+            AND (COALESCE(:campaignTypesSize, 0) = 0 OR c.campaign_type = ANY(CAST(:campaignTypesArray AS text[])))
+        """,
+        nativeQuery = true)
+    Page<Object[]> findOptimizedCampaignListByPopularityWithTypes(
+            @Param("approvalStatus") String approvalStatus,
+            @Param("currentDate") LocalDate currentDate,
+            @Param("categoryType") String categoryType,
+            @Param("categoryName") String categoryName,
+            @Param("campaignTypesSize") Integer campaignTypesSize,
+            @Param("campaignTypesArray") String campaignTypesArray,
+            Pageable pageable);
+
+    /**
+     * 복수 캠페인 타입을 지원하는 최적화된 캠페인 + 신청자 수 조회 (최신순) - 상시 캠페인 포함
+     */
+    @Query(value = """
+        SELECT 
+            c.id,
+            c.title,
+            c.thumbnail_url,
+            c.recruitment_end_date,
+            c.max_applicants,
+            c.campaign_type,
+            c.product_short_info,
+            c.created_at,
+            cc.category_name,
+            cc.category_type,
+            COALESCE(app_counts.applied_count, 0) as current_applicants
+        FROM campaigns c
+        JOIN campaign_categories cc ON c.category_id = cc.id
+        LEFT JOIN (
+            SELECT 
+                campaign_id,
+                COUNT(*) as applied_count
+            FROM campaign_applications 
+            WHERE application_status = 'APPLIED'
+            GROUP BY campaign_id
+        ) app_counts ON c.id = app_counts.campaign_id
+        WHERE c.approval_status = :approvalStatus
+        AND (c.is_always_open = true OR c.recruitment_end_date >= :currentDate)
+        AND (:categoryType IS NULL OR cc.category_type = :categoryType)
+        AND (:categoryName IS NULL OR cc.category_name = :categoryName)
+        AND (COALESCE(:campaignTypesSize, 0) = 0 OR c.campaign_type = ANY(CAST(:campaignTypesArray AS text[])))
+        ORDER BY c.created_at DESC
+        """, 
+        countQuery = """
+            SELECT COUNT(*)
+            FROM campaigns c
+            JOIN campaign_categories cc ON c.category_id = cc.id
+            WHERE c.approval_status = :approvalStatus
+            AND (c.is_always_open = true OR c.recruitment_end_date >= :currentDate)
+            AND (:categoryType IS NULL OR cc.category_type = :categoryType)
+            AND (:categoryName IS NULL OR cc.category_name = :categoryName)
+            AND (COALESCE(:campaignTypesSize, 0) = 0 OR c.campaign_type = ANY(CAST(:campaignTypesArray AS text[])))
+        """,
+        nativeQuery = true)
+    Page<Object[]> findOptimizedCampaignListByLatestWithTypes(
+            @Param("approvalStatus") String approvalStatus,
+            @Param("currentDate") LocalDate currentDate,
+            @Param("categoryType") String categoryType,
+            @Param("categoryName") String categoryName,
+            @Param("campaignTypesSize") Integer campaignTypesSize,
+            @Param("campaignTypesArray") String campaignTypesArray,
+            Pageable pageable);
+    @Query(value = """
+        SELECT 
+            c.id,
+            c.title,
+            c.thumbnail_url,
+            c.recruitment_end_date,
+            c.max_applicants,
+            c.created_at,
+            cc.category_name,
+            cc.category_type,
+            COALESCE(app_counts.pending_count, 0) as current_applicants
+        FROM CAMPAIGNS c
+        JOIN CAMPAIGN_CATEGORIES cc ON c.category_id = cc.id
+        LEFT JOIN (
+            SELECT 
+                campaign_id,
+                COUNT(*) as pending_count
+            FROM CAMPAIGN_APPLICATIONS 
+            WHERE application_status = 'PENDING'
+            GROUP BY campaign_id
+        ) app_counts ON c.id = app_counts.campaign_id
+        WHERE c.approval_status = :approvalStatus
+        AND c.recruitment_end_date >= :currentDate
+        AND (:categoryType IS NULL OR cc.category_type = :categoryType)
+        ORDER BY 
+            CASE WHEN :sortBy = 'popular' THEN app_counts.pending_count END DESC NULLS LAST,
+            CASE WHEN :sortBy = 'latest' THEN c.created_at END DESC
+        """, 
+        countQuery = """
+            SELECT COUNT(*)
+            FROM CAMPAIGNS c
+            JOIN CAMPAIGN_CATEGORIES cc ON c.category_id = cc.id
+            WHERE c.approval_status = :approvalStatus
+            AND c.recruitment_end_date >= :currentDate
+            AND (:categoryType IS NULL OR cc.category_type = :categoryType)
+        """,
+        nativeQuery = true)
+    Page<Object[]> findOptimizedCampaignListNative(
+            @Param("approvalStatus") String approvalStatus,
+            @Param("currentDate") LocalDate currentDate,
+            @Param("categoryType") String categoryType,
+            @Param("sortBy") String sortBy,
+            Pageable pageable);
+
+    // ===== 탈퇴 검증을 위한 메서드들 =====
+
+    /**
+     * 특정 사용자가 진행 중인 캠페인이 있는지 확인 (캠페인 생성자로서)
+     * @param creatorId 캠페인 생성자 ID
+     * @param approvalStatuses 확인할 승인 상태 목록
+     * @return 진행 중인 캠페인 존재 여부
+     */
+    boolean existsByCreatorIdAndApprovalStatusIn(Long creatorId, List<Campaign.ApprovalStatus> approvalStatuses);
+
+    /**
+     * 특정 사용자의 진행 중인 캠페인 수 조회
+     * @param creatorId 캠페인 생성자 ID
+     * @param approvalStatuses 확인할 승인 상태 목록
+     * @return 진행 중인 캠페인 수
+     */
+    @Query("SELECT COUNT(c) FROM Campaign c WHERE c.creator.id = :creatorId AND c.approvalStatus IN :approvalStatuses")
+    long countByCreatorIdAndApprovalStatusIn(@Param("creatorId") Long creatorId, @Param("approvalStatuses") List<Campaign.ApprovalStatus> approvalStatuses);
+
+    /**
+     * 특정 사용자의 특정 승인 상태 캠페인이 있는지 확인 (단일 상태)
+     * @param creatorId 캠페인 생성자 ID  
+     * @param approvalStatus 확인할 승인 상태
+     * @return 해당 상태 캠페인 존재 여부
+     */
+    boolean existsByCreatorIdAndApprovalStatus(Long creatorId, Campaign.ApprovalStatus approvalStatus);
+
+    /**
+     * 특정 사용자의 승인된 활성 캠페인이 있는지 확인 (만료되지 않은 캠페인)
+     * @param creatorId 캠페인 생성자 ID
+     * @param approvalStatus 승인 상태
+     * @param currentDate 현재 날짜 (모집 마감일과 비교)
+     * @return 승인된 활성 캠페인 존재 여부
+     */
+    @Query("SELECT CASE WHEN COUNT(c) > 0 THEN true ELSE false END FROM Campaign c WHERE c.creator.id = :creatorId AND c.approvalStatus = :approvalStatus AND c.recruitmentEndDate >= :currentDate")
+    boolean existsByCreatorIdAndApprovalStatusAndRecruitmentEndDateGreaterThanEqual(
+            @Param("creatorId") Long creatorId, 
+            @Param("approvalStatus") Campaign.ApprovalStatus approvalStatus, 
+            @Param("currentDate") java.time.LocalDate currentDate);
 }

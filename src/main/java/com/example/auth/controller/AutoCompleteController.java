@@ -6,6 +6,8 @@ import com.example.auth.service.AutoCompleteService;
 import com.example.auth.service.SearchAnalyticsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -36,82 +38,88 @@ public class AutoCompleteController {
             @ApiResponse(
                     responseCode = "200", 
                     description = "자동완성 제안 조회 성공",
-                    content = @io.swagger.v3.oas.annotations.media.Content(
+                    content = @Content(
                             mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/AutoCompleteSuggestionsSuccessResponse"),
                             examples = {
-                                    @io.swagger.v3.oas.annotations.media.ExampleObject(
-                                            name = "맛집 검색 예시",
-                                            summary = "맛집 키워드 검색 결과",
-                                            value = """
-                                            {
-                                              "success": true,
-                                              "message": "자동완성 제안 조회 성공",
-                                              "status": 200,
-                                              "data": {
-                                                "suggestions": [
-                                                  "맛집 체험단 모집 - 강남구 한식당",
-                                                  "맛집 블로거 선정 이벤트",
-                                                  "맛집 리뷰어 모집합니다"
-                                                ]
-                                              }
-                                            }
-                                            """
-                                    ),
-                                    @io.swagger.v3.oas.annotations.media.ExampleObject(
-                                            name = "카페 검색 예시",
-                                            summary = "카페 키워드 검색 결과",
-                                            value = """
-                                            {
-                                              "success": true,
-                                              "message": "자동완성 제안 조회 성공",
-                                              "status": 200,
-                                              "data": {
-                                                "suggestions": [
-                                                  "카페 인플루언서 모집",
-                                                  "홍대 카페 체험단",
-                                                  "감성 카페 리뷰어 선정"
-                                                ]
-                                              }
-                                            }
-                                            """
-                                    ),
-                                    @io.swagger.v3.oas.annotations.media.ExampleObject(
-                                            name = "결과 없음 예시",
-                                            summary = "검색 결과가 없는 경우",
-                                            value = """
-                                            {
-                                              "success": true,
-                                              "message": "자동완성 제안 조회 성공",
-                                              "status": 200,
-                                              "data": {
-                                                "suggestions": []
-                                              }
-                                            }
-                                            """
-                                    )
-                            }
-                    )
-            ),
+                                @io.swagger.v3.oas.annotations.media.ExampleObject(
+                                    name = "자동완성 제안 있음",
+                                    summary = "검색 키워드에 대한 자동완성 제안이 있는 경우",
+                                    value = """
+                                           {
+                                             "success": true,
+                                             "message": "자동완성 제안 조회 성공",
+                                             "status": 200,
+                                             "data": {
+                                               "suggestions": [
+                                                 "이탈리안 레스토랑 신메뉴 체험단"
+                                               ]
+                                             }
+                                           }
+                                           """
+                                ),
+                                @io.swagger.v3.oas.annotations.media.ExampleObject(
+                                    name = "자동완성 제안 없음",
+                                    summary = "검색 키워드에 대한 자동완성 제안이 없는 경우",
+                                    value = """
+                                           {
+                                             "success": true,
+                                             "message": "자동완성 제안 조회 성공",
+                                             "status": 200,
+                                             "data": {
+                                               "suggestions": []
+                                             }
+                                           }
+                                           """
+                                )
+                            })),
             @ApiResponse(
                     responseCode = "400", 
                     description = "잘못된 요청 (키워드 누락 또는 limit 범위 초과)",
-                    content = @io.swagger.v3.oas.annotations.media.Content(
+                    content = @Content(
                             mediaType = "application/json",
-                            examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
-                                    name = "에러 응답 예시",
-                                    summary = "키워드 누락 시",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"),
+                            examples = {
+                                @io.swagger.v3.oas.annotations.media.ExampleObject(
+                                    name = "키워드 누락",
+                                    summary = "검색 키워드가 제공되지 않은 경우",
                                     value = """
-                                    {
-                                      "success": false,
-                                      "message": "검색 키워드는 필수입니다.",
-                                      "errorCode": "INVALID_PARAMETER",
-                                      "status": 400
-                                    }
-                                    """
-                            )
-                    )
-            ),
-            @ApiResponse(responseCode = "500", description = "서버 오류")
+                                           {
+                                             "success": false,
+                                             "message": "검색 키워드는 필수입니다.",
+                                             "errorCode": "INVALID_PARAMETER",
+                                             "status": 400
+                                           }
+                                           """
+                                ),
+                                @io.swagger.v3.oas.annotations.media.ExampleObject(
+                                    name = "잘못된 limit 값",
+                                    summary = "limit 파라미터가 유효 범위(1-20)를 벗어난 경우",
+                                    value = """
+                                           {
+                                             "success": false,
+                                             "message": "limit은 1-20 사이의 값이어야 합니다.",
+                                             "errorCode": "INVALID_PARAMETER",
+                                             "status": 400
+                                           }
+                                           """
+                                )
+                            })),
+            @ApiResponse(responseCode = "500", description = "서버 오류",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"),
+                            examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
+                                name = "서버 내부 오류",
+                                value = """
+                                       {
+                                         "success": false,
+                                         "message": "자동완성 조회 중 오류가 발생했습니다.",
+                                         "errorCode": "INTERNAL_ERROR",
+                                         "status": 500
+                                       }
+                                       """
+                            )))
     })
     @GetMapping("/suggestions")
     public ResponseEntity<?> getSearchSuggestions(
@@ -184,8 +192,39 @@ public class AutoCompleteController {
                     + "\n- **Fallback**: 데이터 없으면 빈 배열 반환"
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "조회 성공"),
-            @ApiResponse(responseCode = "500", description = "서버 오류")
+            @ApiResponse(responseCode = "200", description = "조회 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/RealtimeSearchSuccessResponse"),
+                            examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
+                                name = "실시간 인기 검색어 조회 성공",
+                                summary = "사용자들이 실제로 많이 검색한 캠페인 키워드 목록",
+                                value = """
+                                {
+                                  "success": true,
+                                  "message": "인기 검색어 조회 성공",
+                                  "status": 200,
+                                  "data": {
+                                    "suggestions": [
+                                      "부티크 호텔 1박 체험단",
+                                      "한식 전문점 런치세트 체험단",
+                                      "프리미엄 스킨케어 체험단",
+                                      "프리미엄 메이크업 팔레트 체험단",
+                                      "일식 오마카세 디너 체험단",
+                                      "인스타 감성 카페 체험단 모집",
+                                      "이탈리안 레스토랑 신메뉴 체험단",
+                                      "오렌지를 먹은지 얼마나 오렌지",
+                                      "신제품 스킨케어 라인 체험단",
+                                      "스파 리조트 힐링 체험단"
+                                    ]
+                                  }
+                                }
+                                """
+                            ))),
+            @ApiResponse(responseCode = "500", description = "서버 오류",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
     })
     @GetMapping("/realtime")
     public ResponseEntity<?> getRealtimeTrendingKeywords(

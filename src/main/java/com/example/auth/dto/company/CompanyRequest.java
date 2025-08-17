@@ -39,8 +39,8 @@ public class CompanyRequest {
         }
         
         return CompanyRequest.builder()
-                .companyName(companyInfo.getCompanyName())
-                .businessRegistrationNumber(companyInfo.getBusinessRegistrationNumber())
+                .companyName("") // CompanyInfo에는 회사명이 없음 (별도로 관리)
+                .businessRegistrationNumber("") // CompanyInfo에는 사업자번호가 없음 (별도로 관리)
                 .contactPerson(companyInfo.getContactPerson())
                 .phoneNumber(companyInfo.getPhoneNumber())
                 .build();

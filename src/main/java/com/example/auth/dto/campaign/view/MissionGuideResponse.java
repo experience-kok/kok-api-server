@@ -18,7 +18,7 @@ public class MissionGuideResponse {
     
     public static MissionGuideResponse fromEntity(Campaign campaign) {
         return MissionGuideResponse.builder()
-                .missionGuide(campaign.getMissionGuide())
+                .missionGuide(campaign.getMissionInfo() != null ? campaign.getMissionInfo().getMissionGuide() : null)
                 .build();
     }
 }

@@ -1,5 +1,7 @@
 package com.example.auth.domain;
 
+import com.example.auth.constant.Gender;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -41,11 +43,20 @@ public class User {
     @Builder.Default
     private Boolean emailVerified = false;
 
+    @Column(name = "memo", columnDefinition = "TEXT")
+    private String memo;
+
     @Column
     @Builder.Default
     private Boolean active = true;
     private String phone;
-    private String gender;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(length = 10)
+    @Builder.Default
+    @Schema(hidden = true) // OpenAPI 문서에서 숨김
+    private Gender gender = Gender.UNKNOWN;
+    
     private Integer age;
 
     private String role;
@@ -85,8 +96,14 @@ public class User {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public void updateGender(String gender) {
+    public void updateGender(Gender gender) {
         this.gender = gender;
+        this.updatedAt = LocalDateTime.now();
+    }
+    
+    // String을 받아서 Gender enum으로 변환하는 오버로드 메서드
+    public void updateGender(String genderStr) {
+        this.gender = Gender.fromString(genderStr);
         this.updatedAt = LocalDateTime.now();
     }
 
@@ -117,5 +134,17 @@ public class User {
     public void updateRole(String role) {
         this.role = role;
         this.updatedAt = LocalDateTime.now();
+    }
+
+    public String getProvider() {
+        return provider;
+    }
+
+    public String getAccountType() {
+        return accountType;
+    }
+
+    public String getSocialId() {
+        return socialId;
     }
 }

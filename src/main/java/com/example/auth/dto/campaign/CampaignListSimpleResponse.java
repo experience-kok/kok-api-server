@@ -23,6 +23,9 @@ public class CampaignListSimpleResponse {
     @Schema(description = "캠페인 ID", example = "1", required = true)
     private Long id;
 
+    @Schema(description = "상시 등록 여부", example = "false")
+    private Boolean isAlwaysOpen;
+
     @Schema(description = "캠페인 타입", example = "인스타그램", required = true)
     private String campaignType;
 
@@ -38,8 +41,8 @@ public class CampaignListSimpleResponse {
     @Schema(description = "최대 신청 가능 인원", example = "20", required = true)
     private Integer maxApplicants;
 
-    @Schema(description = "신청 마감일", example = "2025-06-15", required = true)
-    private LocalDate applicationDeadlineDate;
+    @Schema(description = "모집 마감일 (상시 캠페인에서는 null)", example = "2025-06-15")
+    private LocalDate recruitmentEndDate;
 
     @Schema(description = "썸네일 이미지 URL", example = "https://example.com/images/campaign.jpg", required = true)
     private String thumbnailUrl;
@@ -66,12 +69,13 @@ public class CampaignListSimpleResponse {
     public static CampaignListSimpleResponse fromEntity(Campaign campaign) {
         CampaignListSimpleResponse.CampaignListSimpleResponseBuilder builder = CampaignListSimpleResponse.builder()
                 .id(campaign.getId())
+                .isAlwaysOpen(campaign.getIsAlwaysOpen())
                 .campaignType(campaign.getCampaignType())
                 .title(campaign.getTitle())
                 .productShortInfo(campaign.getProductShortInfo())
                 .currentApplicants(0) // 별도로 계산 필요 - 기본값은 0
                 .maxApplicants(campaign.getMaxApplicants())
-                .applicationDeadlineDate(campaign.getApplicationDeadlineDate())
+                .recruitmentEndDate(campaign.getRecruitmentEndDate())
                 .thumbnailUrl(campaign.getThumbnailUrl());
 
         // 카테고리 정보가 있으면 추가

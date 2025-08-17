@@ -9,6 +9,7 @@ import com.example.auth.exception.*;
 import com.example.auth.repository.CampaignApplicationRepository;
 import com.example.auth.repository.CampaignRepository;
 import com.example.auth.service.CampaignApplicationService;
+import com.example.auth.service.MyCampaignService;
 import com.example.auth.util.TokenUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -23,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -39,9 +41,11 @@ import java.util.stream.Collectors;
 public class CampaignApplicationController {
 
     private final CampaignApplicationService applicationService;
+    private final MyCampaignService myCampaignService; // 추가
     private final TokenUtils tokenUtils;
     private final CampaignApplicationRepository applicationRepository;
     private final CampaignRepository campaignRepository;
+
 
     @Operation(
             summary = "캠페인 신청",
@@ -50,6 +54,13 @@ public class CampaignApplicationController {
                     "- 캠페인 참여 의사를 표시하고 신청 정보를 등록합니다.\n" +
                     "- 한 사용자는 동일한 캠페인에 중복 신청할 수 없습니다.\n" +
                     "- 신청 마감일이 지난 캠페인은 신청할 수 없습니다.\n\n" +
+                    "### 신청 조건\n" +
+                    "- **USER(인플루언서) 권한** 필요\n" +
+                    "- **프로필 완성도**: 닉네임, 나이, 성별 정보 필수\n" +
+                    "- **SNS 연동**: 캠페인 타입에 맞는 SNS 계정 연동 필수\n" +
+                    "  - 인스타그램 캠페인 → 인스타그램 계정 연동\n" +
+                    "  - 유튜브 캠페인 → 유튜브 계정 연동\n" +
+                    "  - 블로그 캠페인 → 블로그 계정 연동\n\n" +
                     "### 응답 필드 설명\n" +
                     "- **applicationStatus**: 신청 상태 (PENDING: 대기중, APPROVED: 선정됨, REJECTED: 거절됨, COMPLETED: 완료됨)\n" +
                     "- **hasApplied**: 신청 여부 (true: 신청함, false: 신청하지 않음)\n\n" +
@@ -57,7 +68,11 @@ public class CampaignApplicationController {
                     "- **PENDING**: 신청 접수 상태 (기본값)\n" +
                     "- **APPROVED**: 선정된 신청\n" +
                     "- **REJECTED**: 거절된 신청\n" +
-                    "- **COMPLETED**: 체험 및 리뷰까지 완료한 신청"
+                    "- **COMPLETED**: 체험 및 리뷰까지 완료한 신청\n\n" +
+                    "### 주요 에러 케이스\n" +
+                    "- **PROFILE_INCOMPLETE**: (닉네임/나이/성별 미설정)\n" +
+                    "- **SNS_CONNECTION_REQUIRED**:  (SNS 계정 연동 없음)\n" +
+                    "- **PLATFORM_MISMATCH**:  (캠페인 요구 플랫폼 불일치)"
     )
     @ApiResponses(value = {
             @ApiResponse(
@@ -65,6 +80,7 @@ public class CampaignApplicationController {
                     description = "신청 성공",
                     content = @Content(
                             mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/CampaignApplicationSuccessResponse"),
                             examples = @ExampleObject(
                                     name = "성공 응답 예시",
                                     value = "{\n" +
@@ -90,10 +106,79 @@ public class CampaignApplicationController {
                             )
                     )
             ),
-            @ApiResponse(responseCode = "400", description = "유효하지 않은 요청 또는 이미 신청함"),
-            @ApiResponse(responseCode = "401", description = "인증 실패"),
-            @ApiResponse(responseCode = "404", description = "캠페인 또는 사용자를 찾을 수 없음"),
-            @ApiResponse(responseCode = "500", description = "서버 오류")
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 또는 신청 조건 미충족",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = {
+                                    @ExampleObject(
+                                            name = "이미 신청한 경우",
+                                            value = """
+                                                    {
+                                                      "success": false,
+                                                      "message": "이미 해당 캠페인에 신청하셨어요.",
+                                                      "errorCode": "ALREADY_APPLIED",
+                                                      "status": 400
+                                                    }
+                                                    """
+                                    ),
+                                    @ExampleObject(
+                                            name = "신청 마감",
+                                            value = """
+                                                    {
+                                                      "success": false,
+                                                      "message": "신청이 마감된 캠페인이에요.",
+                                                      "errorCode": "APPLICATION_DEADLINE_PASSED",
+                                                      "status": 400
+                                                    }
+                                                    """
+                                    ),
+                                    @ExampleObject(
+                                            name = "프로필 미설정",
+                                            value = """
+                                                    {
+                                                      "success": false,
+                                                      "message": "프로필을 설정해주세요. 캠페인 신청을 위해 프로필 정보가 필요해요.",
+                                                      "errorCode": "PROFILE_INCOMPLETE",
+                                                      "status": 400
+                                                    }
+                                                    """
+                                    ),
+                                    @ExampleObject(
+                                            name = "SNS 연동 없음",
+                                            value = """
+                                                    {
+                                                      "success": false,
+                                                      "message": "캠페인 신청을 위해 SNS 계정 연동이 필요해요. 프로필에서 SNS 계정을 연동해주세요.",
+                                                      "errorCode": "SNS_CONNECTION_REQUIRED",
+                                                      "status": 400
+                                                    }
+                                                    """
+                                    ),
+                                    @ExampleObject(
+                                            name = "플랫폼 불일치",
+                                            value = """
+                                                    {
+                                                      "success": false,
+                                                      "message": "이 캠페인은 인스타그램 계정이 필요해요. 프로필에서 인스타그램 계정을 연동해주세요.",
+                                                      "errorCode": "PLATFORM_MISMATCH",
+                                                      "status": 400
+                                                    }
+                                                    """
+                                    )
+                            },
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
+            @ApiResponse(responseCode = "401", description = "인증 실패",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
+            @ApiResponse(responseCode = "404", description = "캠페인 또는 사용자를 찾을 수 없음",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
+            @ApiResponse(responseCode = "500", description = "서버 오류",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
     })
     @PostMapping
     public ResponseEntity<?> applyForCampaign(
@@ -113,7 +198,7 @@ public class CampaignApplicationController {
                     case "ADMIN" -> "관리자는 캠페인에 신청할 수 없어요.";
                     default -> "인플루언서만 캠페인에 신청할 수 있어요.";
                 };
-                
+
                 log.warn("캠페인 신청 권한 없음: userId={}, userRole={}", userId, userRole);
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(BaseResponse.fail(errorMessage, "INSUFFICIENT_ROLE", HttpStatus.FORBIDDEN.value()));
@@ -141,8 +226,25 @@ public class CampaignApplicationController {
                     .body(BaseResponse.fail(e.getMessage(), "UNAUTHORIZED", HttpStatus.UNAUTHORIZED.value()));
         } catch (IllegalStateException e) {
             log.warn("캠페인 신청 실패 (비즈니스 로직): {}", e.getMessage());
+            
+            // 사용자 정보 부족에 따른 구체적인 에러 코드 반환
+            String errorCode = "INVALID_REQUEST";
+            String message = e.getMessage();
+            
+            if (message.contains("프로필을 설정해주세요")) {
+                errorCode = "PROFILE_INCOMPLETE";
+            } else if (message.contains("SNS 계정 연동이 필요해요")) {
+                errorCode = "SNS_CONNECTION_REQUIRED";
+            } else if (message.contains("계정이 필요해요")) {
+                errorCode = "PLATFORM_MISMATCH";
+            } else if (message.contains("이미 해당 캠페인에 신청")) {
+                errorCode = "ALREADY_APPLIED";
+            } else if (message.contains("신청이 마감된")) {
+                errorCode = "APPLICATION_DEADLINE_PASSED";
+            }
+            
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(BaseResponse.fail(e.getMessage(), "INVALID_REQUEST", HttpStatus.BAD_REQUEST.value()));
+                    .body(BaseResponse.fail(message, errorCode, HttpStatus.BAD_REQUEST.value()));
         } catch (AccessDeniedException e) {
             log.warn("캠페인 신청 권한 없음: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -154,7 +256,7 @@ public class CampaignApplicationController {
         } catch (Exception e) {
             log.error("캠페인 신청 중 오류 발생: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(BaseResponse.fail("캠페인 신청 중 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
+                    .body(BaseResponse.fail("캠페인 신청 중 오류가 발생했어요.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
         }
     }
 
@@ -167,12 +269,30 @@ public class CampaignApplicationController {
                     "- 취소된 신청은 데이터베이스에서 완전히 삭제됩니다."
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "취소 성공"),
-            @ApiResponse(responseCode = "400", description = "이미 선정된 신청은 취소 불가"),
-            @ApiResponse(responseCode = "401", description = "인증 실패"),
-            @ApiResponse(responseCode = "403", description = "권한 없음 (본인의 신청이 아님)"),
-            @ApiResponse(responseCode = "404", description = "신청 정보를 찾을 수 없음"),
-            @ApiResponse(responseCode = "500", description = "서버 오류")
+            @ApiResponse(responseCode = "200", description = "취소 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiSuccessResponse"))),
+            @ApiResponse(responseCode = "400", description = "이미 선정된 신청은 취소 불가",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
+            @ApiResponse(responseCode = "401", description = "인증 실패",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
+            @ApiResponse(responseCode = "403", description = "권한 없음 (본인의 신청이 아님)",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
+            @ApiResponse(responseCode = "404", description = "신청 정보를 찾을 수 없음",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
+            @ApiResponse(responseCode = "500", description = "서버 오류",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
     })
     @DeleteMapping("/{applicationId}")
     public ResponseEntity<?> cancelApplication(
@@ -218,15 +338,19 @@ public class CampaignApplicationController {
 
     @Operation(
             summary = "내 신청 목록 조회",
-            description = "로그인한 사용자 역할에 따라 관련된 캠페인 신청 목록을 페이징 형태로 조회합니다.\n\n" +
+            description = "로그인한 사용자 역할에 따라 관련된 캠페인 신청 목록을 페이징 형태로 조회합니다. **상시 캠페인도 포함됩니다.**\n\n" +
                     "### 사용자 역할별 조회 내용:\n" +
-                    "- **USER (인플루언서)**: 본인이 신청한 캠페인 목록\n" +
+                    "- **USER (인플루언서)**: 본인이 신청한 캠페인 목록 (상시 캠페인 포함)\n" +
                     "- **CLIENT (기업)**: 내가 만든 캠페인 목록\n\n" +
                     "### 신청 상태 (ApplicationStatus):\n" +
-                    "- **PENDING**: 신청 접수 (기본값)\n" +
-                    "- **APPROVED**: 선정됨\n" +
-                    "- **REJECTED**: 거절됨\n" +
-                    "- **COMPLETED**: 체험 및 리뷰 완료\n\n" +
+                    "- **APPLIED**: 신청 완료 (모집 중인 캠페인 + 상시 캠페인)\n" +
+                    "- **PENDING**: 대기중 (모집 기간 종료된 일반 캠페인)\n" +
+                    "- **SELECTED**: 선정됨\n" +
+                    "- **COMPLETED**: 완료됨\n\n" +
+                    "### 상시 캠페인 특징:\n" +
+                    "- **상시 캠페인**: 모집 마감일이 없어 언제든 신청 가능한 캠페인\n" +
+                    "- **상태 유지**: 상시 캠페인 신청은 항상 APPLIED 상태를 유지합니다\n" +
+                    "- **마감일 표시**: 상시 캠페인은 `applicationEndDate`가 `null`로 표시됩니다\n\n" +
                     "### 캠페인 승인 상태 (ApprovalStatus) - CLIENT 응답시:\n" +
                     "- **PENDING**: 관리자 승인 대기중\n" +
                     "- **APPROVED**: 관리자 승인됨 (활성화)\n" +
@@ -236,8 +360,8 @@ public class CampaignApplicationController {
                     "- 기본 페이지 크기: 10개\n" +
                     "- 최신순으로 자동 정렬됩니다\n\n" +
                     "### 필터링 옵션 (applicationStatus):\n" +
-                    "- USER: PENDING, APPROVED, REJECTED, COMPLETED\n" +
-                    "- CLIENT: PENDING, APPROVED, REJECTED, EXPIRED"
+                    "- **USER**: APPLIED (모집 중 + 상시), PENDING (모집 종료), SELECTED (선정), COMPLETED (완료)\n" +
+                    "- **CLIENT**: PENDING, APPROVED, REJECTED, EXPIRED"
     )
     @ApiResponses(value = {
             @ApiResponse(
@@ -245,6 +369,7 @@ public class CampaignApplicationController {
                     description = "조회 성공",
                     content = @Content(
                             mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/MyApplicationsSuccessResponse"),
                             examples = {
                                     @ExampleObject(
                                             name = "USER 역할 - 신청 목록",
@@ -256,12 +381,30 @@ public class CampaignApplicationController {
                                                     "    \"applications\": [\n" +
                                                     "      {\n" +
                                                     "        \"id\": 15,\n" +
-                                                    "        \"applicationStatus\": \"PENDING\",\n" +
+                                                    "        \"applicationStatus\": \"APPLIED\",\n" +
                                                     "        \"hasApplied\": true,\n" +
                                                     "        \"campaign\": {\n" +
                                                     "          \"id\": 42,\n" +
+                                                    "          \"isAlwaysOpen\": true,\n" +
+                                                    "          \"title\": \"상시 모집 카페 체험단\",\n" +
+                                                    "          \"thumbnailUrl\": \"https://example.com/thumbnail.jpg\",\n" +
+                                                    "          \"applicationEndDate\": null\n" +
+                                                    "        },\n" +
+                                                    "        \"user\": {\n" +
+                                                    "          \"id\": 5,\n" +
+                                                    "          \"nickname\": \"인플루언서닉네임\"\n" +
+                                                    "        }\n" +
+                                                    "      },\n" +
+                                                    "      {\n" +
+                                                    "        \"id\": 16,\n" +
+                                                    "        \"applicationStatus\": \"APPLIED\",\n" +
+                                                    "        \"hasApplied\": true,\n" +
+                                                    "        \"campaign\": {\n" +
+                                                    "          \"id\": 43,\n" +
+                                                    "          \"isAlwaysOpen\": false,\n" +
                                                     "          \"title\": \"신상 음료 체험단 모집\",\n" +
-                                                    "          \"thumbnailUrl\": \"https://example.com/thumbnail.jpg\"\n" +
+                                                    "          \"thumbnailUrl\": \"https://example.com/thumbnail2.jpg\",\n" +
+                                                    "          \"applicationEndDate\": \"2025-12-31\"\n" +
                                                     "        },\n" +
                                                     "        \"user\": {\n" +
                                                     "          \"id\": 5,\n" +
@@ -317,8 +460,14 @@ public class CampaignApplicationController {
                             }
                     )
             ),
-            @ApiResponse(responseCode = "401", description = "인증 실패"),
-            @ApiResponse(responseCode = "500", description = "서버 오류")
+            @ApiResponse(responseCode = "401", description = "인증 실패",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
+            @ApiResponse(responseCode = "500", description = "서버 오류",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
     })
     @GetMapping("/my-applications")
     public ResponseEntity<?> getMyApplications(
@@ -328,8 +477,8 @@ public class CampaignApplicationController {
             @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "페이지 크기 (1-10)", example = "10")
             @RequestParam(defaultValue = "10") int size,
-            @Parameter(description = "신청 상태 필터 (USER: PENDING/APPROVED/REJECTED/COMPLETED, CLIENT: PENDING/APPROVED/REJECTED/EXPIRED)",
-                    example = "PENDING")
+            @Parameter(description = "신청 상태 필터 (USER: APPLIED=모집 중+상시, PENDING=모집 종료, SELECTED=선정, COMPLETED=완료 | CLIENT: PENDING, APPROVED, REJECTED, EXPIRED)",
+                    example = "APPLIED")
             @RequestParam(required = false) String applicationStatus
     ) {
         try {
@@ -355,7 +504,8 @@ public class CampaignApplicationController {
             if ("CLIENT".equals(userRole)) {
                 pageResponse = applicationService.getClientCampaigns(userId, page - 1, size, applicationStatus);
             } else {
-                pageResponse = applicationService.getUserApplications(userId, page - 1, size, applicationStatus);
+                // USER 역할인 경우 MyCampaignService의 호환성 메서드 사용
+                pageResponse = myCampaignService.getUserApplicationsCompat(userId, page - 1, size, applicationStatus);
             }
 
             // PageResponse를 ApplicationListResponseWrapper 형태로 변환
@@ -461,9 +611,18 @@ public class CampaignApplicationController {
                             )
                     )
             ),
-            @ApiResponse(responseCode = "401", description = "인증 실패"),
-            @ApiResponse(responseCode = "404", description = "캠페인을 찾을 수 없음"),
-            @ApiResponse(responseCode = "500", description = "서버 오류")
+            @ApiResponse(responseCode = "401", description = "인증 실패",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
+            @ApiResponse(responseCode = "404", description = "캠페인을 찾을 수 없음",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
+            @ApiResponse(responseCode = "500", description = "서버 오류",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
     })
     @GetMapping("/check")
     public ResponseEntity<?> checkApplicationStatus(
@@ -478,14 +637,14 @@ public class CampaignApplicationController {
 
             ApplicationResponse applicationInfo = applicationService.getUserApplicationInfo(campaignId, userId);
             boolean hasApplied = (applicationInfo != null);
-            
-            log.info("캠페인 신청 상태 확인 결과: userId={}, campaignId={}, hasApplied={}, applicationInfo={}", 
+
+            log.info("캠페인 신청 상태 확인 결과: userId={}, campaignId={}, hasApplied={}, applicationInfo={}",
                     userId, campaignId, hasApplied, applicationInfo);
 
             if (hasApplied) {
                 ApplicationListResponseWrapper.ApplicationInfoDTO infoDTO =
                         ApplicationListResponseWrapper.ApplicationInfoDTO.fromApplicationResponseForCheck(applicationInfo);
-                
+
                 log.info("신청한 경우 응답 DTO: {}", infoDTO);
 
                 return ResponseEntity.ok(BaseResponse.success(
@@ -493,9 +652,9 @@ public class CampaignApplicationController {
                         "신청 상태를 확인했어요"
                 ));
             } else {
-                ApplicationListResponseWrapper.ApplicationInfoDTO notAppliedDTO = 
+                ApplicationListResponseWrapper.ApplicationInfoDTO notAppliedDTO =
                         ApplicationListResponseWrapper.ApplicationInfoDTO.notApplied();
-                        
+
                 log.info("신청하지 않은 경우 응답 DTO: {}", notAppliedDTO);
 
                 return ResponseEntity.ok(BaseResponse.success(
@@ -525,20 +684,16 @@ public class CampaignApplicationController {
 
     @Operation(
             summary = "캠페인 신청자 목록 조회",
-            description = "CLIENT가 자신이 만든 캠페인의 신청자 목록을 조회합니다.\n\n" +
+            description = "CLIENT가 자신이 만든 캠페인의 모든 신청자 목록을 조회합니다.\n\n" +
                     "### 주요 기능\n" +
                     "- CLIENT 권한을 가진 사용자만 접근 가능합니다.\n" +
                     "- 본인이 생성한 캠페인의 신청자만 조회할 수 있습니다.\n" +
-                    "- 각 신청자의 상세 정보와 SNS 플랫폼 정보를 제공합니다.\n\n" +
+                    "- 모든 신청자를 조회합니다 (상태 구분 없음).\n" +
+                    "- 각 신청자의 상세 정보와 캠페인 타입에 맞는 SNS 주소를 제공합니다.\n\n" +
                     "### 응답 정보\n" +
-                    "- **사용자 기본 정보**: ID, 닉네임, 전화번호\n" +
-                    "- **SNS 플랫폼 정보**: 플랫폼 타입, 계정 URL, 팔로워 수\n" +
-                    "- **신청 정보**: 신청 ID, 신청 상태, 신청 시간\n\n" +
-                    "### 필터링 옵션 (applicationStatus)\n" +
-                    "- **PENDING**: 대기 중인 신청\n" +
-                    "- **APPROVED**: 선정된 신청\n" +
-                    "- **REJECTED**: 거절된 신청\n" +
-                    "- **COMPLETED**: 완료된 신청\n\n" +
+                    "- **사용자 기본 정보**: ID, 닉네임, 전화번호, 성별\n" +
+                    "- **SNS 정보**: 캠페인 타입(인스타그램/유튜브 등)에 맞는 계정 URL\n" +
+                    "- **신청 정보**: 신청 ID\n\n" +
                     "### 페이징 특징\n" +
                     "- 기본 페이지 크기: 10개\n" +
                     "- 최신 신청순으로 정렬됩니다"
@@ -549,6 +704,7 @@ public class CampaignApplicationController {
                     description = "조회 성공",
                     content = @Content(
                             mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/CampaignApplicantsSuccessResponse"),
                             examples = @ExampleObject(
                                     name = "신청자 목록 조회 성공",
                                     value = "{\n" +
@@ -564,24 +720,23 @@ public class CampaignApplicationController {
                                             "    \"applicants\": [\n" +
                                             "      {\n" +
                                             "        \"applicationId\": 101,\n" +
-                                            "        \"applicationStatus\": \"pending\",\n" +
                                             "        \"user\": {\n" +
                                             "          \"id\": 5,\n" +
                                             "          \"nickname\": \"인플루언서닉네임\",\n" +
-                                            "          \"phone\": \"010-1234-5678\"\n" +
+                                            "          \"phone\": \"010-1234-5678\",\n" +
+                                            "          \"gender\": \"FEMALE\"\n" +
                                             "        },\n" +
-                                            "        \"snsPlatforms\": [\n" +
-                                            "          {\n" +
-                                            "            \"platformType\": \"INSTAGRAM\",\n" +
-                                            "            \"accountUrl\": \"https://instagram.com/username\",\n" +
-                                            "            \"followerCount\": 10000\n" +
-                                            "          },\n" +
-                                            "          {\n" +
-                                            "            \"platformType\": \"YOUTUBE\",\n" +
-                                            "            \"accountUrl\": \"https://youtube.com/c/username\",\n" +
-                                            "            \"followerCount\": 5000\n" +
-                                            "          }\n" +
-                                            "        ]\n" +
+                                            "        \"snsUrl\": \"https://instagram.com/username\"\n" +
+                                            "      },\n" +
+                                            "      {\n" +
+                                            "        \"applicationId\": 102,\n" +
+                                            "        \"user\": {\n" +
+                                            "          \"id\": 6,\n" +
+                                            "          \"nickname\": \"인플루언서2\",\n" +
+                                            "          \"phone\": \"010-9876-5432\",\n" +
+                                            "          \"gender\": \"MALE\"\n" +
+                                            "        },\n" +
+                                            "        \"snsUrl\": \"https://instagram.com/username2\"\n" +
                                             "      }\n" +
                                             "    ],\n" +
                                             "    \"pagination\": {\n" +
@@ -597,10 +752,22 @@ public class CampaignApplicationController {
                             )
                     )
             ),
-            @ApiResponse(responseCode = "401", description = "인증 실패"),
-            @ApiResponse(responseCode = "403", description = "권한 없음 (CLIENT 권한 없음 또는 본인 캠페인이 아님)"),
-            @ApiResponse(responseCode = "404", description = "캠페인을 찾을 수 없음"),
-            @ApiResponse(responseCode = "500", description = "서버 오류")
+            @ApiResponse(responseCode = "401", description = "인증 실패",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
+            @ApiResponse(responseCode = "403", description = "권한 없음 (CLIENT 권한 없음 또는 본인 캠페인이 아님)",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
+            @ApiResponse(responseCode = "404", description = "캠페인을 찾을 수 없음",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
+            @ApiResponse(responseCode = "500", description = "서버 오류",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
     })
     @GetMapping("/campaigns/{campaignId}/applicants")
     public ResponseEntity<?> getCampaignApplicants(
@@ -611,15 +778,13 @@ public class CampaignApplicationController {
             @Parameter(description = "페이지 번호 (1부터 시작)", example = "1")
             @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "페이지 크기 (1-100)", example = "10")
-            @RequestParam(defaultValue = "10") int size,
-            @Parameter(description = "신청 상태 필터 (PENDING/APPROVED/REJECTED/COMPLETED)", example = "PENDING")
-            @RequestParam(required = false) String applicationStatus
+            @RequestParam(defaultValue = "10") int size
     ) {
         try {
             Long userId = tokenUtils.getUserIdFromToken(bearerToken);
             String userRole = tokenUtils.getRoleFromToken(bearerToken);
-            log.info("캠페인 신청자 목록 조회 요청: userId={}, campaignId={}, page={}, size={}, status={}", 
-                    userId, campaignId, page, size, applicationStatus);
+            log.info("캠페인 신청자 목록 조회 요청: userId={}, campaignId={}, page={}, size={}",
+                    userId, campaignId, page, size);
 
             // CLIENT 권한 확인
             if (!UserRole.CLIENT.getValue().equals(userRole)) {
@@ -640,25 +805,26 @@ public class CampaignApplicationController {
                         .body(BaseResponse.fail("페이지 크기는 1-100 사이여야 합니다.", "INVALID_PAGE_SIZE", HttpStatus.BAD_REQUEST.value()));
             }
 
-            PageResponse<CampaignApplicantResponse> pageResponse = 
-                    applicationService.getCampaignApplicants(campaignId, userId, page - 1, size, applicationStatus);
+            // 모든 신청자 조회 (필터링 없음)
+            PageResponse<CampaignApplicantResponse> pageResponse =
+                    applicationService.getCampaignApplicants(campaignId, userId, page - 1, size, null);
 
             // 캠페인 정보와 총 신청자 수 조회
             Campaign campaign = campaignRepository.findById(campaignId)
                     .orElseThrow(() -> new ResourceNotFoundException("캠페인을 찾을 수 없습니다. ID: " + campaignId));
-            
+
             long totalApplicants = applicationRepository.countByCampaignId(campaignId);
 
             // 응답 생성
             CampaignApplicantListResponse response = CampaignApplicantListResponse.from(
-                    campaignId, 
-                    campaign.getTitle(), 
-                    totalApplicants, 
+                    campaignId,
+                    campaign.getTitle(),
+                    totalApplicants,
                     pageResponse
             );
 
             return ResponseEntity.ok(BaseResponse.success(response, "캠페인 신청자 목록을 조회했어요"));
-            
+
         } catch (JwtValidationException e) {
             log.warn("토큰 검증 실패: {}", e.getMessage());
             String errorCode = e.getErrorType() == TokenErrorType.EXPIRED ? "TOKEN_EXPIRED" : "TOKEN_INVALID";

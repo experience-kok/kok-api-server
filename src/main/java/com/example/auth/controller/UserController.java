@@ -208,10 +208,6 @@ public class UserController {
             }
 
             if (request.getProfileImage() != null) {
-                if (!request.getProfileImage().startsWith("http")) {
-                    return ResponseEntity.badRequest()
-                            .body(BaseResponse.fail("유효한 이미지 URL이 아닙니다.", "INVALID_IMAGE_URL", HttpStatus.BAD_REQUEST.value()));
-                }
                 user.updateProfileImg(request.getProfileImage());
             }
 

@@ -42,8 +42,8 @@ public class JwtAuthInterceptor implements HandlerInterceptor {
             return true;
         }
         
-        // GET 요청이며 캠페인 조회 API인 경우 인증 없이 허용
-        if ("GET".equals(method) && path.startsWith("/api/campaigns")) {
+        // GET 요청이며 캠페인 조회 API인 경우 인증 없이 허용 (V1, V2 모두 포함)
+        if ("GET".equals(method) && (path.startsWith("/api/campaigns") || path.startsWith("/api/v2/campaigns"))) {
             return true;
         }
 

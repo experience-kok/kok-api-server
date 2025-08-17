@@ -27,6 +27,9 @@ public class CampaignListResponse {
     @Schema(description = "캠페인 ID", example = "1", required = true)
     private Long id;
     
+    @Schema(description = "상시 등록 여부", example = "false")
+    private Boolean isAlwaysOpen;
+    
     @Schema(description = "썸네일 이미지 URL", example = "https://example.com/images/campaign.jpg", required = true)
     private String thumbnailUrl;
     
@@ -42,8 +45,8 @@ public class CampaignListResponse {
     @Schema(description = "현재 신청 인원", example = "12", required = true)
     private Integer currentApplicants;
     
-    @Schema(description = "신청 마감 날짜", example = "2025-06-15", required = true)
-    private LocalDate applicationDeadlineDate;
+    @Schema(description = "모집 마감 날짜 (상시 캠페인에서는 null)", example = "2025-06-15")
+    private LocalDate recruitmentEndDate;
     
     // 카테고리 정보
     @Schema(description = "카테고리 정보")
@@ -71,11 +74,9 @@ public class CampaignListResponse {
     
     @Schema(description = "모집 시작 날짜", example = "2025-05-01")
     private LocalDate recruitmentStartDate;
+
     
-    @Schema(description = "모집 종료 날짜", example = "2025-05-15")
-    private LocalDate recruitmentEndDate;
-    
-    @Schema(description = "참여자 선정 날짜", example = "2025-05-16")
+    @Schema(description = "참여자 선정 날짜 (상시 캠페인에서는 null)", example = "2025-05-16")
     private LocalDate selectionDate;
     
     @Schema(description = "리뷰 제출 마감일", example = "2025-05-30")
@@ -102,12 +103,13 @@ public class CampaignListResponse {
         // 기본 정보 설정
         var builder = CampaignListResponse.builder()
                 .id(campaign.getId())
+                .isAlwaysOpen(campaign.getIsAlwaysOpen())
                 .thumbnailUrl(campaign.getThumbnailUrl())
                 .campaignType(campaign.getCampaignType())
                 .title(campaign.getTitle())
                 .maxApplicants(campaign.getMaxApplicants())
                 .currentApplicants(0) // 별도로 계산 필요 - 기본값은 0
-                .applicationDeadlineDate(campaign.getApplicationDeadlineDate());
+                .recruitmentEndDate(campaign.getRecruitmentEndDate());
                 
         // 카테고리 정보 설정
         if (campaign.getCategory() != null) {
@@ -124,7 +126,7 @@ public class CampaignListResponse {
                .recruitmentStartDate(campaign.getRecruitmentStartDate())
                .recruitmentEndDate(campaign.getRecruitmentEndDate())
                .selectionDate(campaign.getSelectionDate())
-               .reviewDeadlineDate(campaign.getReviewDeadlineDate());
+               .reviewDeadlineDate(campaign.getMissionInfo() != null ? campaign.getMissionInfo().getMissionDeadlineDate() : null);
         
         // 업체 정보 설정
         builder.companyInfo(campaign.getCompany() != null ? 
@@ -134,8 +136,8 @@ public class CampaignListResponse {
         }
         
         // 미션 정보 설정
-        builder.missionGuide(campaign.getMissionGuide())
-               .missionKeywords(campaign.getMissionKeywords());
+        builder.missionGuide(campaign.getMissionInfo() != null ? campaign.getMissionInfo().getMissionGuide() : null)
+               .missionKeywords(campaign.getMissionInfo() != null ? campaign.getMissionInfo().getBodyKeywords() : null);
         
         return builder.build();
     }

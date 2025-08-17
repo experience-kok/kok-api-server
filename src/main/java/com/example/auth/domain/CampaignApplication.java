@@ -11,8 +11,8 @@ import java.time.ZonedDateTime;
  * 캠페인 신청자 수 추적을 위한 테이블
  */
 @Entity
-@Table(name = "campaign_applications", 
-       uniqueConstraints = @UniqueConstraint(columnNames = {"campaign_id", "user_id"}))
+@Table(name = "campaign_applications",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"campaign_id", "user_id"}))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -35,13 +35,13 @@ public class CampaignApplication {
     @Column(name = "application_status", nullable = false, length = 20)
     @Enumerated(EnumType.STRING)
     @Builder.Default
-    private ApplicationStatus applicationStatus = ApplicationStatus.PENDING;
+    private ApplicationStatus applicationStatus = ApplicationStatus.APPLIED;
 
-    @Column(name = "created_at", columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    @Column(name = "created_at", nullable = false)
     @Builder.Default
     private ZonedDateTime createdAt = ZonedDateTime.now();
 
-    @Column(name = "updated_at", columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    @Column(name = "updated_at", nullable = false)
     @Builder.Default
     private ZonedDateTime updatedAt = ZonedDateTime.now();
 
@@ -70,26 +70,28 @@ public class CampaignApplication {
 
     /**
      * 신청을 취소합니다.
+     * 거절/취소된 신청은 데이터를 삭제하는 방식으로 처리
      */
+    @Deprecated
     public void cancel() {
-        this.applicationStatus = ApplicationStatus.REJECTED;
-        this.updatedAt = ZonedDateTime.now();
+        throw new UnsupportedOperationException("거절/취소된 신청은 데이터 삭제로 처리됩니다.");
     }
 
     /**
      * 신청자를 선정합니다.
      */
     public void select() {
-        this.applicationStatus = ApplicationStatus.APPROVED;
+        this.applicationStatus = ApplicationStatus.SELECTED;
         this.updatedAt = ZonedDateTime.now();
     }
 
     /**
      * 신청을 거절합니다.
+     * 거절/취소된 신청은 데이터를 삭제하는 방식으로 처리
      */
+    @Deprecated
     public void reject() {
-        this.applicationStatus = ApplicationStatus.REJECTED;
-        this.updatedAt = ZonedDateTime.now();
+        throw new UnsupportedOperationException("거절/취소된 신청은 데이터 삭제로 처리됩니다.");
     }
 
     /**
@@ -100,7 +102,7 @@ public class CampaignApplication {
     }
 
     /**
-     * 하위 호환성을 위한 setStatus 메소드  
+     * 하위 호환성을 위한 setStatus 메소드
      */
     public void setStatus(ApplicationStatus status) {
         this.applicationStatus = status;

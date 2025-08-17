@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -56,99 +57,86 @@ public class MyCampaignController {
                 responseCode = "200", 
                 description = "요약 조회 성공",
                 content = @Content(
-                    mediaType = "application/json",
-                    examples = {
-                        @ExampleObject(
-                            name = "USER 역할 응답",
-                            value = "{\n" +
-                                   "  \"success\": true,\n" +
-                                   "  \"message\": \"내 캠페인 요약 조회 성공\",\n" +
-                                   "  \"status\": 200,\n" +
-                                   "  \"data\": {\n" +
-                                   "    \"role\": \"USER\",\n" +
-                                   "    \"summary\": {\n" +
-                                   "      \"applied\": {\n" +
-                                   "        \"count\": 8,\n" +
-                                   "        \"label\": \"지원\"\n" +
-                                   "      },\n" +
-                                   "      \"pending\": {\n" +
-                                   "        \"count\": 5,\n" +
-                                   "        \"label\": \"대기중\"\n" +
-                                   "      },\n" +
-                                   "      \"selected\": {\n" +
-                                   "        \"count\": 2,\n" +
-                                   "        \"label\": \"선정\"\n" +
-                                   "      },\n" +
-                                   "      \"completed\": {\n" +
-                                   "        \"count\": 1,\n" +
-                                   "        \"label\": \"완료\"\n" +
-                                   "      }\n" +
-                                   "    }\n" +
-                                   "  }\n" +
-                                   "}"
-                        ),
-                        @ExampleObject(
-                            name = "CLIENT 역할 응답",
-                            value = "{\n" +
-                                   "  \"success\": true,\n" +
-                                   "  \"message\": \"내 캠페인 요약 조회 성공\",\n" +
-                                   "  \"status\": 200,\n" +
-                                   "  \"data\": {\n" +
-                                   "    \"role\": \"CLIENT\",\n" +
-                                   "    \"summary\": {\n" +
-                                   "      \"pending\": {\n" +
-                                   "        \"count\": 3,\n" +
-                                   "        \"label\": \"대기중\"\n" +
-                                   "      },\n" +
-                                   "      \"approved\": {\n" +
-                                   "        \"count\": 5,\n" +
-                                   "        \"label\": \"승인됨\"\n" +
-                                   "      },\n" +
-                                   "      \"rejected\": {\n" +
-                                   "        \"count\": 2,\n" +
-                                   "        \"label\": \"거절됨\"\n" +
-                                   "      },\n" +
-                                   "      \"expired\": {\n" +
-                                   "        \"count\": 7,\n" +
-                                   "        \"label\": \"만료됨\"\n" +
-                                   "      }\n" +
-                                   "    }\n" +
-                                   "  }\n" +
-                                   "}"
-                        )
-                    }
-                )
-            ),
+                        mediaType = "application/json",
+                        schema = @Schema(ref = "#/components/schemas/MyCampaignSuccessResponse"),
+                        examples = {
+                            @io.swagger.v3.oas.annotations.media.ExampleObject(
+                                name = "CLIENT 역할 - 내 캠페인 요약",
+                                summary = "기업 회원의 캠페인 요약 정보",
+                                value = """
+                                    {
+                                      "success": true,
+                                      "message": "내 캠페인 요약 조회 성공",
+                                      "status": 200,
+                                      "data": {
+                                        "role": "CLIENT",
+                                        "summary": {
+                                          "pending": {
+                                            "count": 0,
+                                            "label": "대기중"
+                                          },
+                                          "approved": {
+                                            "count": 14,
+                                            "label": "승인됨"
+                                          },
+                                          "rejected": {
+                                            "count": 0,
+                                            "label": "거절됨"
+                                          },
+                                          "expired": {
+                                            "count": 0,
+                                            "label": "만료됨"
+                                          }
+                                        }
+                                      }
+                                    }
+                                    """
+                            ),
+                            @io.swagger.v3.oas.annotations.media.ExampleObject(
+                                name = "USER 역할 - 내 신청 요약",
+                                summary = "인플루언서의 신청 요약 정보",
+                                value = """
+                                    {
+                                      "success": true,
+                                      "message": "내 캠페인 요약 조회 성공",
+                                      "status": 200,
+                                      "data": {
+                                        "role": "USER",
+                                        "summary": {
+                                          "applied": {
+                                            "count": 3,
+                                            "label": "대기중"
+                                          },
+                                          "pending": {
+                                            "count": 2,
+                                            "label": "선정됨"
+                                          },
+                                          "selected": {
+                                            "count": 1,
+                                            "label": "거절됨"
+                                          },
+                                          "completed": {
+                                            "count": 5,
+                                            "label": "완료됨"
+                                          }
+                                        }
+                                      }
+                                    }
+                                    """
+                            )
+                        })),
             @ApiResponse(
                 responseCode = "401", 
                 description = "인증 실패",
                 content = @Content(
-                    mediaType = "application/json",
-                    examples = @ExampleObject(
-                        value = "{\n" +
-                               "  \"success\": false,\n" +
-                               "  \"message\": \"인증이 필요합니다.\",\n" +
-                               "  \"errorCode\": \"UNAUTHORIZED\",\n" +
-                               "  \"status\": 401\n" +
-                               "}"
-                    )
-                )
-            ),
+                        mediaType = "application/json",
+                        schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
             @ApiResponse(
                 responseCode = "500", 
                 description = "서버 오류",
                 content = @Content(
-                    mediaType = "application/json",
-                    examples = @ExampleObject(
-                        value = "{\n" +
-                               "  \"success\": false,\n" +
-                               "  \"message\": \"내 캠페인 요약 조회 중 오류가 발생했습니다.\",\n" +
-                               "  \"errorCode\": \"INTERNAL_ERROR\",\n" +
-                               "  \"status\": 500\n" +
-                               "}"
-                    )
-                )
-            )
+                        mediaType = "application/json",
+                        schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
     })
     @GetMapping("/summary")
     public ResponseEntity<?> getMyCampaignSummary(
@@ -161,7 +149,7 @@ public class MyCampaignController {
             
             log.info("내 캠페인 요약 조회 요청: userId={}, role={}", userId, userRole);
             
-            MyCampaignSummaryResponse summary = myCampaignService.getMyCampaignSummary(userId, userRole);
+            Object summary = myCampaignService.getMyCampaignSummary(userId, userRole);
             
             return ResponseEntity.ok(BaseResponse.success(summary, "내 캠페인 요약 조회 성공"));
             

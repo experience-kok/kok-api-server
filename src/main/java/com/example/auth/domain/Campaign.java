@@ -1,8 +1,5 @@
 package com.example.auth.domain;
 
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDate;
@@ -35,7 +32,7 @@ public class Campaign {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "company_id")
-    private Company company;  // 업체 정보 (선택)
+    private Company company;  // 업체 정보 (선택사항으로 변경)
 
     @Column(name = "thumbnail_url", columnDefinition = "TEXT")
     private String thumbnailUrl;  // 캠페인 썸네일 이미지 URL
@@ -62,25 +59,15 @@ public class Campaign {
     @Column(name = "recruitment_end_date", nullable = false)
     private LocalDate recruitmentEndDate;  // 모집 종료 날짜
 
-    @Column(name = "application_deadline_date", nullable = false)
-    private LocalDate applicationDeadlineDate;  // 신청 마감 날짜
-
     @Column(name = "selection_date", nullable = false)
     private LocalDate selectionDate;  // 참여자 선정 날짜
-
-    @Column(name = "review_deadline_date", nullable = false)
-    private LocalDate reviewDeadlineDate;  // 리뷰 제출 마감일
 
     @Column(name = "selection_criteria", columnDefinition = "TEXT")
     private String selectionCriteria;  // 선정 기준
 
-    @Column(name = "mission_guide", columnDefinition = "TEXT")
-    private String missionGuide;  // 리뷰어 미션 가이드 (마크다운 형식)
-
-    // PostgreSQL의 TEXT[] 타입에 맞게 설정된 미션 키워드 배열
-    @Column(name = "mission_keywords", columnDefinition = "TEXT[]")
-    @JdbcTypeCode(SqlTypes.ARRAY)
-    private String[] missionKeywords;  // 리뷰 콘텐츠에 포함되어야 하는 키워드 배열
+    @Column(name = "is_always_open", nullable = false)
+    @Builder.Default
+    private Boolean isAlwaysOpen = false;  // 상시 등록 여부 (상시 캠페인은 방문형만 가능)
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id", nullable = false)
@@ -91,6 +78,12 @@ public class Campaign {
     @OneToMany(mappedBy = "campaign", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<CampaignApplication> applications = new ArrayList<>();  // 캠페인 신청 목록
+
+    @OneToOne(mappedBy = "campaign", cascade = CascadeType.ALL, orphanRemoval = true)
+    private CampaignLocation location;  // 캠페인 위치 정보 (1:1 관계)
+
+    @OneToOne(mappedBy = "campaign", cascade = CascadeType.ALL, orphanRemoval = true)
+    private CampaignMissionInfo missionInfo;  // 캠페인 미션 정보 (1:1 관계)
 
     // 관리자 승인 관련 필드들
     @Column(name = "approval_status", nullable = false, length = 20)
@@ -156,80 +149,25 @@ public class Campaign {
         }
     }
 
-    // 키워드 관련 헬퍼 메소드
-
     /**
-     * 미션 키워드 목록을 가져옵니다.
-     * @return 키워드 목록 (null인 경우 빈 배열 반환)
+     * 캠페인 미션 정보를 설정합니다.
+     * @param missionInfo 설정할 미션 정보
      */
-    public String[] getMissionKeywords() {
-        return missionKeywords != null ? missionKeywords : new String[0];
-    }
-
-    /**
-     * 미션 키워드 목록을 설정합니다.
-     * @param keywords 키워드 배열
-     */
-    public void setMissionKeywords(String[] keywords) {
-        this.missionKeywords = keywords;
-    }
-
-    /**
-     * 미션 키워드 목록을 문자열 리스트로 변환하여 반환합니다.
-     * @return 키워드 리스트
-     */
-    @Transient // DB에 저장되지 않는 변환 메소드
-    public List<String> getMissionKeywordsList() {
-        List<String> keywordList = new ArrayList<>();
-        if (missionKeywords != null) {
-            java.util.Collections.addAll(keywordList, missionKeywords);
-        }
-        return keywordList;
-    }
-
-    /**
-     * 문자열 리스트로부터 미션 키워드를 설정합니다.
-     * @param keywordList 키워드 리스트
-     */
-    public void setMissionKeywordsFromList(List<String> keywordList) {
-        if (keywordList == null) {
-            this.missionKeywords = null;
-            return;
-        }
-        this.missionKeywords = keywordList.toArray(new String[0]);
-    }
-
-    /**
-     * 미션 키워드를 추가합니다.
-     * @param keyword 추가할 키워드
-     */
-    public void addMissionKeyword(String keyword) {
-        if (keyword == null || keyword.trim().isEmpty()) {
-            return;
-        }
-
-        List<String> currentKeywords = getMissionKeywordsList();
-        if (!currentKeywords.contains(keyword)) {
-            currentKeywords.add(keyword);
-            setMissionKeywordsFromList(currentKeywords);
+    public void setMissionInfo(CampaignMissionInfo missionInfo) {
+        this.missionInfo = missionInfo;
+        if (missionInfo != null) {
+            missionInfo.setCampaign(this);
         }
     }
 
     /**
-     * 미션 키워드를 제거합니다.
-     * @param keyword 제거할 키워드
+     * 미션 정보가 있는지 확인합니다.
+     * @return 미션 정보 존재 여부
      */
-    public void removeMissionKeyword(String keyword) {
-        if (keyword == null || missionKeywords == null) {
-            return;
-        }
-
-        List<String> currentKeywords = getMissionKeywordsList();
-        if (currentKeywords.remove(keyword)) {
-            setMissionKeywordsFromList(currentKeywords);
-        }
+    @Transient
+    public boolean hasMissionInfo() {
+        return missionInfo != null;
     }
-
 
     /**
      * 캠페인 신청을 추가합니다.
@@ -258,13 +196,33 @@ public class Campaign {
     }
 
     /**
+     * 캠페인 위치를 설정합니다.
+     * @param location 설정할 위치
+     */
+    public void setLocation(CampaignLocation location) {
+        this.location = location;
+        if (location != null) {
+            location.setCampaign(this);
+        }
+    }
+
+    /**
+     * 위치 정보가 있는지 확인
+     * @return 위치 정보 존재 여부
+     */
+    @Transient
+    public boolean hasLocation() {
+        return location != null;
+    }
+
+    /**
      * 현재 신청자 수를 반환합니다.
      * @return 현재 신청자 수
      */
     @Transient
     public int getCurrentApplicantCount() {
         return (int) applications.stream()
-                .filter(app -> app.getApplicationStatus() == com.example.auth.constant.ApplicationStatus.PENDING)
+                .filter(app -> app.getApplicationStatus() == com.example.auth.constant.ApplicationStatus.APPLIED)
                 .count();
     }
 

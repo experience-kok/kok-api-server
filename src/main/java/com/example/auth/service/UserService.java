@@ -8,6 +8,8 @@ import com.example.auth.repository.CampaignRepository;
 import com.example.auth.repository.CampaignApplicationRepository;
 import com.example.auth.repository.UserSnsPlatformRepository;
 import com.example.auth.repository.CompanyRepository;
+import com.example.auth.service.S3Service;
+import com.example.auth.service.ImageProcessingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -149,6 +151,25 @@ public class UserService {
     }
     
     // 사용자 역할 관리 메서드는 다른 프로젝트에서 관리합니다.
+    
+    /**
+     * 이메일로 사용자 조회
+     * @param email 이메일
+     * @return 사용자 객체 또는 null
+     */
+    public User findByEmail(String email) {
+        return userRepository.findByEmail(email).orElse(null);
+    }
+    
+    /**
+     * 사용자 저장
+     * @param user 저장할 사용자 객체
+     * @return 저장된 사용자 객체
+     */
+    @Transactional
+    public User saveUser(User user) {
+        return userRepository.save(user);
+    }
     
     /**
      * 사용자 ID로 사용자 조회

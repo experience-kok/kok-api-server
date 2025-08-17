@@ -29,7 +29,7 @@ public class CampaignProductInfoResponse {
                 .recruitmentStartDate(campaign.getRecruitmentStartDate())
                 .recruitmentEndDate(campaign.getRecruitmentEndDate())
                 .selectionDate(campaign.getSelectionDate())
-                .reviewDeadlineDate(campaign.getReviewDeadlineDate())
+                .reviewDeadlineDate(campaign.getMissionInfo() != null ? campaign.getMissionInfo().getMissionDeadlineDate() : null)
                 .build();
     }
 }

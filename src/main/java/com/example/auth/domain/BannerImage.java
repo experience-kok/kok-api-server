@@ -23,11 +23,27 @@ public class BannerImage {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;  // 배너 고유 식별자
 
+    @Column(name = "title", nullable = false, length = 100)
+    private String title;  // 배너 제목
+
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;  // 배너 설명
+
     @Column(name = "banner_url", nullable = false, columnDefinition = "TEXT")
     private String bannerUrl;  // 배너 이미지 URL
 
-    @Column(name = "redirect_url", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "redirect_url", columnDefinition = "TEXT")
     private String redirectUrl;  // 클릭 시 이동할 URL
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "position", nullable = false)
+    @Builder.Default
+    private Position position = Position.TOP;  // 배너 포지션
+
+    @Column(name = "display_order", nullable = false)
+    @Builder.Default
+    private Integer displayOrder = 0;  // 배너 표시 순서 (낮을수록 상위)
+
 
     @Column(name = "created_at", columnDefinition = "TIMESTAMP WITH TIME ZONE")
     @Builder.Default
@@ -36,6 +52,26 @@ public class BannerImage {
     @Column(name = "updated_at", columnDefinition = "TIMESTAMP WITH TIME ZONE")
     @Builder.Default
     private ZonedDateTime updatedAt = ZonedDateTime.now();  // 배너 정보 수정 시간
+
+    /**
+     * 배너 포지션 열거형
+     */
+    public enum Position {
+        TOP("상단"),
+        MIDDLE("중간"),
+        BOTTOM("하단"),
+        SIDEBAR("사이드바");
+
+        private final String description;
+
+        Position(String description) {
+            this.description = description;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+    }
 
     /**
      * 배너 정보가 업데이트될 때 호출되어 수정 시간을 현재 시간으로 업데이트합니다.

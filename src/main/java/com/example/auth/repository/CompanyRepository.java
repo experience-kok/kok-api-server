@@ -2,6 +2,8 @@ package com.example.auth.repository;
 
 import com.example.auth.domain.Company;
 import com.example.auth.domain.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -26,6 +28,14 @@ public interface CompanyRepository extends JpaRepository<Company, Long> {
      * @return 업체 정보
      */
     Optional<Company> findByCompanyName(String companyName);
+    
+    /**
+     * 업체명으로 부분 검색 (대소문자 무시, 페이징)
+     * @param companyName 업체명 (부분 일치)
+     * @param pageable 페이징 정보
+     * @return 업체 목록
+     */
+    Page<Company> findByCompanyNameContainingIgnoreCase(String companyName, Pageable pageable);
     
     /**
      * 사업자등록번호 존재 여부를 확인합니다.

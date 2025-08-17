@@ -2,6 +2,7 @@ package com.example.auth.dto.application;
 
 import com.example.auth.domain.CampaignApplication;
 import com.example.auth.domain.UserSnsPlatform;
+import com.example.auth.constant.Gender;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,31 +21,23 @@ import java.util.stream.Collectors;
 @NoArgsConstructor
 @AllArgsConstructor
 @Schema(
-    description = "캠페인 신청자 정보 응답",
-    title = "CampaignApplicantResponse"
+        description = "캠페인 신청자 정보 응답",
+        title = "CampaignApplicantResponse"
 )
 public class CampaignApplicantResponse {
 
     @Schema(
-        description = "신청 정보의 고유 식별자", 
-        example = "15",
-        title = "신청 ID"
+            description = "신청 정보의 고유 식별자",
+            example = "15",
+            title = "신청 ID"
     )
     private Long applicationId;
-
-    @Schema(
-        description = "신청 상태 (pending: 대기중, approved: 선정됨, rejected: 거절됨, completed: 완료됨)", 
-        example = "pending",
-        allowableValues = {"pending", "approved", "rejected", "completed"},
-        title = "신청 상태"
-    )
-    private String applicationStatus;
 
     @Schema(description = "신청자 정보")
     private UserInfo user;
 
-    @Schema(description = "신청자 SNS 플랫폼 목록")
-    private List<SnsInfo> snsPlatforms;
+    @Schema(description = "캠페인 타입에 맞는 SNS 플랫폼 주소")
+    private String snsUrl;
 
     /**
      * 신청자 기본 정보
@@ -57,55 +50,62 @@ public class CampaignApplicantResponse {
     public static class UserInfo {
         @Schema(description = "사용자 ID", example = "5")
         private Long id;
-        
+
         @Schema(description = "사용자 닉네임", example = "인플루언서닉네임")
         private String nickname;
-        
+
         @Schema(description = "전화번호", example = "010-1234-5678")
         private String phone;
-    }
 
-    /**
-     * SNS 플랫폼 정보
-     */
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @Schema(description = "SNS 플랫폼 정보")
-    public static class SnsInfo {
-        @Schema(description = "플랫폼 타입", example = "INSTAGRAM")
-        private String platformType;
-        
-        @Schema(description = "계정 URL", example = "https://instagram.com/username")
-        private String accountUrl;
-        
-        @Schema(description = "팔로워 수", example = "10000")
-        private Integer followerCount;
+        @Schema(description = "성별 (MALE: 남성, FEMALE: 여성, UNKNOWN: 미설정)", example = "FEMALE")
+        private String gender;
     }
 
     /**
      * CampaignApplication 엔티티에서 DTO로 변환
-     * @param application 캠페인 신청 엔티티
+     *
+     * @param application  캠페인 신청 엔티티
      * @param snsPlatforms 사용자의 SNS 플랫폼 목록
      * @return 변환된 DTO
      */
     public static CampaignApplicantResponse fromEntity(CampaignApplication application, List<UserSnsPlatform> snsPlatforms) {
+        // 캠페인 타입에 맞는 SNS URL 찾기
+        String campaignType = application.getCampaign().getCampaignType();
+        String snsUrl = findMatchingSnsUrl(campaignType, snsPlatforms);
+
         return CampaignApplicantResponse.builder()
                 .applicationId(application.getId())
-                .applicationStatus(application.getApplicationStatus().name().toLowerCase())
                 .user(UserInfo.builder()
                         .id(application.getUser().getId())
                         .nickname(application.getUser().getNickname())
                         .phone(application.getUser().getPhone())
+                        .gender(application.getUser().getGender() != null ?
+                                application.getUser().getGender().name() :
+                                Gender.UNKNOWN.name())
                         .build())
-                .snsPlatforms(snsPlatforms.stream()
-                        .map(sns -> SnsInfo.builder()
-                                .platformType(sns.getPlatformType())
-                                .accountUrl(sns.getAccountUrl())
-                                .followerCount(sns.getFollowerCount())
-                                .build())
-                        .collect(Collectors.toList()))
+                .snsUrl(snsUrl)
                 .build();
+    }
+
+    /**
+     * 캠페인 타입에 맞는 SNS URL 찾기
+     *
+     * @param campaignType 캠페인 타입 (INSTAGRAM, YOUTUBE, BLOG 등)
+     * @param snsPlatforms 사용자의 SNS 플랫폼 목록
+     * @return 해당 플랫폼의 URL, 없으면 null
+     */
+    private static String findMatchingSnsUrl(String campaignType, List<UserSnsPlatform> snsPlatforms) {
+        if (campaignType == null || snsPlatforms == null || snsPlatforms.isEmpty()) {
+            return null;
+        }
+
+        // 캠페인 타입을 대문자로 변환하여 매칭
+        String upperCaseType = campaignType.toUpperCase();
+
+        return snsPlatforms.stream()
+                .filter(sns -> upperCaseType.equals(sns.getPlatformType()))
+                .map(UserSnsPlatform::getAccountUrl)
+                .findFirst()
+                .orElse(null);
     }
 }

@@ -51,11 +51,17 @@ public class UserSnsPlatformController {
     @Operation(summary = "연동된 SNS 플랫폼 목록 조회", description = "사용자가 연동한 모든 SNS 플랫폼 목록을 조회합니다. 팔로워 수는 수동으로 업데이트해야 합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "플랫폼 목록 조회 성공",
-                    content = @Content(schema = @Schema(ref = "#/components/schemas/BaseResponseSuccess"))),
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/PlatformListSuccessResponse"))),
             @ApiResponse(responseCode = "401", description = "인증 실패",
-                    content = @Content(schema = @Schema(ref = "#/components/schemas/BaseResponseError"))),
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
             @ApiResponse(responseCode = "500", description = "서버 오류",
-                    content = @Content(schema = @Schema(ref = "#/components/schemas/BaseResponseError")))
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
     })
     @GetMapping
     public ResponseEntity<?> getUserPlatforms(
@@ -101,18 +107,29 @@ public class UserSnsPlatformController {
     }
 
     // 팔로워 수 수동 업데이트 API
+    @Hidden
     @Operation(summary = "SNS 플랫폼 팔로워 수 수동 업데이트", description = "연동된 SNS 플랫폼의 팔로워 수를 수동으로 업데이트합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "팔로워 수 업데이트 성공",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Success.class))),
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/PlatformListSuccessResponse"))),
             @ApiResponse(responseCode = "400", description = "잘못된 요청",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class))),
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
             @ApiResponse(responseCode = "401", description = "인증 실패",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class))),
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
             @ApiResponse(responseCode = "404", description = "플랫폼을 찾을 수 없음",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class))),
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
             @ApiResponse(responseCode = "500", description = "서버 오류",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class)))
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
     })
     @PutMapping("/{platformId}/follower-count")
     public ResponseEntity<?> updateFollowerCount(
@@ -151,13 +168,21 @@ public class UserSnsPlatformController {
     @Operation(summary = "SNS 플랫폼 연동", description = "플랫폼 타입(BLOG, INSTAGRAM, YOUTUBE)과 URL을 입력받아 연동합니다. (팔로워 수는 자동으로 수집되지 않으며 수동 업데이트가 필요합니다.)")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "SNS 플랫폼 연동 성공",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Success.class))),
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/PlatformConnectSuccessResponse"))),
             @ApiResponse(responseCode = "400", description = "잘못된 요청 (잘못된 URL 형식 등)",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class))),
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
             @ApiResponse(responseCode = "401", description = "인증 실패",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class))),
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
             @ApiResponse(responseCode = "500", description = "서버 오류",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class)))
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
     })
     @PostMapping("/connect")
     public ResponseEntity<?> connectPlatform(
@@ -209,13 +234,21 @@ public class UserSnsPlatformController {
     @Operation(summary = "네이버 블로그 연동 (Deprecated)", description = "네이버 블로그 URL을 입력받아 연동합니다. 대신 /api/platforms/connect API를 사용하세요.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "네이버 블로그 연동 성공",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Success.class))),
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/PlatformListSuccessResponse"))),
             @ApiResponse(responseCode = "400", description = "잘못된 요청 (잘못된 URL 형식 등)",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class))),
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
             @ApiResponse(responseCode = "401", description = "인증 실패",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class))),
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
             @ApiResponse(responseCode = "500", description = "서버 오류",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class)))
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
     })
     @PostMapping("/blog/connect")
     public ResponseEntity<?> connectNaverBlog(
@@ -246,13 +279,21 @@ public class UserSnsPlatformController {
     @Operation(summary = "SNS 플랫폼 연동 해제", description = "연동된 SNS 플랫폼을 해제합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "SNS 플랫폼 연동 해제 성공",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Success.class))),
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/PlatformListSuccessResponse"))),
             @ApiResponse(responseCode = "401", description = "인증 실패",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class))),
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
             @ApiResponse(responseCode = "404", description = "연동된 플랫폼을 찾을 수 없음",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class))),
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
             @ApiResponse(responseCode = "500", description = "서버 오류",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class)))
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
     })
     @DeleteMapping("/{platformId}")
     public ResponseEntity<?> disconnectPlatform(
@@ -305,13 +346,21 @@ public class UserSnsPlatformController {
     @Operation(summary = "네이버 블로그 연동 해제 (Deprecated)", description = "연동된 네이버 블로그를 해제합니다. 대신 /api/platforms/{platformId} API를 사용하세요.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "네이버 블로그 연동 해제 성공",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Success.class))),
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/PlatformListSuccessResponse"))),
             @ApiResponse(responseCode = "401", description = "인증 실패",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class))),
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
             @ApiResponse(responseCode = "404", description = "연동된 블로그를 찾을 수 없음",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class))),
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
             @ApiResponse(responseCode = "500", description = "서버 오류",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class)))
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
     })
     @DeleteMapping("/blog/{platformId}")
     public ResponseEntity<?> disconnectNaverBlog(
@@ -339,13 +388,21 @@ public class UserSnsPlatformController {
     @Operation(summary = "인스타그램 연동 (Deprecated)", description = "인스타그램 프로필 URL을 입력받아 연동합니다. 대신 /api/platforms/connect API를 사용하세요.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "인스타그램 연동 성공",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Success.class))),
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/PlatformListSuccessResponse"))),
             @ApiResponse(responseCode = "400", description = "잘못된 요청 (잘못된 URL 형식 등)",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class))),
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
             @ApiResponse(responseCode = "401", description = "인증 실패",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class))),
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
             @ApiResponse(responseCode = "500", description = "서버 오류",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class)))
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
     })
     @PostMapping("/instagram/connect")
     public ResponseEntity<?> connectInstagram(
@@ -378,13 +435,21 @@ public class UserSnsPlatformController {
     @Operation(summary = "인스타그램 연동 해제 (Deprecated)", description = "연동된 인스타그램을 해제합니다. 대신 /api/platforms/{platformId} API를 사용하세요.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "인스타그램 연동 해제 성공",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Success.class))),
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/PlatformListSuccessResponse"))),
             @ApiResponse(responseCode = "401", description = "인증 실패",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class))),
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
             @ApiResponse(responseCode = "404", description = "연동된 인스타그램을 찾을 수 없음",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class))),
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
             @ApiResponse(responseCode = "500", description = "서버 오류",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class)))
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
     })
     @DeleteMapping("/instagram/{platformId}")
     public ResponseEntity<?> disconnectInstagram(
@@ -412,13 +477,21 @@ public class UserSnsPlatformController {
     @Operation(summary = "유튜브 채널 연동 (Deprecated)", description = "유튜브 채널 URL을 입력받아 연동합니다. 대신 /api/platforms/connect API를 사용하세요.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "유튜브 채널 연동 성공",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Success.class))),
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/PlatformListSuccessResponse"))),
             @ApiResponse(responseCode = "400", description = "잘못된 요청 (잘못된 URL 형식 등)",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class))),
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
             @ApiResponse(responseCode = "401", description = "인증 실패",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class))),
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
             @ApiResponse(responseCode = "500", description = "서버 오류",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class)))
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
     })
     @PostMapping("/youtube/connect")
     public ResponseEntity<?> connectYoutube(
@@ -451,13 +524,21 @@ public class UserSnsPlatformController {
     @Operation(summary = "유튜브 채널 연동 해제 (Deprecated)", description = "연동된 유튜브 채널을 해제합니다. 대신 /api/platforms/{platformId} API를 사용하세요.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "유튜브 채널 연동 해제 성공",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Success.class))),
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/PlatformListSuccessResponse"))),
             @ApiResponse(responseCode = "401", description = "인증 실패",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class))),
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
             @ApiResponse(responseCode = "404", description = "연동된 유튜브 채널을 찾을 수 없음",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class))),
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
             @ApiResponse(responseCode = "500", description = "서버 오류",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class)))
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
     })
     @DeleteMapping("/youtube/{platformId}")
     public ResponseEntity<?> disconnectYoutube(
@@ -480,14 +561,21 @@ public class UserSnsPlatformController {
     }
     
     // 모든 플랫폼 연동 해제 API (한 번에 모든 연동을 해제)
+    @Hidden
     @Operation(summary = "모든 SNS 플랫폼 연동 해제", description = "사용자의 모든 SNS 연동을 해제합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "모든 SNS 플랫폼 연동 해제 성공",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Success.class))),
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/PlatformListSuccessResponse"))),
             @ApiResponse(responseCode = "401", description = "인증 실패",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class))),
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
             @ApiResponse(responseCode = "500", description = "서버 오류",
-                    content = @Content(schema = @Schema(implementation = BaseResponse.Error.class)))
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
     })
     @DeleteMapping("/all")
     public ResponseEntity<?> disconnectAllPlatforms(

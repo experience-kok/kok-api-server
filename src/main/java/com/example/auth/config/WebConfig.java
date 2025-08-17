@@ -18,7 +18,7 @@ public class WebConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(jwtAuthInterceptor)
                 .addPathPatterns("/api/**")
-                .excludePathPatterns("/api/auth/**", "/api/banners/**");
+                .excludePathPatterns("/api/auth/**", "/api/banners/**", "/api/brands/**");
     }
 
     @Override
@@ -36,7 +36,14 @@ public class WebConfig implements WebMvcConfigurer {
                         "Access-Control-Allow-Methods",
                         "Access-Control-Allow-Headers",
                         "Access-Control-Max-Age",
-                        "Origin"
+                        "Origin",
+                        "Cache-Control",
+                        "Connection"
+                )
+                .exposedHeaders(
+                        "Cache-Control",
+                        "Connection",
+                        "X-Accel-Buffering"
                 )
                 .allowCredentials(true)
                 .maxAge(3600);

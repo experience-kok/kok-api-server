@@ -17,6 +17,6 @@ public interface BannerImageRepository extends JpaRepository<BannerImage, Long> 
      * 모든 배너를 생성일 기준 내림차순으로 조회합니다.
      * @return 배너 목록 (최신순)
      */
-    @Query("SELECT b FROM BannerImage b ORDER BY b.createdAt DESC")
+    @Query("SELECT b FROM BannerImage b ORDER BY b.displayOrder ASC")
     List<BannerImage> findAllOrderByCreatedAtDesc();
 }

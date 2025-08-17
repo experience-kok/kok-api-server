@@ -30,8 +30,8 @@ public class BasicInfoResponse {
     @Schema(description = "현재 신청 인원 수", example = "3")
     private Integer currentApplicants; // 현재 신청 인원 (별도 쿼리 필요)
     
-    @Schema(description = "신청 마감 날짜", example = "2025-05-14")
-    private LocalDate applicationDeadlineDate;
+    @Schema(description = "모집 마감 날짜", example = "2025-05-14")
+    private LocalDate recruitmentEndDate;
     
     @Schema(description = "카테고리 정보")
     private CategoryInfo category;
@@ -56,7 +56,7 @@ public class BasicInfoResponse {
                 .title(campaign.getTitle())
                 .maxApplicants(campaign.getMaxApplicants())
                 .currentApplicants(0) // 임시로 0 설정 (실제로는 별도 쿼리 필요)
-                .applicationDeadlineDate(campaign.getApplicationDeadlineDate());
+                .recruitmentEndDate(campaign.getRecruitmentEndDate());
         
         // 카테고리 정보가 있으면 추가
         if (campaign.getCategory() != null) {

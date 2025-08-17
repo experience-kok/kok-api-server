@@ -18,8 +18,8 @@ public class CampaignMissionInfoResponse {
     public static CampaignMissionInfoResponse fromEntity(Campaign campaign) {
         return CampaignMissionInfoResponse.builder()
                 .id(campaign.getId())
-                .missionGuide(campaign.getMissionGuide())
-                .missionKeywords(campaign.getMissionKeywords())
+                .missionGuide(campaign.getMissionInfo() != null ? campaign.getMissionInfo().getMissionGuide() : null)
+                .missionKeywords(campaign.getMissionInfo() != null ? campaign.getMissionInfo().getBodyKeywords() : null)
                 .build();
     }
 }

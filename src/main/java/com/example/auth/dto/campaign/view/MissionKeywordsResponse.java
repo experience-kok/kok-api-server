@@ -18,7 +18,7 @@ public class MissionKeywordsResponse {
     
     public static MissionKeywordsResponse fromEntity(Campaign campaign) {
         return MissionKeywordsResponse.builder()
-                .missionKeywords(campaign.getMissionKeywords())
+                .missionKeywords(campaign.getMissionInfo() != null ? campaign.getMissionInfo().getBodyKeywords() : null)
                 .build();
     }
 }

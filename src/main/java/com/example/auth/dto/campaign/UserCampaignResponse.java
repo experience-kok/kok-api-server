@@ -52,6 +52,9 @@ public class UserCampaignResponse {
         @Schema(description = "캠페인 ID", example = "42")
         private Long id;
         
+        @Schema(description = "상시 등록 여부", example = "false")
+        private Boolean isAlwaysOpen;
+        
         @Schema(description = "제목", example = "신상 음료 체험단 모집")
         private String title;
         
@@ -64,13 +67,13 @@ public class UserCampaignResponse {
         @Schema(description = "신청 시작일", example = "2023-05-15")
         private String applicationStartDate;
         
-        @Schema(description = "신청 종료일", example = "2023-05-25")
+        @Schema(description = "신청 종료일 (상시 캠페인에서는 null)", example = "2023-05-25")
         private String applicationEndDate;
         
-        @Schema(description = "체험 시작일", example = "2023-05-30")
+        @Schema(description = "체험 시작일 (상시 캠페인에서는 null)", example = "2023-05-30")
         private String experienceStartDate;
         
-        @Schema(description = "체험 종료일", example = "2023-06-05")
+        @Schema(description = "체험 종료일 (상시 캠페인에서는 null)", example = "2023-06-05")
         private String experienceEndDate;
         
         @Schema(description = "모집 인원", example = "10")
