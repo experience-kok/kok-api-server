@@ -293,6 +293,9 @@ public class CreateCampaignRequest {
      * @return Campaign 엔티티
      */
     public Campaign toEntity(User creator, CampaignCategory category) {
+        // 상시 캠페인인 경우 maxApplicants를 null로 처리
+        Integer finalMaxApplicants = (this.isAlwaysOpen != null && this.isAlwaysOpen) ? null : this.maxApplicants;
+        
         return Campaign.builder()
                 .creator(creator)
                 .company(null) // 업체 정보 없이 생성
@@ -300,7 +303,7 @@ public class CreateCampaignRequest {
                 .campaignType(this.campaignType)
                 .title(this.title)
                 .productShortInfo(this.productShortInfo)
-                .maxApplicants(this.maxApplicants)
+                .maxApplicants(finalMaxApplicants)  // 상시 캠페인은 null로 처리
                 .productDetails(this.productDetails)
                 .recruitmentStartDate(this.recruitmentStartDate)
                 .recruitmentEndDate(this.recruitmentEndDate)

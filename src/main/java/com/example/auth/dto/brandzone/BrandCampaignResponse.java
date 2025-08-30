@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
+import java.time.ZonedDateTime;
 
 /**
  * 브랜드존 캠페인 응답 DTO
@@ -101,7 +102,8 @@ public class BrandCampaignResponse {
                 .maxApplicants(campaign.getMaxApplicants())
                 .recruitmentEndDate(campaign.getRecruitmentEndDate())
                 .approvalStatus(campaign.getApprovalStatus().name())
-                .createdAt(campaign.getCreatedAt())
+                .createdAt(campaign.getCreatedAt() != null ? 
+                    ZonedDateTime.of(campaign.getCreatedAt(), java.time.ZoneId.systemDefault()) : null)
                 .category(campaign.getCategory() != null ? 
                     CampaignCategoryResponse.builder()
                         .type(campaign.getCategory().getCategoryType().name())

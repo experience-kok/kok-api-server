@@ -1,6 +1,5 @@
 package com.example.auth.config;
 
-import com.example.auth.interceptor.JwtAuthInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
@@ -11,15 +10,7 @@ import org.springframework.web.servlet.config.annotation.*;
 @RequiredArgsConstructor
 public class WebConfig implements WebMvcConfigurer {
 
-    private final JwtAuthInterceptor jwtAuthInterceptor;
     private final ResponseLoggingFilter responseLoggingFilter;
-
-    @Override
-    public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(jwtAuthInterceptor)
-                .addPathPatterns("/api/**")
-                .excludePathPatterns("/api/auth/**", "/api/banners/**", "/api/brands/**");
-    }
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {

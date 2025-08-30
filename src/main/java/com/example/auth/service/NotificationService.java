@@ -222,6 +222,33 @@ public class NotificationService {
     }
 
     /**
+     * 인플루언서 거절 알림 생성 및 전송
+     */
+    @Transactional
+    public void sendInfluencerRejectedNotification(Long userId, String campaignTitle) {
+        log.info("인플루언서 거절 알림 생성: userId={}, campaignTitle={}", userId, campaignTitle);
+
+        String title = "캠페인 선정 결과 안내";
+        String message = String.format("'%s' 캠페인의 선정 결과를 안내드립니다. 아쉽게도 이번 캠페인에는 선정되지 않으셨습니다. 더 좋은 기회로 다시 만날 수 있기를 기대합니다.", campaignTitle);
+
+        Notification notification = Notification.builder()
+                .userId(userId)
+                .notificationType(Notification.NotificationType.CAMPAIGN_NOT_SELECTED)
+                .title(title)
+                .message(message)
+                .relatedEntityId(null) // 필요시 campaignId 추가
+                .relatedEntityType("CAMPAIGN")
+                .isRead(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        Notification savedNotification = notificationRepository.save(notification);
+        sendRealtimeNotification(userId, savedNotification);
+        
+        log.info("인플루언서 거절 알림 전송 완료: notificationId={}", savedNotification.getId());
+    }
+
+    /**
      * 캠페인 선정 알림 생성 및 전송 (선정된 사용자용)
      */
     @Transactional
@@ -289,11 +316,20 @@ public class NotificationService {
      * 캠페인 신청 접수 알림 생성 및 전송 (신청자용)
      */
     @Transactional
-    public void sendCampaignApplicationReceivedNotification(Long userId, Long campaignId, String campaignTitle) {
-        log.info("캠페인 신청 접수 알림 생성: userId={}, campaignId={}, campaignTitle={}", userId, campaignId, campaignTitle);
+    public void sendCampaignApplicationReceivedNotification(Long userId, Long campaignId, String campaignTitle, boolean isAlwaysOpen) {
+        log.info("캠페인 신청 접수 알림 생성: userId={}, campaignId={}, campaignTitle={}, isAlwaysOpen={}", 
+                userId, campaignId, campaignTitle, isAlwaysOpen);
 
-        String title = "캠페인 신청이 접수되었습니다";
-        String message = String.format("'%s' 캠페인 신청이 정상적으로 접수되었습니다. 선정 결과를 기다려주세요.", campaignTitle);
+        String title;
+        String message;
+        
+        if (isAlwaysOpen) {
+            title = "상시 캠페인 신청 완료";
+            message = String.format("'%s' 상시 캠페인 신청이 완료되었습니다. 바로 선정 대기 상태로 전환되었어요. 선정 결과를 기다려주세요.", campaignTitle);
+        } else {
+            title = "캠페인 신청이 접수되었습니다";
+            message = String.format("'%s' 캠페인 신청이 정상적으로 접수되었습니다. 선정 결과를 기다려주세요.", campaignTitle);
+        }
 
         Notification notification = Notification.builder()
                 .userId(userId)
@@ -310,6 +346,14 @@ public class NotificationService {
         sendRealtimeNotification(userId, savedNotification);
         
         log.info("캠페인 신청 접수 알림 전송 완료: notificationId={}", savedNotification.getId());
+    }
+
+    /**
+     * 캠페인 신청 접수 알림 생성 및 전송 (기존 메서드 - 호환성 유지)
+     */
+    @Transactional
+    public void sendCampaignApplicationReceivedNotification(Long userId, Long campaignId, String campaignTitle) {
+        sendCampaignApplicationReceivedNotification(userId, campaignId, campaignTitle, false);
     }
 
     /**

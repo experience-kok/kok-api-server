@@ -109,8 +109,10 @@ public class CreateCampaignResponse {
                         .name(campaign.getCategory().getCategoryName())
                         .build())
                 .user(UserDTO.fromEntity(campaign.getCreator()))
-                .createdAt(campaign.getCreatedAt())
-                .updatedAt(campaign.getUpdatedAt())
+                .createdAt(campaign.getCreatedAt() != null ? 
+                    ZonedDateTime.of(campaign.getCreatedAt(), java.time.ZoneId.systemDefault()) : null)
+                .updatedAt(campaign.getUpdatedAt() != null ? 
+                    ZonedDateTime.of(campaign.getUpdatedAt(), java.time.ZoneId.systemDefault()) : null)
                 .build();
     }
 }

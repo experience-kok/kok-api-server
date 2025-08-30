@@ -111,6 +111,12 @@ public class User {
         this.age = age;
         this.updatedAt = LocalDateTime.now();
     }
+
+    public void updateEmail(String email) {
+        this.email = email;
+        this.updatedAt = LocalDateTime.now();
+    }
+    
     public void updatePassword(String encodedPassword) {
         this.password = encodedPassword;
         this.updatedAt = LocalDateTime.now();

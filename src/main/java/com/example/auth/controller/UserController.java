@@ -71,7 +71,7 @@ public class UserController {
                                        "      \"email\": \"user@example.com\",\n" +
                                        "      \"nickname\": \"체험러123\",\n" +
                                        "      \"role\": \"USER\",\n" +
-                                       "      \"profileImageUrl\": \"https://example.com/profiles/user123.jpg\",\n" +
+                                       "      \"profileImage\": \"https://example.com/profiles/user123.jpg\",\n" +
                                        "      \"phone\": \"010-1234-5678\",\n" +
                                        "      \"gender\": \"FEMALE\",\n" +
                                        "      \"age\": 25,\n" +
@@ -168,16 +168,52 @@ public class UserController {
 
 
 
-    @Operation(summary = "내 정보 수정", description = "사용자 정보를 수정합니다. 소셜 로그인으로 제공된 이메일은 수정할 수 없습니다.")
+    @Operation(summary = "내 정보 수정", description = """
+            사용자 정보를 수정합니다.
+            
+            ### 수정 가능한 필드
+            - **email**: 이메일 주소 (모든 사용자 변경 가능)
+            - **nickname**: 닉네임 (2~8자)
+            - **profileImage**: 프로필 이미지 URL
+            - **phone**: 전화번호
+            - **gender**: 성별 (MALE, FEMALE, UNKNOWN)
+            - **age**: 나이
+            
+            ### 제한사항
+            - 이메일과 닉네임은 중복 검사 실시
+            - 모든 필드는 선택사항 (수정하고 싶은 필드만 포함)
+            """)
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "프로필 수정 성공",
                     content = @Content(
                             mediaType = "application/json",
                             schema = @Schema(ref = "#/components/schemas/UserProfileSuccessResponse"))),
-            @ApiResponse(responseCode = "400", description = "유효하지 않은 요청 (검증 실패 등)",
+            @ApiResponse(responseCode = "400", description = "유효하지 않은 요청 (검증 실패, 이메일 중복 등)",
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"),
+                            examples = {
+                                @io.swagger.v3.oas.annotations.media.ExampleObject(
+                                    name = "이메일 중복",
+                                    summary = "이미 사용 중인 이메일로 변경 시도한 경우",
+                                    value = "{\n" +
+                                           "  \"success\": false,\n" +
+                                           "  \"message\": \"이미 사용 중인 이메일입니다.\",\n" +
+                                           "  \"errorCode\": \"EMAIL_DUPLICATE\",\n" +
+                                           "  \"status\": 400\n" +
+                                           "}"
+                                ),
+                                @io.swagger.v3.oas.annotations.media.ExampleObject(
+                                    name = "이메일 형식 오류",
+                                    summary = "올바르지 않은 이메일 형식인 경우",
+                                    value = "{\n" +
+                                           "  \"success\": false,\n" +
+                                           "  \"message\": \"올바른 이메일 형식을 입력해주세요\",\n" +
+                                           "  \"errorCode\": \"VALIDATION_ERROR\",\n" +
+                                           "  \"status\": 400\n" +
+                                           "}"
+                                )
+                            })),
             @ApiResponse(responseCode = "401", description = "JWT 인증 실패",
                     content = @Content(
                             mediaType = "application/json",
@@ -203,12 +239,32 @@ public class UserController {
                     .orElseThrow(() -> new RuntimeException("사용자 정보를 찾을 수 없습니다."));
 
             // 수정 가능한 필드만 반영
+            // 이메일 수정 (모든 사용자 가능)
+            if (request.getEmail() != null && !request.getEmail().trim().isEmpty()) {
+                // 이메일 중복 검사 (기존 이메일과 다른 경우에만)
+                String newEmail = request.getEmail().trim();
+                if (!newEmail.equals(user.getEmail())) {
+                    if (userRepository.existsByEmail(newEmail)) {
+                        log.warn("이메일 중복 발생: {}", newEmail);
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                                .body(BaseResponse.fail("이미 사용 중인 이메일입니다.", "EMAIL_DUPLICATE", HttpStatus.BAD_REQUEST.value()));
+                    }
+                    
+                    String oldEmail = user.getEmail();
+                    user.updateEmail(newEmail);
+                    log.info("사용자 이메일 변경: userId={}, accountType={}, oldEmail={}, newEmail={}", 
+                            userId, user.getAccountType(), oldEmail, newEmail);
+                }
+            }
+
             if (request.getNickname() != null) {
                 user.updateNickname(request.getNickname());
             }
 
             if (request.getProfileImage() != null) {
-                user.updateProfileImg(request.getProfileImage());
+                // URL에서 쿼리 파라미터 제거 후 저장
+                String cleanImageUrl = removeQueryParameters(request.getProfileImage());
+                user.updateProfileImg(cleanImageUrl);
             }
 
             if (request.getPhone() != null) {
@@ -286,7 +342,9 @@ public class UserController {
         try {
             Long userId = tokenUtils.getUserIdFromToken(bearerToken);
 
-            User updatedUser = userService.updateUserProfileImage(userId, request.getProfileImage());
+            // URL에서 쿼리 파라미터 제거 후 저장
+            String cleanImageUrl = removeQueryParameters(request.getProfileImage());
+            User updatedUser = userService.updateUserProfileImage(userId, cleanImageUrl);
             log.info("사용자 프로필 이미지 수정 완료: userId={}", userId);
 
             Map<String, Object> userData = Map.of(
@@ -592,6 +650,23 @@ public class UserController {
         }
         token = token.replace("Bearer ", "");
         return token.substring(0, 10) + "..." + token.substring(token.length() - 5);
+    }
+
+    /**
+     * URL에서 쿼리 파라미터(? 이후)를 제거합니다.
+     * S3 PreSigned URL의 경우 쿼리 파라미터를 제거하고 순수한 파일 경로만 저장해야 합니다.
+     */
+    private String removeQueryParameters(String url) {
+        if (url == null || url.isEmpty()) {
+            return url;
+        }
+        
+        int queryIndex = url.indexOf('?');
+        if (queryIndex > 0) {
+            return url.substring(0, queryIndex);
+        }
+        
+        return url;
     }
 
 }

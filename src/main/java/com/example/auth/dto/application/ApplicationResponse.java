@@ -1,6 +1,7 @@
 package com.example.auth.dto.application;
 
 import com.example.auth.domain.CampaignApplication;
+import com.example.auth.domain.Campaign;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -182,12 +183,13 @@ public class ApplicationResponse {
     public static ApplicationResponse fromCampaign(com.example.auth.domain.Campaign campaign, com.example.auth.domain.User creator) {
         // 캠페인 상태 결정 (만료 여부 체크)
         String campaignStatus;
-        if (campaign.getApprovalStatus() == com.example.auth.domain.Campaign.ApprovalStatus.APPROVED
+        if (Campaign.ApprovalStatus.APPROVED.equals(campaign.getApprovalStatus())
+                && campaign.getRecruitmentEndDate() != null
                 && campaign.getRecruitmentEndDate().isBefore(java.time.LocalDate.now())) {
             // 승인됐지만 신청 마감일이 지난 경우 EXPIRED로 변환
             campaignStatus = "EXPIRED";
         } else {
-            // 그 외의 경우는 원래 상태 그대로
+            // 그 외의 경우는 원래 상태 그대로 (상시 캠페인 포함)
             campaignStatus = campaign.getApprovalStatus().name();
         }
 
@@ -201,8 +203,10 @@ public class ApplicationResponse {
                 .userId(creator.getId())
                 .userNickname(creator.getNickname())
                 .applicationStatus(campaignStatus.toLowerCase()) // 캠페인 상태 (만료 체크 포함)
-                .createdAt(campaign.getCreatedAt())
-                .updatedAt(campaign.getUpdatedAt())
+                .createdAt(campaign.getCreatedAt() != null ? 
+                    ZonedDateTime.of(campaign.getCreatedAt(), java.time.ZoneId.systemDefault()) : null)
+                .updatedAt(campaign.getUpdatedAt() != null ? 
+                    ZonedDateTime.of(campaign.getUpdatedAt(), java.time.ZoneId.systemDefault()) : null)
                 .build();
     }
 }

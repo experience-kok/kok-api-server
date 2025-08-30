@@ -48,4 +48,29 @@ public class WebClientConfig {
                 .defaultHeader("User-Agent", userAgent)
                 .build();
     }
+
+    @Bean
+    public WebClient kakaoWebClient() {
+        // 카카오 API 전용 WebClient (더 긴 타임아웃과 연결 풀 최적화)
+        HttpClient kakaoHttpClient = HttpClient.create()
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 30000) // 연결 타임아웃 30초
+                .responseTimeout(Duration.ofSeconds(75)) // 응답 타임아웃 75초 (여유있게)
+                .doOnConnected(conn -> 
+                        conn.addHandlerLast(new ReadTimeoutHandler(75, TimeUnit.SECONDS))
+                            .addHandlerLast(new WriteTimeoutHandler(75, TimeUnit.SECONDS)))
+                // 연결 풀 설정
+                .option(ChannelOption.SO_KEEPALIVE, true)
+                .option(ChannelOption.TCP_NODELAY, true);
+
+        ExchangeStrategies exchangeStrategies = ExchangeStrategies.builder()
+                .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(16 * 1024 * 1024)) // 16MB
+                .build();
+
+        return WebClient.builder()
+                .clientConnector(new ReactorClientHttpConnector(kakaoHttpClient))
+                .exchangeStrategies(exchangeStrategies)
+                .defaultHeader("User-Agent", "체험콕/1.0 (https://chkok.kr)")
+                .defaultHeader("Connection", "keep-alive")
+                .build();
+    }
 }

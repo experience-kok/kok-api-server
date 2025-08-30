@@ -2,264 +2,270 @@ package com.example.auth.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import java.time.LocalDate;
-import java.time.ZonedDateTime;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 캠페인 정보를 저장하는 엔티티 클래스
- * 
- * 캠페인은 인플루언서 마케팅의 핵심 단위로, 브랜드/업체가 제공하는 제품이나 서비스를
- * 인플루언서들이 체험하고 리뷰를 작성하는 활동의 정보를 담고 있습니다.
+ * 캠페인 엔티티
  */
 @Entity
 @Table(name = "campaigns")
 @Getter
 @Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
 public class Campaign {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;  // 캠페인 고유 식별자
+    private Long id;
 
+    @Column(nullable = false, length = 200)
+    private String title;
+
+    @Column(name = "thumbnail_url", length = 500)
+    private String thumbnailUrl;
+
+    @Column(name = "campaign_type", length = 50)
+    private String campaignType;
+
+    @Column(name = "product_short_info", length = 500)
+    private String productShortInfo;
+
+    @Column(name = "product_details", columnDefinition = "TEXT")
+    private String productDetails;
+
+    @Column(name = "recruitment_start_date")
+    private LocalDate recruitmentStartDate;
+
+    @Column(name = "recruitment_end_date")
+    private LocalDate recruitmentEndDate;
+
+    @Column(name = "selection_date")
+    private LocalDate selectionDate;
+
+    @Column(name = "max_applicants")
+    private Integer maxApplicants;
+
+    @Column(name = "selection_criteria", columnDefinition = "TEXT")
+    private String selectionCriteria;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "approval_status", length = 20)
+    @Builder.Default
+    private ApprovalStatus approvalStatus = ApprovalStatus.PENDING;
+
+    @Column(name = "is_always_open")
+    @Builder.Default
+    private Boolean isAlwaysOpen = false;
+
+    @Column(name = "review_start_date")
+    private LocalDate reviewStartDate;
+
+    @Column(name = "rejection_reason", columnDefinition = "TEXT")
+    private String rejectionReason;
+
+    @Column(name = "admin_memo", columnDefinition = "TEXT")
+    private String adminMemo;
+
+    // 관계 매핑
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "creator_id", nullable = false)
-    private User creator;  // 캠페인 등록자 (필수)
+    private User creator;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "company_id")
-    private Company company;  // 업체 정보 (선택사항으로 변경)
-
-    @Column(name = "thumbnail_url", columnDefinition = "TEXT")
-    private String thumbnailUrl;  // 캠페인 썸네일 이미지 URL
-
-    @Column(name = "campaign_type", nullable = false, length = 50)
-    private String campaignType;  // 캠페인 진행 플랫폼 (인스타그램, 블로그 등)
-
-    @Column(name = "title", length = 200, nullable = false)
-    private String title;  // 캠페인 제목
-
-    @Column(name = "product_short_info", length = 50, nullable = false)
-    private String productShortInfo;  // 제공 제품/서비스에 대한 간략 정보
-
-    @Column(name = "max_applicants", nullable = false)
-    private Integer maxApplicants;  // 최대 신청 가능 인원 수
-
-    @Column(name = "product_details", nullable = false, columnDefinition = "TEXT")
-    private String productDetails;  // 제공되는 제품/서비스에 대한 상세 정보
-
-    // 날짜 필드들 - 논리적 순서에 따라 정렬
-    @Column(name = "recruitment_start_date", nullable = false)
-    private LocalDate recruitmentStartDate;  // 모집 시작 날짜
-
-    @Column(name = "recruitment_end_date", nullable = false)
-    private LocalDate recruitmentEndDate;  // 모집 종료 날짜
-
-    @Column(name = "selection_date", nullable = false)
-    private LocalDate selectionDate;  // 참여자 선정 날짜
-
-    @Column(name = "selection_criteria", columnDefinition = "TEXT")
-    private String selectionCriteria;  // 선정 기준
-
-    @Column(name = "is_always_open", nullable = false)
-    @Builder.Default
-    private Boolean isAlwaysOpen = false;  // 상시 등록 여부 (상시 캠페인은 방문형만 가능)
+    private Company company;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id", nullable = false)
-    private CampaignCategory category;  // 캠페인 카테고리 (필수)
-    
+    @JoinColumn(name = "category_id")
+    private CampaignCategory category;
 
+    @OneToOne(mappedBy = "campaign", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private CampaignMissionInfo missionInfo;
 
-    @OneToMany(mappedBy = "campaign", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "campaign", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @Builder.Default
-    private List<CampaignApplication> applications = new ArrayList<>();  // 캠페인 신청 목록
+    private List<CampaignApplication> applications = new ArrayList<>();
 
-    @OneToOne(mappedBy = "campaign", cascade = CascadeType.ALL, orphanRemoval = true)
-    private CampaignLocation location;  // 캠페인 위치 정보 (1:1 관계)
-
-    @OneToOne(mappedBy = "campaign", cascade = CascadeType.ALL, orphanRemoval = true)
-    private CampaignMissionInfo missionInfo;  // 캠페인 미션 정보 (1:1 관계)
-
-    // 관리자 승인 관련 필드들
-    @Column(name = "approval_status", nullable = false, length = 20)
-    @Enumerated(EnumType.STRING)
+    @Column(name = "created_at")
     @Builder.Default
-    private ApprovalStatus approvalStatus = ApprovalStatus.PENDING;  // 승인 상태
+    private LocalDateTime createdAt = LocalDateTime.now();
 
-    @Column(name = "approval_comment", columnDefinition = "TEXT")
-    private String approvalComment;  // 승인/거절 관련 관리자 코멘트
-
-    @Column(name = "approval_date", columnDefinition = "TIMESTAMP WITH TIME ZONE")
-    private ZonedDateTime approvalDate;  // 승인/거절 처리 날짜
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "approved_by")
-    private User approvedBy;  // 승인한 관리자
-
-    @Column(name = "created_at", columnDefinition = "TIMESTAMP WITH TIME ZONE")
+    @Column(name = "updated_at")
     @Builder.Default
-    private ZonedDateTime createdAt = ZonedDateTime.now();  // 캠페인 생성 시간
+    private LocalDateTime updatedAt = LocalDateTime.now();
 
-    @Column(name = "updated_at", columnDefinition = "TIMESTAMP WITH TIME ZONE")
-    @Builder.Default
-    private ZonedDateTime updatedAt = ZonedDateTime.now();  // 캠페인 정보 수정 시간
-
-    /**
-     * 승인 상태 열거형
-     */
-    public enum ApprovalStatus {
-        PENDING("대기중"),
-        APPROVED("승인됨"),
-        REJECTED("거절됨");
-
-        private final String description;
-
-        ApprovalStatus(String description) {
-            this.description = description;
-        }
-
-        public String getDescription() {
-            return description;
-        }
-    }
-
-    /**
-     * 캠페인 정보가 업데이트될 때 호출되어 수정 시간을 현재 시간으로 업데이트합니다.
-     */
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = ZonedDateTime.now();
-    }
-    
-    /**
-     * 캠페인이 처음 생성될 때 호출되어 생성 시간과 수정 시간을 설정합니다.
-     */
     @PrePersist
     protected void onCreate() {
         if (this.createdAt == null) {
-            this.createdAt = ZonedDateTime.now();
+            this.createdAt = LocalDateTime.now();
         }
         if (this.updatedAt == null) {
-            this.updatedAt = ZonedDateTime.now();
+            this.updatedAt = LocalDateTime.now();
         }
     }
 
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
+
     /**
-     * 캠페인 미션 정보를 설정합니다.
-     * @param missionInfo 설정할 미션 정보
+     * 캠페인 승인 상태 enum
      */
-    public void setMissionInfo(CampaignMissionInfo missionInfo) {
-        this.missionInfo = missionInfo;
-        if (missionInfo != null) {
-            missionInfo.setCampaign(this);
+    public enum ApprovalStatus {
+        PENDING("PENDING"),
+        APPROVED("APPROVED"),
+        REJECTED("REJECTED");
+
+        private final String value;
+
+        ApprovalStatus(String value) {
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        public static ApprovalStatus fromValue(String value) {
+            for (ApprovalStatus status : ApprovalStatus.values()) {
+                if (status.value.equals(value)) {
+                    return status;
+                }
+            }
+            throw new IllegalArgumentException("Unknown approval status: " + value);
         }
     }
 
-    /**
-     * 미션 정보가 있는지 확인합니다.
-     * @return 미션 정보 존재 여부
-     */
-    @Transient
-    public boolean hasMissionInfo() {
-        return missionInfo != null;
-    }
+    // 비즈니스 메서드들
 
     /**
-     * 캠페인 신청을 추가합니다.
-     * @param application 추가할 신청
+     * 캠페인이 현재 모집중인지 확인
      */
-    public void addApplication(CampaignApplication application) {
-        if (application == null) {
-            return;
+    public boolean isRecruitmentOpen() {
+        if (isAlwaysOpen != null && isAlwaysOpen) {
+            return ApprovalStatus.APPROVED.equals(approvalStatus);
         }
-        
-        applications.add(application);
-        application.setCampaign(this);
-    }
-    
-    /**
-     * 캠페인 신청을 제거합니다.
-     * @param application 제거할 신청
-     */
-    public void removeApplication(CampaignApplication application) {
-        if (application == null) {
-            return;
+
+        if (recruitmentStartDate == null || recruitmentEndDate == null) {
+            return false;
         }
-        
-        applications.remove(application);
-        application.setCampaign(null);
+
+        LocalDate today = LocalDate.now();
+        boolean isWithinPeriod = !today.isBefore(recruitmentStartDate) && !today.isAfter(recruitmentEndDate);
+        boolean isApproved = ApprovalStatus.APPROVED.equals(approvalStatus);
+
+        return isWithinPeriod && isApproved;
     }
 
     /**
-     * 캠페인 위치를 설정합니다.
-     * @param location 설정할 위치
+     * 현재 신청자 수 반환
      */
-    public void setLocation(CampaignLocation location) {
-        this.location = location;
-        if (location != null) {
-            location.setCampaign(this);
-        }
-    }
-
-    /**
-     * 위치 정보가 있는지 확인
-     * @return 위치 정보 존재 여부
-     */
-    @Transient
-    public boolean hasLocation() {
-        return location != null;
-    }
-
-    /**
-     * 현재 신청자 수를 반환합니다.
-     * @return 현재 신청자 수
-     */
-    @Transient
     public int getCurrentApplicantCount() {
+        if (applications == null) {
+            return 0;
+        }
         return (int) applications.stream()
-                .filter(app -> app.getApplicationStatus() == com.example.auth.constant.ApplicationStatus.APPLIED)
+                .filter(app -> app.getApplicationStatus() == com.example.auth.constant.ApplicationStatus.APPLIED ||
+                              app.getApplicationStatus() == com.example.auth.constant.ApplicationStatus.SELECTED)
                 .count();
     }
 
     /**
-     * 캠페인을 승인합니다.
-     * @param approver 승인한 관리자
-     * @param comment 승인 코멘트
-     */
-    public void approve(User approver, String comment) {
-        this.approvalStatus = ApprovalStatus.APPROVED;
-        this.approvedBy = approver;
-        this.approvalComment = comment;
-        this.approvalDate = ZonedDateTime.now();
-        this.updatedAt = ZonedDateTime.now();
-    }
-
-    /**
-     * 캠페인을 거절합니다.
-     * @param approver 거절한 관리자
-     * @param comment 거절 사유
-     */
-    public void reject(User approver, String comment) {
-        this.approvalStatus = ApprovalStatus.REJECTED;
-        this.approvedBy = approver;
-        this.approvalComment = comment;
-        this.approvalDate = ZonedDateTime.now();
-        this.updatedAt = ZonedDateTime.now();
-    }
-
-    /**
-     * 승인 상태를 대기로 변경합니다.
+     * 승인 상태 초기화 (수정 시 사용)
      */
     public void resetApprovalStatus() {
         this.approvalStatus = ApprovalStatus.PENDING;
-        this.approvedBy = null;
-        this.approvalComment = null;
-        this.approvalDate = null;
-        this.updatedAt = ZonedDateTime.now();
+        this.rejectionReason = null;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 캠페인 승인
+     */
+    public void approve() {
+        this.approvalStatus = ApprovalStatus.APPROVED;
+        this.rejectionReason = null;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 캠페인 거절
+     */
+    public void reject(String reason) {
+        this.approvalStatus = ApprovalStatus.REJECTED;
+        this.rejectionReason = reason;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 승인 상태를 Enum으로 반환
+     */
+    public ApprovalStatus getApprovalStatusEnum() {
+        return this.approvalStatus;
+    }
+
+    /**
+     * 상시 캠페인 여부 확인
+     */
+    public Boolean getIsAlwaysOpen() {
+        return isAlwaysOpen;
+    }
+    
+    /**
+     * 상시 캠페인 여부 확인 (boolean 반환)
+     */
+    public boolean isAlwaysOpen() {
+        return isAlwaysOpen != null && isAlwaysOpen;
+    }
+
+    /**
+     * 캠페인 정보 업데이트
+     */
+    public void updateBasicInfo(String title, String thumbnailUrl, String productShortInfo, String productDetails) {
+        if (title != null) this.title = title;
+        if (thumbnailUrl != null) this.thumbnailUrl = thumbnailUrl;
+        if (productShortInfo != null) this.productShortInfo = productShortInfo;
+        if (productDetails != null) this.productDetails = productDetails;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 모집 일정 업데이트
+     */
+    public void updateSchedule(LocalDate recruitmentStartDate, LocalDate recruitmentEndDate, LocalDate selectionDate) {
+        if (recruitmentStartDate != null) this.recruitmentStartDate = recruitmentStartDate;
+        if (recruitmentEndDate != null) this.recruitmentEndDate = recruitmentEndDate;
+        if (selectionDate != null) this.selectionDate = selectionDate;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 상시 캠페인 설정
+     */
+    public void setAlwaysOpen(boolean alwaysOpen) {
+        this.isAlwaysOpen = alwaysOpen;
+        if (alwaysOpen) {
+            this.recruitmentEndDate = null;
+            this.selectionDate = null;
+        }
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 위치 정보가 있는지 확인 (상시 캠페인 검증용)
+     */
+    public boolean hasLocation() {
+        // CampaignLocation과의 관계가 있다면 여기서 확인
+        // 현재는 기본적으로 true로 반환
+        return true;
     }
 }

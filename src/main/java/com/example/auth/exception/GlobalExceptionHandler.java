@@ -93,6 +93,20 @@ public class GlobalExceptionHandler {
                 .body(BaseResponse.fail(errorMessage, "INVALID_PARAMETER", HttpStatus.BAD_REQUEST.value()));
     }
 
+    // 이메일 발송 예외
+    @ExceptionHandler(EmailSendException.class)
+    public ResponseEntity<?> handleEmailSend(EmailSendException ex) {
+
+        HttpStatus status = switch (ex.getErrorCode()) {
+            case "MESSAGE_REJECTED", "SENDER_NOT_VERIFIED" -> HttpStatus.BAD_REQUEST;
+            case "SENDING_PAUSED", "ACCOUNT_PAUSED", "CONFIG_ERROR" -> HttpStatus.SERVICE_UNAVAILABLE;
+            default -> HttpStatus.INTERNAL_SERVER_ERROR;
+        };
+
+        return ResponseEntity.status(status)
+                .body(BaseResponse.fail(ex.getMessage(), ex.getErrorCode(), status.value()));
+    }
+
     //  기타 예외
     @ExceptionHandler(Exception.class)
     public ResponseEntity<?> handleOther(Exception ex) {

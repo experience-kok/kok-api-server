@@ -57,19 +57,8 @@ public class UserDTO {
     private UserRole role;
 
     public static UserDTO fromEntity(User user) {
-        // 프로필 이미지 URL을 CloudFront URL로 변환
+        // 프로필 이미지 URL을 원본 그대로 사용 (CDN 처리 제거)
         String profileImageUrl = user.getProfileImg();
-        try {
-            // S3Service 인스턴스 가져오기
-            S3Service s3Service = UserDtoConfig.UserDtoHelper.getS3Service();
-            if (s3Service != null && profileImageUrl != null) {
-                profileImageUrl = s3Service.getImageUrl(profileImageUrl);
-                log.debug("프로필 이미지 URL 변환: {} -> {}", user.getProfileImg(), profileImageUrl);
-            }
-        } catch (Exception e) {
-            log.warn("프로필 이미지 URL 변환 중 오류 발생: {}", e.getMessage());
-            // 오류 발생 시 원본 URL 사용
-        }
         
         // UserRole enum 변환
         UserRole userRole = null;

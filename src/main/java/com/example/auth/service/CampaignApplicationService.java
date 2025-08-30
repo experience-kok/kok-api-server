@@ -4,6 +4,7 @@ import com.example.auth.constant.ApplicationStatus;
 import com.example.auth.constant.UserRole;
 import com.example.auth.domain.Campaign;
 import com.example.auth.domain.CampaignApplication;
+import com.example.auth.domain.MissionSubmission;
 import com.example.auth.domain.Notification;
 import com.example.auth.domain.User;
 import com.example.auth.domain.UserSnsPlatform;
@@ -14,6 +15,7 @@ import com.example.auth.exception.AccessDeniedException;
 import com.example.auth.exception.ResourceNotFoundException;
 import com.example.auth.repository.CampaignApplicationRepository;
 import com.example.auth.repository.CampaignRepository;
+import com.example.auth.repository.MissionSubmissionRepository;
 import com.example.auth.repository.UserRepository;
 import com.example.auth.repository.UserSnsPlatformRepository;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +31,7 @@ import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -43,7 +46,9 @@ public class CampaignApplicationService {
     private final CampaignRepository campaignRepository;
     private final UserRepository userRepository;
     private final UserSnsPlatformRepository userSnsPlatformRepository;
+    private final MissionSubmissionRepository missionSubmissionRepository;
     private final NotificationService notificationService;
+    private final SESService sesService;
 
     /**
      * 캠페인 신청을 생성합니다.
@@ -74,8 +79,9 @@ public class CampaignApplicationService {
             throw new IllegalStateException("이미 해당 캠페인에 신청하셨어요.");
         }
 
-        // 신청 마감 체크 - applicationDeadlineDate 기준으로 수정
-        if (LocalDate.now().isAfter(campaign.getRecruitmentEndDate())) {
+        // 신청 마감 체크 - 상시 캠페인은 마감일 체크 제외
+        if (!campaign.getIsAlwaysOpen() && campaign.getRecruitmentEndDate() != null 
+            && LocalDate.now().isAfter(campaign.getRecruitmentEndDate())) {
             throw new IllegalStateException("신청이 마감된 캠페인이에요.");
         }
 
@@ -115,20 +121,32 @@ public class CampaignApplicationService {
 
         // === 사용자 정보 검증 종료 ===
 
-        // 신청 생성
+        // 신청 생성 - 상시 캠페인인 경우 바로 PENDING(선정 대기) 상태로 설정
+        ApplicationStatus initialStatus = campaign.getIsAlwaysOpen() ? ApplicationStatus.PENDING : ApplicationStatus.APPLIED;
+        
         CampaignApplication application = CampaignApplication.builder()
                 .campaign(campaign)
                 .user(user)
-                .applicationStatus(ApplicationStatus.APPLIED)
+                .applicationStatus(initialStatus)
                 .build();
 
         CampaignApplication savedApplication = applicationRepository.save(application);
-        log.info("캠페인 신청 생성 완료: userId={}, campaignId={}, applicationId={}, userInfo=[nickname:{}, age:{}, gender:{}]", 
-                userId, campaignId, savedApplication.getId(), user.getNickname(), user.getAge(), user.getGender());
+        
+        if (campaign.getIsAlwaysOpen()) {
+            log.info("상시 캠페인 신청 완료 - 바로 대기 상태: userId={}, campaignId={}, applicationId={}, status=PENDING", 
+                    userId, campaignId, savedApplication.getId());
+        } else {
+            log.info("일반 캠페인 신청 완료: userId={}, campaignId={}, applicationId={}, status=APPLIED", 
+                    userId, campaignId, savedApplication.getId());
+        }
 
-        // 신청 접수 알림 전송
+        // 신청 접수 알림 전송 - 상시 캠페인과 일반 캠페인 구분
         try {
-            notificationService.sendCampaignApplicationReceivedNotification(userId, campaignId, campaign.getTitle());
+            if (campaign.getIsAlwaysOpen()) {
+                notificationService.sendCampaignApplicationReceivedNotification(userId, campaignId, campaign.getTitle(), true);
+            } else {
+                notificationService.sendCampaignApplicationReceivedNotification(userId, campaignId, campaign.getTitle(), false);
+            }
         } catch (Exception e) {
             log.error("신청 접수 알림 전송 실패 (메인 로직은 계속 진행): userId={}, campaignId={}, error={}",
                     userId, campaignId, e.getMessage(), e);
@@ -191,12 +209,13 @@ public class CampaignApplicationService {
 
     /**
      * 특정 사용자의 모든 캠페인 신청 목록을 조회합니다.
+     * 인플루언서용: REJECTED 상태를 자동으로 제외하여 기존 API 호환성 유지
      *
      * @param userId            사용자 ID
      * @param page              페이지 번호 (0부터 시작)
      * @param size              페이지 크기
      * @param applicationStatus 신청 상태 필터 (선택사항)
-     * @return 페이징된 신청 목록
+     * @return 페이징된 신청 목록 (REJECTED 제외)
      * @throws ResourceNotFoundException 사용자를 찾을 수 없는 경우
      */
     @Transactional(readOnly = true)
@@ -211,7 +230,13 @@ public class CampaignApplicationService {
         if (applicationStatus != null && !applicationStatus.trim().isEmpty()) {
             try {
                 ApplicationStatus status = ApplicationStatus.valueOf(applicationStatus.toUpperCase());
-                applications = applicationRepository.findByUserAndApplicationStatus(user, status, pageable);
+                
+                if (status == ApplicationStatus.REJECTED) {
+                    // REJECTED 요청 시 반려된 목록 조회
+                    applications = applicationRepository.findByUserIdAndStatus(userId, ApplicationStatus.REJECTED, pageable);
+                } else {
+                    applications = applicationRepository.findByUserIdAndStatus(userId, status, pageable);
+                }
             } catch (IllegalArgumentException e) {
                 log.warn("잘못된 신청 상태 값: {}", applicationStatus);
                 // 잘못된 상태값인 경우 빈 결과 반환
@@ -219,11 +244,17 @@ public class CampaignApplicationService {
             }
         } else {
             // 필터링 없이 모든 신청 조회
-            applications = applicationRepository.findByUser(user, pageable);
+            applications = applicationRepository.findByUserId(userId, pageable);
         }
 
         List<ApplicationResponse> content = applications.getContent().stream()
-                .map(ApplicationResponse::fromEntity)
+                .map(app -> {
+                    if (app.isRejected()) {
+                        return ApplicationResponse.fromEntityWithCustomStatus(app, "REJECTED");
+                    } else {
+                        return ApplicationResponse.fromEntity(app);
+                    }
+                })
                 .collect(Collectors.toList());
 
         return new PageResponse<>(
@@ -303,7 +334,7 @@ public class CampaignApplicationService {
                 try {
                     Campaign.ApprovalStatus approvalStatus = Campaign.ApprovalStatus.valueOf(statusFilter);
                     if (approvalStatus == Campaign.ApprovalStatus.APPROVED) {
-                        // APPROVED 상태: 승인되고 아직 모집 마감일이 지나지 않은 캠페인
+                        // APPROVED 상태: 승인되고 아직 모집 마감일이 지나지 않은 캠페인 (상시 캠페인 포함)
                         campaigns = campaignRepository.findByCreatorAndApprovalStatusAndRecruitmentEndDateGreaterThanEqual(
                                 clientUser,
                                 approvalStatus,
@@ -436,9 +467,16 @@ public class CampaignApplicationService {
             throw new AccessDeniedException("본인의 신청만 취소할 수 있어요.");
         }
 
-        // 대기 상태인 경우만 취소 가능
-        if (application.getApplicationStatus() != ApplicationStatus.APPLIED) {
-            throw new IllegalStateException("이미 처리된 신청은 취소할 수 없어요.");
+        // 취소 가능한 상태 체크 - 상시 캠페인은 PENDING 상태에서도 취소 가능
+        boolean canCancel = application.getApplicationStatus() == ApplicationStatus.APPLIED ||
+                           (application.getCampaign().getIsAlwaysOpen() && application.getApplicationStatus() == ApplicationStatus.PENDING);
+        
+        if (!canCancel) {
+            if (application.getCampaign().getIsAlwaysOpen()) {
+                throw new IllegalStateException("이미 선정되었거나 완료된 신청은 취소할 수 없어요.");
+            } else {
+                throw new IllegalStateException("이미 처리된 신청은 취소할 수 없어요.");
+            }
         }
 
         applicationRepository.delete(application);
@@ -494,7 +532,19 @@ public class CampaignApplicationService {
                 .map(application -> {
                     // 각 신청자의 SNS 플랫폼 정보 조회
                     List<UserSnsPlatform> snsPlatforms = userSnsPlatformRepository.findByUserId(application.getUser().getId());
-                    return CampaignApplicantResponse.fromEntity(application, snsPlatforms);
+                    
+                    // 미션 제출 정보 조회
+                    Optional<MissionSubmission> missionSubmission = missionSubmissionRepository.findByCampaignApplication(application);
+                    
+                    log.debug("캠페인 신청자 정보 조회 - campaignId: {}, userId: {}, 미션존재: {}", 
+                            campaignId, application.getUser().getId(), missionSubmission.isPresent());
+                    
+                    // DTO 변환 - 미션 정보 포함
+                    return CampaignApplicantResponse.fromEntity(
+                        application, 
+                        snsPlatforms, 
+                        missionSubmission.orElse(null)
+                    );
                 })
                 .collect(Collectors.toList());
 
@@ -601,9 +651,9 @@ public class CampaignApplicationService {
             throw new IllegalStateException("이미 선정이 완료된 캠페인이에요. 기존 선정을 취소한 후 다시 선정해주세요.");
         }
 
-        // 모든 신청자 조회 (APPLIED 상태만)
+        // 모든 신청자 조회 (PENDING 상태만 - 선정 대기 중인 신청자)
         List<CampaignApplication> allApplications =
-                applicationRepository.findByCampaignAndApplicationStatus(campaign, ApplicationStatus.APPLIED);
+                applicationRepository.findByCampaignAndApplicationStatus(campaign, ApplicationStatus.PENDING);
 
         if (allApplications.isEmpty()) {
             throw new IllegalStateException("신청자가 없는 캠페인이에요.");
@@ -637,14 +687,26 @@ public class CampaignApplicationService {
         // 선정자들에게 알림 전송
         selectedApplications.forEach(application -> {
             try {
+                // SSE 알림 전송
                 notificationService.sendCampaignSelectionNotification(
                         application.getUser().getId(),
                         campaignId,
                         campaign.getTitle(),
                         messageToSelected
                 );
+                
+                // 이메일 전송
+                sesService.sendCampaignSelectedEmail(
+                        application.getUser().getEmail(),
+                        application.getUser().getNickname(),
+                        campaign.getTitle()
+                );
+                
+                log.info("캠페인 선정 알림 및 이메일 전송 성공: userId={}, campaignId={}", 
+                        application.getUser().getId(), campaignId);
+                        
             } catch (Exception e) {
-                log.error("선정 알림 전송 실패: userId={}, campaignId={}, error={}",
+                log.error("선정 알림/이메일 전송 실패: userId={}, campaignId={}, error={}",
                         application.getUser().getId(), campaignId, e.getMessage(), e);
             }
         });
@@ -718,9 +780,15 @@ public class CampaignApplicationService {
             throw new IllegalStateException("선정된 신청자가 없는 캠페인이에요.");
         }
 
-        // 선정 취소 (APPLIED 상태로 되돌림)
+        // 선정 취소 (PENDING 상태로 되돌림 - 일반 캠페인은 모집 종료 상태이므로)
         selectedApplications.forEach(application -> {
-            application.updateStatus(ApplicationStatus.APPLIED);
+            if (application.getCampaign().getIsAlwaysOpen()) {
+                // 상시 캠페인: PENDING 상태 유지
+                application.updateStatus(ApplicationStatus.PENDING);
+            } else {
+                // 일반 캠페인: PENDING 상태로 되돌림 (모집 종료 상태)
+                application.updateStatus(ApplicationStatus.PENDING);
+            }
         });
 
         applicationRepository.saveAll(selectedApplications);
@@ -743,5 +811,93 @@ public class CampaignApplicationService {
                         application.getUser().getId(), campaignId, e.getMessage(), e);
             }
         });
+    }
+
+    /**
+     * 특정 사용자의 반려된 캠페인 신청 목록을 조회합니다.
+     *
+     * @param userId 사용자 ID
+     * @param page   페이지 번호 (0부터 시작)
+     * @param size   페이지 크기
+     * @return 페이징된 반려된 신청 목록
+     * @throws ResourceNotFoundException 사용자를 찾을 수 없는 경우
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<ApplicationResponse> getUserRejectedApplications(Long userId, int page, int size) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("사용자를 찾을 수 없습니다. ID: " + userId));
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "updatedAt"));
+        Page<CampaignApplication> applications = applicationRepository.findByUserIdAndStatus(userId, ApplicationStatus.REJECTED, pageable);
+
+        List<ApplicationResponse> content = applications.getContent().stream()
+                .map(app -> ApplicationResponse.fromEntityWithCustomStatus(app, "REJECTED"))
+                .collect(Collectors.toList());
+
+        return new PageResponse<>(
+                content,
+                applications.getNumber(),
+                applications.getSize(),
+                applications.getTotalPages(),
+                applications.getTotalElements(),
+                applications.isFirst(),
+                applications.isLast()
+        );
+    }
+
+    /**
+     * CLIENT가 특정 캠페인의 반려된 신청자 목록을 조회합니다.
+     *
+     * @param campaignId   캠페인 ID
+     * @param clientUserId CLIENT 사용자 ID (권한 확인용)
+     * @param page         페이지 번호 (0부터 시작)
+     * @param size         페이지 크기
+     * @return 페이징된 반려된 신청자 목록
+     * @throws ResourceNotFoundException 캠페인이나 사용자를 찾을 수 없는 경우
+     * @throws AccessDeniedException     권한이 없는 경우
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<CampaignApplicantResponse> getCampaignRejectedApplicants(Long campaignId, Long clientUserId, int page, int size) {
+        // 캠페인 조회 및 소유자 확인
+        Campaign campaign = campaignRepository.findById(campaignId)
+                .orElseThrow(() -> new ResourceNotFoundException("캠페인을 찾을 수 없습니다. ID: " + campaignId));
+
+        User clientUser = userRepository.findById(clientUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("사용자를 찾을 수 없습니다. ID: " + clientUserId));
+
+        // 권한 체크: 본인이 만든 캠페인인지 확인
+        if (!campaign.getCreator().getId().equals(clientUserId)) {
+            throw new AccessDeniedException("본인이 만든 캠페인의 신청자만 조회할 수 있어요.");
+        }
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "updatedAt"));
+        Page<CampaignApplication> applications = applicationRepository.findByCampaignAndApplicationStatus(campaign, ApplicationStatus.REJECTED, pageable);
+
+        List<CampaignApplicantResponse> content = applications.getContent().stream()
+                .map(application -> {
+                    // 각 신청자의 SNS 플랫폼 정보 조회
+                    List<UserSnsPlatform> snsPlatforms = userSnsPlatformRepository.findByUserId(application.getUser().getId());
+                    
+                    // 미션 제출 정보 조회
+                    Optional<MissionSubmission> missionSubmission = missionSubmissionRepository.findByCampaignApplication(application);
+                    
+                    // DTO 변환 - 미션 정보 포함
+                    return CampaignApplicantResponse.fromEntity(
+                        application, 
+                        snsPlatforms, 
+                        missionSubmission.orElse(null)
+                    );
+                })
+                .collect(Collectors.toList());
+
+        return new PageResponse<>(
+                content,
+                applications.getNumber(),
+                applications.getSize(),
+                applications.getTotalPages(),
+                applications.getTotalElements(),
+                applications.isFirst(),
+                applications.isLast()
+        );
     }
 }

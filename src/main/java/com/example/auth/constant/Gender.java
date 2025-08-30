@@ -1,17 +1,12 @@
 package com.example.auth.constant;
 
-import io.swagger.v3.oas.annotations.media.Schema;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
 
-@Schema(name = "Gender", description = "성별 값")
 public enum Gender {
-    @Schema(description = "남성")
-    MALE("male"),
-
-    @Schema(description = "여성")
-    FEMALE("female"),
-
-    @Schema(description = "알 수 없음")
-    UNKNOWN("unknown");
+    MALE("MALE"),
+    FEMALE("FEMALE"),
+    UNKNOWN("UNKNOWN");
 
     private final String value;
 
@@ -19,16 +14,28 @@ public enum Gender {
         this.value = value;
     }
 
+    @JsonValue
     public String getValue() {
-        return value;
+        return this.value;
     }
 
+    @JsonCreator
     public static Gender fromString(String value) {
+        if (value == null) {
+            return UNKNOWN;
+        }
+        
         for (Gender gender : Gender.values()) {
-            if (gender.value.equalsIgnoreCase(value)) {
+            if (gender.value.equalsIgnoreCase(value) || 
+                gender.name().equalsIgnoreCase(value)) {
                 return gender;
             }
         }
         return UNKNOWN;
+    }
+
+    @Override
+    public String toString() {
+        return this.value;
     }
 }

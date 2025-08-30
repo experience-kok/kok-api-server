@@ -1,6 +1,7 @@
 package com.example.auth.service;
 
 import com.example.auth.domain.User;
+import com.example.auth.domain.Campaign;
 import com.example.auth.domain.WithdrawnUser;
 import com.example.auth.dto.withdrawal.WithdrawalResponse;
 import com.example.auth.exception.BusinessException;
@@ -78,7 +79,7 @@ public class UserWithdrawalService {
         if ("CLIENT".equals(user.getRole())) {
             boolean hasActiveApprovedCampaigns = campaignRepository.existsByCreatorIdAndApprovalStatusAndRecruitmentEndDateGreaterThanEqual(
                     user.getId(),
-                    com.example.auth.domain.Campaign.ApprovalStatus.APPROVED,
+                    Campaign.ApprovalStatus.APPROVED,
                     java.time.LocalDate.now()
             );
 

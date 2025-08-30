@@ -74,7 +74,7 @@ public class CampaignListSimpleResponse {
                 .title(campaign.getTitle())
                 .productShortInfo(campaign.getProductShortInfo())
                 .currentApplicants(0) // 별도로 계산 필요 - 기본값은 0
-                .maxApplicants(campaign.getMaxApplicants())
+                .maxApplicants(campaign.getIsAlwaysOpen() != null && campaign.getIsAlwaysOpen() ? null : campaign.getMaxApplicants()) // 상시 캠페인은 maxApplicants null 처리
                 .recruitmentEndDate(campaign.getRecruitmentEndDate())
                 .thumbnailUrl(campaign.getThumbnailUrl());
 

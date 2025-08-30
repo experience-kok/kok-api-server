@@ -1038,25 +1038,61 @@ public class ApiResponseSchemas {
         @Schema(description = "미션 제출 항목")
         public static class MissionSubmissionItem {
             @Schema(description = "미션 제출 ID", example = "1")
-            private Long submissionId;
+            private Long id;
             
-            @Schema(description = "인플루언서 이름", example = "김인플루")
-            private String influencerName;
+            @Schema(description = "인플루언서 정보")
+            private UserInfo user;
             
-            @Schema(description = "미션 제출 URL", example = "https://instagram.com/p/abc123")
-            private String submissionUrl;
+            @Schema(description = "캠페인 정보")
+            private CampaignInfo campaign;
             
-            @Schema(description = "미션 제목", example = "맛집 후기 포스팅")
-            private String submissionTitle;
+            @Schema(description = "미션 정보")
+            private MissionInfo mission;
+        }
+
+        @Data
+        @Schema(description = "인플루언서 정보")
+        public static class UserInfo {
+            @Schema(description = "유저 ID", example = "45")
+            private Long id;
             
-            @Schema(description = "플랫폼 타입", example = "인스타그램")
-            private String platformType;
+            @Schema(description = "닉네임", example = "맛집탐험가")
+            private String nickname;
             
-            @Schema(description = "검토 상태", example = "PENDING", allowableValues = {"PENDING", "APPROVED", "REVISION_REQUESTED"})
-            private String reviewStatus;
+            @Schema(description = "성별", example = "MALE")
+            private String gender;
             
-            @Schema(description = "제출 일시", example = "2024-01-15T10:30:00Z")
+            @Schema(description = "프로필 이미지 URL", example = "https://example.com/profile.jpg")
+            private String profileImage;
+        }
+
+        @Data
+        @Schema(description = "캠페인 정보")
+        public static class CampaignInfo {
+            @Schema(description = "캠페인 ID", example = "123")
+            private Long id;
+            
+            @Schema(description = "캠페인 제목", example = "이탈리안 레스토랑 신메뉴 체험단")
+            private String title;
+            
+            @Schema(description = "캠페인 타입", example = "인스타그램")
+            private String campaignType;
+        }
+
+        @Data
+        @Schema(description = "미션 정보")
+        public static class MissionInfo {
+            @Schema(description = "미션 URL", example = "https://instagram.com/p/abc123")
+            private String missionUrl;
+            
+            @Schema(description = "제출 일시", example = "2024-03-15T14:30:00Z")
             private String submittedAt;
+            
+            @Schema(description = "검토 일시", example = "2024-03-16T10:30:00Z")
+            private String reviewedAt;
+            
+            @Schema(description = "클라이언트 피드백", example = "미션을 잘 수행해주셨습니다.")
+            private String clientFeedback;
         }
     }
 
@@ -1321,5 +1357,199 @@ public class ApiResponseSchemas {
         
         @Schema(description = "HTTP 상태 코드", example = "400")
         private int status;
+    }
+
+    // === 공지사항 API 스키마들 ===
+    
+    @Data
+    @Schema(description = "공지사항 목록 조회 성공 응답")
+    public static class NoticeListSuccessResponse {
+        @Schema(description = "성공 여부", example = "true")
+        private boolean success;
+        
+        @Schema(description = "응답 메시지", example = "공지사항 목록을 성공적으로 조회했습니다.")
+        private String message;
+        
+        @Schema(description = "HTTP 상태 코드", example = "200")
+        private int status;
+        
+        @Schema(description = "공지사항 목록 데이터")
+        private NoticeListData data;
+
+        @Data
+        @Schema(description = "공지사항 목록 데이터")
+        public static class NoticeListData {
+            @Schema(description = "공지사항 목록")
+            private java.util.List<NoticeItem> notices;
+            
+            @Schema(description = "페이징 정보")
+            private PaginationInfo pagination;
+        }
+
+        @Data
+        @Schema(description = "공지사항 항목")
+        public static class NoticeItem {
+            @Schema(description = "공지사항 ID", example = "1")
+            private Long id;
+            
+            @Schema(description = "제목", example = "중요한 공지사항입니다")
+            private String title;
+            
+            @Schema(description = "조회수", example = "156")
+            private Integer viewCount;
+            
+            @Schema(description = "필독 여부", example = "true")
+            private Boolean isMustRead;
+            
+            @Schema(description = "작성자 ID", example = "1")
+            private Long authorId;
+            
+            @Schema(description = "작성자명", example = "관리자")
+            private String authorName;
+            
+            @Schema(description = "생성 시간", example = "2025-08-27T10:30:00")
+            private String createdAt;
+            
+            @Schema(description = "수정 시간", example = "2025-08-27T15:45:00")
+            private String updatedAt;
+        }
+
+        @Data
+        @Schema(description = "페이징 정보")
+        public static class PaginationInfo {
+            @Schema(description = "페이지 번호", example = "1")
+            private Integer pageNumber;
+            
+            @Schema(description = "페이지 크기", example = "10")
+            private Integer pageSize;
+            
+            @Schema(description = "총 페이지 수", example = "5")
+            private Integer totalPages;
+            
+            @Schema(description = "총 항목 수", example = "48")
+            private Long totalElements;
+            
+            @Schema(description = "첫 페이지 여부", example = "true")
+            private Boolean first;
+            
+            @Schema(description = "마지막 페이지 여부", example = "false")
+            private Boolean last;
+        }
+    }
+
+    // === 홍보글 API 스키마들 ===
+    
+    @Data
+    @Schema(description = "홍보글 목록 조회 성공 응답")
+    public static class KokPostListSuccessResponse {
+        @Schema(description = "성공 여부", example = "true")
+        private boolean success;
+        
+        @Schema(description = "응답 메시지", example = "체험콕 글 목록을 성공적으로 조회했습니다.")
+        private String message;
+        
+        @Schema(description = "HTTP 상태 코드", example = "200")
+        private int status;
+        
+        @Schema(description = "홍보글 목록")
+        private java.util.List<KokPostItem> data;
+
+        @Data
+        @Schema(description = "홍보글 항목")
+        public static class KokPostItem {
+            @Schema(description = "홍보글 ID", example = "1")
+            private Long id;
+            
+            @Schema(description = "제목", example = "맛있는 치킨집 체험 후기")
+            private String title;
+            
+            @Schema(description = "조회수", example = "156")
+            private Integer viewCount;
+            
+            @Schema(description = "캠페인 ID", example = "10")
+            private Long campaignId;
+            
+            @Schema(description = "작성자 ID", example = "1")
+            private Long authorId;
+            
+            @Schema(description = "작성자명", example = "관리자")
+            private String authorName;
+            
+            @Schema(description = "연락처", example = "010-1234-5678")
+            private String contactPhone;
+            
+            @Schema(description = "사업장 주소", example = "서울시 강남구")
+            private String businessAddress;
+            
+            @Schema(description = "캠페인 오픈 여부", example = "true")
+            private Boolean isCampaignOpen;
+            
+            @Schema(description = "생성 시간", example = "2025-08-27T10:30:00")
+            private String createdAt;
+            
+            @Schema(description = "수정 시간", example = "2025-08-27T15:45:00")
+            private String updatedAt;
+        }
+    }
+
+    // === 유저 미션 이력 API 스키마들 ===
+    
+    @Data
+    @Schema(description = "유저 미션 이력 조회 성공 응답 (클라이언트용)")
+    public static class UserMissionHistorySuccessResponse {
+        @Schema(description = "성공 여부", example = "true")
+        private boolean success;
+        
+        @Schema(description = "응답 메시지", example = "유저 미션 이력 조회 성공")
+        private String message;
+        
+        @Schema(description = "HTTP 상태 코드", example = "200")
+        private int status;
+        
+        @Schema(description = "미션 이력 데이터")
+        private UserMissionHistoryData data;
+
+        @Data
+        @Schema(description = "미션 이력 데이터")
+        public static class UserMissionHistoryData {
+            @Schema(description = "미션 이력 목록")
+            private java.util.List<UserMissionHistoryItem> histories;
+        }
+
+        @Data
+        @Schema(description = "사용자 미션 이력 항목")
+        public static class UserMissionHistoryItem {
+            @Schema(description = "미션 ID", example = "1")
+            private Long id;
+            
+            @Schema(description = "캠페인 정보")
+            private CampaignInfo campaign;
+            
+            @Schema(description = "미션 정보")
+            private MissionInfo mission;
+        }
+
+        @Data
+        @Schema(description = "캠페인 정보")
+        public static class CampaignInfo {
+            @Schema(description = "캠페인 제목", example = "이탈리안 레스토랑 신메뉴 체험단")
+            private String title;
+            
+            @Schema(description = "캠페인 카테고리", example = "맛집")
+            private String category;
+        }
+
+        @Data
+        @Schema(description = "미션 정보")
+        public static class MissionInfo {
+            @Schema(description = "미션 URL", example = "https://instagram.com/p/abc123")
+            private String missionUrl;
+            
+            @Schema(description = "완료 여부", example = "true")
+            private Boolean isCompleted;
+            
+            @Schema(description = "완료 일시", example = "2024-03-16T10:30:00Z")
+            private java.time.ZonedDateTime completionDate;
+        }
     }
 }

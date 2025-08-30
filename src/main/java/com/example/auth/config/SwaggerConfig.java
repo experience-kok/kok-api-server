@@ -75,6 +75,20 @@ public class SwaggerConfig {
         // 공통 예시 정의
         addCommonExamples(components);
 
+        // 공지사항 API 스키마 추가
+        components.addSchemas("NoticeListSuccessResponse", createNoticeListSuccessResponseSchema());
+        
+        // 홍보글 API 스키마 추가
+        components.addSchemas("KokPostListSuccessResponse", createKokPostListSuccessResponseSchema());
+
+        // 캠페인 진행 상태 API 스키마 추가
+        components.addSchemas("CampaignProgressSuccessResponse", createCampaignProgressSuccessResponseSchema());
+        components.addSchemas("CampaignProgressResponse", createCampaignProgressResponseSchema());
+
+        // 캠페인 생성 에러 스키마 추가
+        components.addSchemas("CampaignCategoryErrorResponse", createCampaignCategoryErrorResponseSchema());
+        components.addSchemas("CampaignCreationPermissionErrorResponse", createCampaignCreationPermissionErrorResponseSchema());
+
         return components;
     }
 
@@ -153,6 +167,9 @@ public class SwaggerConfig {
         components.addSchemas("LikeToggleSuccessResponse", createLikeToggleSuccessResponseSchema());
         components.addSchemas("MyLikedCampaignSuccessResponse", createMyLikedCampaignSuccessResponseSchema());
         components.addSchemas("CampaignApplicantsSuccessResponse", createCampaignApplicantsSuccessResponseSchema());
+        components.addSchemas("CampaignApplicantResponse", createCampaignApplicantResponseSchema());
+        components.addSchemas("CampaignApplicantListResponse", createCampaignApplicantListResponseSchema());
+        components.addSchemas("AllPlatformListSuccessResponse", createAllPlatformListSuccessResponseSchema());
         components.addSchemas("CampaignSelectionSuccessResponse", createCampaignSelectionSuccessResponseSchema());
         components.addSchemas("MyApplicationsSuccessResponse", createMyApplicationsSuccessResponseSchema());
         
@@ -1212,6 +1229,154 @@ public class SwaggerConfig {
                         """);
     }
 
+    // ========== 공지사항 및 홍보글 API 스키마 생성 메서드 ==========
+
+    private Schema<?> createNoticeListSuccessResponseSchema() {
+        return new Schema<>()
+                .type("object")
+                .description("공지사항 목록 조회 성공 응답")
+                .addProperty("success", new Schema<>()
+                        .type("boolean")
+                        .example(true)
+                        .description("성공 여부"))
+                .addProperty("message", new StringSchema()
+                        .description("응답 메시지")
+                        .example("공지사항 목록을 성공적으로 조회했습니다."))
+                .addProperty("status", new Schema<>()
+                        .type("integer")
+                        .description("HTTP 상태 코드")
+                        .example(200))
+                .addProperty("data", new Schema<>()
+                        .type("object")
+                        .description("공지사항 목록 데이터")
+                        .addProperty("notices", new Schema<>()
+                                .type("array")
+                                .description("공지사항 목록")
+                                .items(new Schema<>()
+                                        .type("object")
+                                        .addProperty("id", new Schema<>()
+                                                .type("integer")
+                                                .format("int64")
+                                                .description("공지사항 ID")
+                                                .example(1))
+                                        .addProperty("title", new StringSchema()
+                                                .description("제목")
+                                                .example("중요한 공지사항입니다"))
+                                        .addProperty("viewCount", new Schema<>()
+                                                .type("integer")
+                                                .description("조회수")
+                                                .example(156))
+                                        .addProperty("isMustRead", new Schema<>()
+                                                .type("boolean")
+                                                .description("필독 여부")
+                                                .example(true))
+                                        .addProperty("authorId", new Schema<>()
+                                                .type("integer")
+                                                .format("int64")
+                                                .description("작성자 ID")
+                                                .example(1))
+                                        .addProperty("authorName", new StringSchema()
+                                                .description("작성자명")
+                                                .example("관리자"))
+                                        .addProperty("createdAt", new StringSchema()
+                                                .description("생성 시간")
+                                                .example("2025-08-27T10:30:00"))
+                                        .addProperty("updatedAt", new StringSchema()
+                                                .description("수정 시간")
+                                                .example("2025-08-27T15:45:00"))))
+                        .addProperty("pagination", new Schema<>()
+                                .type("object")
+                                .description("페이징 정보")
+                                .addProperty("pageNumber", new Schema<>()
+                                        .type("integer")
+                                        .description("페이지 번호")
+                                        .example(1))
+                                .addProperty("pageSize", new Schema<>()
+                                        .type("integer")
+                                        .description("페이지 크기")
+                                        .example(10))
+                                .addProperty("totalPages", new Schema<>()
+                                        .type("integer")
+                                        .description("총 페이지 수")
+                                        .example(5))
+                                .addProperty("totalElements", new Schema<>()
+                                        .type("integer")
+                                        .format("int64")
+                                        .description("총 항목 수")
+                                        .example(48))
+                                .addProperty("first", new Schema<>()
+                                        .type("boolean")
+                                        .description("첫 페이지 여부")
+                                        .example(true))
+                                .addProperty("last", new Schema<>()
+                                        .type("boolean")
+                                        .description("마지막 페이지 여부")
+                                        .example(false))));
+    }
+
+    private Schema<?> createKokPostListSuccessResponseSchema() {
+        return new Schema<>()
+                .type("object")
+                .description("홍보글 목록 조회 성공 응답")
+                .addProperty("success", new Schema<>()
+                        .type("boolean")
+                        .example(true)
+                        .description("성공 여부"))
+                .addProperty("message", new StringSchema()
+                        .description("응답 메시지")
+                        .example("체험콕 글 목록을 성공적으로 조회했습니다."))
+                .addProperty("status", new Schema<>()
+                        .type("integer")
+                        .description("HTTP 상태 코드")
+                        .example(200))
+                .addProperty("data", new Schema<>()
+                        .type("array")
+                        .description("홍보글 목록")
+                        .items(new Schema<>()
+                                .type("object")
+                                .addProperty("id", new Schema<>()
+                                        .type("integer")
+                                        .format("int64")
+                                        .description("홍보글 ID")
+                                        .example(1))
+                                .addProperty("title", new StringSchema()
+                                        .description("제목")
+                                        .example("맛있는 치킨집 체험 후기"))
+                                .addProperty("viewCount", new Schema<>()
+                                        .type("integer")
+                                        .description("조회수")
+                                        .example(156))
+                                .addProperty("campaignId", new Schema<>()
+                                        .type("integer")
+                                        .format("int64")
+                                        .description("캠페인 ID")
+                                        .example(10))
+                                .addProperty("authorId", new Schema<>()
+                                        .type("integer")
+                                        .format("int64")
+                                        .description("작성자 ID")
+                                        .example(1))
+                                .addProperty("authorName", new StringSchema()
+                                        .description("작성자명")
+                                        .example("관리자"))
+                                .addProperty("contactPhone", new StringSchema()
+                                        .description("연락처")
+                                        .example("010-1234-5678"))
+                                .addProperty("businessAddress", new StringSchema()
+                                        .description("사업장 주소")
+                                        .example("서울시 강남구"))
+                                .addProperty("isCampaignOpen", new Schema<>()
+                                        .type("boolean")
+                                        .description("캠페인 오픈 여부")
+                                        .example(true))
+                                .addProperty("createdAt", new StringSchema()
+                                        .description("생성 시간")
+                                        .example("2025-08-27T10:30:00"))
+                                .addProperty("updatedAt", new StringSchema()
+                                        .description("수정 시간")
+                                        .example("2025-08-27T15:45:00"))));
+    }
+
     private Example createCreatedExample() {
         return new Example()
                 .summary("생성 성공 응답 예시")
@@ -1250,6 +1415,7 @@ public class SwaggerConfig {
                         """);
     }
 
+
     private Example createUnauthorizedExample() {
         return new Example()
                 .summary("인증 실패 예시")
@@ -1278,6 +1444,8 @@ public class SwaggerConfig {
                         """);
     }
 
+
+
     private Example createNotFoundExample() {
         return new Example()
                 .summary("리소스 없음 예시")
@@ -1291,6 +1459,7 @@ public class SwaggerConfig {
                         }
                         """);
     }
+
 
     private Example createServerErrorExample() {
         return new Example()
@@ -1784,6 +1953,172 @@ public class SwaggerConfig {
                                 .addProperty("totalElements", new Schema<>().type("integer").example(15))));
     }
 
+    private Schema<?> createCampaignApplicantResponseSchema() {
+        return new Schema<>()
+                .type("object")
+                .description("캠페인 신청자 정보 응답")
+                .addProperty("applicationId", new Schema<>()
+                        .type("integer")
+                        .format("int64")
+                        .description("신청 ID")
+                        .example(101))
+                .addProperty("user", new Schema<>()
+                        .type("object")
+                        .description("신청자 정보")
+                        .addProperty("id", new Schema<>()
+                                .type("integer")
+                                .format("int64")
+                                .description("사용자 ID")
+                                .example(5))
+                        .addProperty("nickname", new StringSchema()
+                                .description("닉네임")
+                                .example("인플루언서닉네임")
+                                .nullable(false))
+                        .addProperty("profileImage", new StringSchema()
+                                .description("프로필 이미지 URL (선택사항)")
+                                .example("https://example.com/profile.jpg")
+                                .nullable(true))
+                        .addProperty("phone", new StringSchema()
+                                .description("전화번호 (선택사항)")
+                                .example("010-1234-5678")
+                                .nullable(true))
+                        .addProperty("gender", new StringSchema()
+                                .description("성별 (선택사항)")
+                                .example("FEMALE")
+                                ._enum(Arrays.asList("MALE", "FEMALE", "UNKNOWN"))
+                                .nullable(true)))
+                .addProperty("allSnsUrls", new Schema<>()
+                        .type("array")
+                        .description("신청자의 모든 SNS 플랫폼 정보 (빈 배열일 수 있음)")
+                        .items(new Schema<>()
+                                .type("object")
+                                .addProperty("platformType", new StringSchema()
+                                        .description("플랫폼 타입")
+                                        .example("INSTAGRAM")
+                                        .nullable(false))
+                                .addProperty("snsUrl", new StringSchema()
+                                        .description("계정 URL")
+                                        .example("https://instagram.com/username")
+                                        .nullable(false))))
+                .addProperty("mission", new Schema<>()
+                        .type("object")
+                        .description("미션 정보 - 인플루언서의 미션 제출 상태와 URL")
+                        .nullable(true)
+                        .addProperty("missionId", new Schema<>()
+                                .type("integer")
+                                .format("int64")
+                                .description("미션 ID - 미션 제출 고유 식별자")
+                                .example(123)
+                                .nullable(true))
+                        .addProperty("missionStatus", new StringSchema()
+                                .description("미션 상태")
+                                .example("SUBMITTED")
+                                ._enum(Arrays.asList("NOT_SUBMITTED", "SUBMITTED", "REVISION_REQUESTED", "COMPLETED"))
+                                .nullable(false))
+                        .addProperty("missionUrl", new StringSchema()
+                                .description("미션 URL - 인플루언서가 제출한 SNS 포스트 URL")
+                                .example("https://instagram.com/p/abc123")
+                                .nullable(true)));
+    }
+
+    private Schema<?> createCampaignApplicantListResponseSchema() {
+        return new Schema<>()
+                .type("object")
+                .description("캠페인 신청자 목록 응답")
+                .addProperty("campaign", new Schema<>()
+                        .type("object")
+                        .description("캠페인 기본 정보")
+                        .addProperty("id", new Schema<>()
+                                .type("integer")
+                                .format("int64")
+                                .description("캠페인 ID")
+                                .example(42))
+                        .addProperty("title", new StringSchema()
+                                .description("캠페인 제목")
+                                .example("신상 음료 체험단 모집"))
+                        .addProperty("totalApplicants", new Schema<>()
+                                .type("integer")
+                                .format("int64")
+                                .description("전체 신청자 수")
+                                .example(15)))
+                .addProperty("applicants", new Schema<>()
+                        .type("array")
+                        .description("신청자 목록")
+                        .items(new Schema<>().$ref("#/components/schemas/CampaignApplicantResponse")))
+                .addProperty("pagination", new Schema<>()
+                        .type("object")
+                        .description("페이징 정보")
+                        .addProperty("pageNumber", new Schema<>()
+                                .type("integer")
+                                .description("현재 페이지 번호 (1부터 시작)")
+                                .example(1))
+                        .addProperty("pageSize", new Schema<>()
+                                .type("integer")
+                                .description("페이지 크기")
+                                .example(10))
+                        .addProperty("totalPages", new Schema<>()
+                                .type("integer")
+                                .description("전체 페이지 수")
+                                .example(2))
+                        .addProperty("totalElements", new Schema<>()
+                                .type("integer")
+                                .format("int64")
+                                .description("전체 항목 수")
+                                .example(15))
+                        .addProperty("first", new Schema<>()
+                                .type("boolean")
+                                .description("첫 번째 페이지 여부")
+                                .example(true))
+                        .addProperty("last", new Schema<>()
+                                .type("boolean")
+                                .description("마지막 페이지 여부")
+                                .example(false)));
+    }
+
+    private Schema<?> createAllPlatformListSuccessResponseSchema() {
+        return new Schema<>()
+                .type("object")
+                .description("전체 SNS 플랫폼 목록 조회 성공 응답")
+                .addProperty("success", new Schema<>()
+                        .type("boolean")
+                        .example(true)
+                        .description("성공 여부"))
+                .addProperty("message", new StringSchema()
+                        .description("응답 메시지")
+                        .example("전체 SNS 플랫폼 목록 조회 성공"))
+                .addProperty("status", new Schema<>()
+                        .type("integer")
+                        .description("HTTP 상태 코드")
+                        .example(200))
+                .addProperty("data", new Schema<>()
+                        .type("object")
+                        .description("플랫폼 목록 데이터")
+                        .addProperty("platforms", new Schema<>()
+                                .type("array")
+                                .description("전체 플랫폼 목록 (연동된 것 + 미연동 모두)")
+                                .items(new Schema<>()
+                                        .type("object")
+                                        .description("플랫폼 정보")
+                                        .addProperty("platformType", new StringSchema()
+                                                .description("플랫폼 타입")
+                                                .example("INSTAGRAM")
+                                                ._enum(Arrays.asList("INSTAGRAM", "YOUTUBE", "BLOG", "FACEBOOK")))
+                                        .addProperty("isConnected", new Schema<>()
+                                                .type("boolean")
+                                                .description("연동 여부")
+                                                .example(true))
+                                        .addProperty("id", new Schema<>()
+                                                .type("integer")
+                                                .format("int64")
+                                                .description("플랫폼 ID (연동된 경우만, 미연동시 null)")
+                                                .example(15)
+                                                .nullable(true))
+                                        .addProperty("accountUrl", new StringSchema()
+                                                .description("계정 URL (연동된 경우만, 미연동시 null)")
+                                                .example("https://instagram.com/myaccount")
+                                                .nullable(true)))));
+    }
+
     private Schema<?> createCampaignSelectionSuccessResponseSchema() {
         return new Schema<>()
                 .type("object")
@@ -1873,5 +2208,99 @@ public class SwaggerConfig {
                 .displayName("V2 API (신규 - OAS 표준)")
                 .pathsToMatch("/api/v2/**")
                 .build();
+    }
+
+    // ========== 캠페인 진행 상태 API 스키마 생성 메서드 ==========
+
+    private Schema<?> createCampaignProgressSuccessResponseSchema() {
+        return new Schema<>()
+                .type("object")
+                .description("캠페인 진행 상태 조회 성공 응답")
+                .addProperty("success", new Schema<>()
+                        .type("boolean")
+                        .example(true)
+                        .description("성공 여부"))
+                .addProperty("message", new StringSchema()
+                        .description("응답 메시지")
+                        .example("캠페인 진행 상태 조회 성공"))
+                .addProperty("status", new Schema<>()
+                        .type("integer")
+                        .description("HTTP 상태 코드")
+                        .example(200))
+                .addProperty("data", new Schema<>()
+                        .$ref("#/components/schemas/CampaignProgressResponse")
+                        .description("캠페인 진행 상태 데이터"));
+    }
+
+    private Schema<?> createCampaignProgressResponseSchema() {
+        return new Schema<>()
+                .type("object")
+                .description("캠페인 진행 상태 응답 데이터")
+                .addProperty("campaignId", new Schema<>()
+                        .type("integer")
+                        .format("int64")
+                        .description("캠페인 ID")
+                        .example(123))
+                .addProperty("campaignTitle", new StringSchema()
+                        .description("캠페인 제목")
+                        .example("이탈리안 레스토랑 신메뉴 체험단"))
+                .addProperty("isAlwaysOpen", new Schema<>()
+                        .type("boolean")
+                        .description("상시 캠페인 여부")
+                        .example(false))
+                .addProperty("progress", new Schema<>()
+                        .type("object")
+                        .description("진행 상태 정보")
+                        .addProperty("status", new StringSchema()
+                                .description("현재 진행 상태")
+                                .example("RECRUITING")
+                                ._enum(Arrays.asList("RECRUITING", "RECRUITMENT_COMPLETED", 
+                                        "SELECTION_COMPLETED", "MISSION_IN_PROGRESS", 
+                                        "CONTENT_REVIEW_PENDING", "ALWAYS_OPEN")))
+                        .addProperty("message", new StringSchema()
+                                .description("진행 상태 메시지")
+                                .example("지원자를 모집하고 있어요.")));
+    }
+
+    // ========== 캠페인 생성 에러 스키마 생성 메서드 ==========
+
+    private Schema<?> createCampaignCategoryErrorResponseSchema() {
+        return new Schema<>()
+                .type("object")
+                .description("캠페인 카테고리 오류 응답")
+                .addProperty("success", new Schema<>()
+                        .type("boolean")
+                        .example(false)
+                        .description("성공 여부"))
+                .addProperty("message", new StringSchema()
+                        .description("오류 메시지")
+                        .example("유효하지 않은 카테고리 타입입니다."))
+                .addProperty("errorCode", new StringSchema()
+                        .description("오류 코드")
+                        .example("INVALID_CATEGORY"))
+                .addProperty("status", new Schema<>()
+                        .type("integer")
+                        .description("HTTP 상태 코드")
+                        .example(400));
+    }
+
+    private Schema<?> createCampaignCreationPermissionErrorResponseSchema() {
+        return new Schema<>()
+                .type("object")
+                .description("캠페인 생성 권한 오류 응답")
+                .addProperty("success", new Schema<>()
+                        .type("boolean")
+                        .example(false)
+                        .description("성공 여부"))
+                .addProperty("message", new StringSchema()
+                        .description("오류 메시지")
+                        .example("CLIENT 권한이 필요합니다."))
+                .addProperty("errorCode", new StringSchema()
+                        .description("오류 코드")
+                        .example("INSUFFICIENT_PERMISSION"))
+                .addProperty("status", new Schema<>()
+                        .type("integer")
+                        .description("HTTP 상태 코드")
+                        .example(403));
     }
 }

@@ -47,11 +47,12 @@ public class CampaignApplication {
 
     @PrePersist
     protected void onCreate() {
+        ZonedDateTime now = ZonedDateTime.now();
         if (this.createdAt == null) {
-            this.createdAt = ZonedDateTime.now();
+            this.createdAt = now;
         }
         if (this.updatedAt == null) {
-            this.updatedAt = ZonedDateTime.now();
+            this.updatedAt = now;
         }
     }
 
@@ -87,11 +88,25 @@ public class CampaignApplication {
 
     /**
      * 신청을 거절합니다.
-     * 거절/취소된 신청은 데이터를 삭제하는 방식으로 처리
      */
-    @Deprecated
     public void reject() {
-        throw new UnsupportedOperationException("거절/취소된 신청은 데이터 삭제로 처리됩니다.");
+        this.applicationStatus = ApplicationStatus.REJECTED;
+        this.updatedAt = ZonedDateTime.now();
+    }
+
+    /**
+     * 거절 상태를 해제합니다.
+     */
+    public void unreject() {
+        this.applicationStatus = ApplicationStatus.PENDING;
+        this.updatedAt = ZonedDateTime.now();
+    }
+
+    /**
+     * 거절된 신청인지 확인합니다.
+     */
+    public boolean isRejected() {
+        return this.applicationStatus == ApplicationStatus.REJECTED;
     }
 
     /**

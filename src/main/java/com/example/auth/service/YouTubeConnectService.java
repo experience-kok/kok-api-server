@@ -75,16 +75,41 @@ public class YouTubeConnectService implements SnsConnectService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("사용자 정보를 찾을 수 없습니다."));
 
-        // 이미 같은 사용자가 같은 URL로 연동한 계정이 있는지 확인
-        Optional<UserSnsPlatform> existingPlatform = userSnsPlatformRepository
-                .findByUserIdAndPlatformTypeAndAccountUrl(
-                        userId, 
-                        PlatformType.YOUTUBE.getValue(), 
-                        normalizedUrl);
+        // 이미 같은 사용자가 YouTube 플랫폼을 연동했는지 확인 (플랫폼 타입 기준)
+        Optional<UserSnsPlatform> existingYoutubePlatform = userSnsPlatformRepository
+                .findByUserIdAndPlatformType(userId, PlatformType.YOUTUBE.getValue());
 
-        if (existingPlatform.isPresent()) {
-            log.info("이미 연동된 유튜브 채널이 있습니다: platformId={}", existingPlatform.get().getId());
-            return existingPlatform.get().getId();
+        if (existingYoutubePlatform.isPresent()) {
+            UserSnsPlatform platform = existingYoutubePlatform.get();
+            
+            // 같은 URL인 경우 기존 연동 정보 반환
+            if (normalizedUrl.equals(platform.getAccountUrl())) {
+                log.info("이미 연동된 동일한 유튜브 채널이 있습니다: platformId={}", platform.getId());
+                return platform.getId();
+            }
+            // 다른 URL인 경우 기존 연동을 새 URL로 업데이트 (덮어쓰기)
+            else {
+                // 🔍 업데이트 전에 다른 사용자가 이미 연동했는지 확인
+                Optional<UserSnsPlatform> otherUserPlatform = userSnsPlatformRepository
+                        .findByPlatformTypeAndAccountUrl(
+                                PlatformType.YOUTUBE.getValue(), 
+                                normalizedUrl);
+
+                if (otherUserPlatform.isPresent() && !otherUserPlatform.get().getUser().getId().equals(userId)) {
+                    log.warn("다른 사용자가 이미 연동한 유튜브 채널입니다: url={}", normalizedUrl);
+                    throw new IllegalStateException("이미 다른 사용자가 연동한 유튜브 채널입니다.");
+                }
+
+                log.info("기존 유튜브 연동을 새 URL로 업데이트합니다: userId={}, old={}, new={}", 
+                        userId, platform.getAccountUrl(), normalizedUrl);
+                platform.setAccountUrl(normalizedUrl);
+                platform.setFollowerCount(0); // 새 계정이므로 팔로워 수 초기화
+                platform.setLastCrawledAt(null); // 크롤링 상태 초기화
+                
+                UserSnsPlatform updatedPlatform = userSnsPlatformRepository.save(platform);
+                log.info("유튜브 연동 업데이트 완료: platformId={}, url={}", updatedPlatform.getId(), normalizedUrl);
+                return updatedPlatform.getId();
+            }
         }
 
         // 다른 사용자가 이미 연동한 URL인지 확인

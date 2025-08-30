@@ -23,10 +23,10 @@ public class PlatformConnectRequest {
 
     @Schema(description = "플랫폼 타입 - 연동할 SNS 플랫폼의 종류 (각 타입별로 팔로워 수 크롤링 지원)", 
             example = "INSTAGRAM", 
-            allowableValues = {"BLOG", "INSTAGRAM", "YOUTUBE"}, 
+            allowableValues = {"BLOG", "INSTAGRAM", "YOUTUBE", "TIKTOK"},
             required = true)
     @NotNull(message = "플랫폼 타입은 필수입니다")
-    @Pattern(regexp = "BLOG|INSTAGRAM|YOUTUBE", message = "플랫폼 타입은 BLOG, INSTAGRAM, YOUTUBE 중 하나여야 합니다")
+    @Pattern(regexp = "BLOG|INSTAGRAM|YOUTUBE|TIKTOK", message = "플랫폼 타입은 BLOG, INSTAGRAM, YOUTUBE, TIKTOK 중 하나여야 합니다")
     private String type;
 
     @Schema(description = "SNS 플랫폼 URL - 사용자의 공개 프로필 페이지 주소 (팔로워 수 크롤링 및 인증에 사용)", 

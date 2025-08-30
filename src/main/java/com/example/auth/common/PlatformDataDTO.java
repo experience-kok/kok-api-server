@@ -17,7 +17,7 @@ public class PlatformDataDTO {
     private Long id;
 
     @Schema(description = "플랫폼 유형", example = "BLOG",
-            allowableValues = {"BLOG", "YOUTUBE", "YOUTUBE"})
+            allowableValues = {"BLOG", "INSTAGRAM", "YOUTUBE", "TIKTOK"})
     private String platformType;
 
     @Schema(description = "계정 URL", example = "https://myblog.com")

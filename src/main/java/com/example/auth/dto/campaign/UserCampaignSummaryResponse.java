@@ -40,6 +40,9 @@ public class UserCampaignSummaryResponse {
         @Schema(description = "선정된 신청")
         private CategorySummary selected;
         
+        @Schema(description = "반려된 신청")
+        private CategorySummary rejected;
+        
         @Schema(description = "완료된 신청")
         private CategorySummary completed;
     }

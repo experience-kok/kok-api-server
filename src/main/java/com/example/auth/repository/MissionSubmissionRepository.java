@@ -42,10 +42,6 @@ public interface MissionSubmissionRepository extends JpaRepository<MissionSubmis
            "ORDER BY ms.submittedAt DESC")
     Page<MissionSubmission> findByCampaignIdWithPaging(@Param("campaignId") Long campaignId, Pageable pageable);
 
-    /**
-     * 검토 상태별 미션 제출 조회
-     */
-    List<MissionSubmission> findByReviewStatusOrderBySubmittedAtDesc(MissionSubmission.ReviewStatus reviewStatus);
 
     /**
      * 특정 유저의 미션 제출 이력 조회
@@ -78,12 +74,12 @@ public interface MissionSubmissionRepository extends JpaRepository<MissionSubmis
     List<MissionSubmission> findByClientId(@Param("clientId") Long clientId);
 
     /**
-     * 검토 대기 중인 미션 수 조회 (클라이언트별)
+     * 검토 대기 중인 미션 수 조회 (클라이언트별) - 완료되지 않은 미션 수
      */
     @Query("SELECT COUNT(ms) FROM MissionSubmission ms " +
            "JOIN ms.campaignApplication ca " +
            "WHERE ca.campaign.creator.id = :clientId " +
-           "AND ms.reviewStatus = 'PENDING'")
+           "AND ms.isCompleted = false")
     Long countPendingMissionsByClientId(@Param("clientId") Long clientId);
 
     /**
@@ -97,53 +93,44 @@ public interface MissionSubmissionRepository extends JpaRepository<MissionSubmis
             @Param("endDate") ZonedDateTime endDate);
 
     /**
-     * 수정 요청이 많은 미션 조회 (분석용)
-     */
-    @Query("SELECT ms FROM MissionSubmission ms " +
-           "WHERE ms.revisionCount >= :minRevisionCount " +
-           "ORDER BY ms.revisionCount DESC")
-    List<MissionSubmission> findByRevisionCountGreaterThanEqual(@Param("minRevisionCount") Integer minRevisionCount);
-
-    /**
      * 플랫폼별 미션 제출 통계 조회
      */
-    @Query("SELECT ms.platformType, COUNT(ms), AVG(ms.revisionCount) " +
+    @Query("SELECT ms.platformType, COUNT(ms) " +
            "FROM MissionSubmission ms " +
            "GROUP BY ms.platformType " +
            "ORDER BY COUNT(ms) DESC")
     List<Object[]> getPlatformStatistics();
 
     /**
-     * 미션 제출 승인율 조회 (클라이언트별)
+     * 미션 제출 승인율 조회 (클라이언트별) - 완료율 조회
      */
     @Query("SELECT " +
-           "COUNT(CASE WHEN ms.reviewStatus = 'APPROVED' THEN 1 END) * 100.0 / COUNT(ms) " +
+           "COUNT(CASE WHEN ms.isCompleted = true THEN 1 END) * 100.0 / COUNT(ms) " +
            "FROM MissionSubmission ms " +
            "JOIN ms.campaignApplication ca " +
            "WHERE ca.campaign.creator.id = :clientId")
     Double getApprovalRateByClientId(@Param("clientId") Long clientId);
 
     /**
-     * 캠페인별 미션 제출 통계
+     * 캠페인별 미션 제출 통계 - isCompleted 기반
      */
     @Query("SELECT " +
            "COUNT(ms) as totalSubmissions, " +
-           "COUNT(CASE WHEN ms.reviewStatus = 'APPROVED' THEN 1 END) as approvedCount, " +
-           "COUNT(CASE WHEN ms.reviewStatus = 'PENDING' THEN 1 END) as pendingCount, " +
-           "COUNT(CASE WHEN ms.reviewStatus = 'REVISION_REQUESTED' THEN 1 END) as revisionRequestedCount, " +
-           "AVG(ms.revisionCount) as avgRevisionCount " +
+           "COUNT(CASE WHEN ms.isCompleted = true THEN 1 END) as completedCount, " +
+           "COUNT(CASE WHEN ms.isCompleted = false AND ms.reviewedAt IS NOT NULL THEN 1 END) as revisionRequestedCount, " +
+           "COUNT(CASE WHEN ms.isCompleted = false AND ms.reviewedAt IS NULL THEN 1 END) as pendingCount " +
            "FROM MissionSubmission ms " +
            "JOIN ms.campaignApplication ca " +
            "WHERE ca.campaign.id = :campaignId")
     Object[] getCampaignMissionStatistics(@Param("campaignId") Long campaignId);
 
     /**
-     * 검토가 필요한 미션 조회 (오래된 순)
+     * 검토가 필요한 미션 조회 (오래된 순) - 완료되지 않은 미션
      */
     @Query("SELECT ms FROM MissionSubmission ms " +
            "JOIN FETCH ms.campaignApplication ca " +
            "JOIN FETCH ca.user u " +
-           "WHERE ms.reviewStatus = 'PENDING' " +
+           "WHERE ms.isCompleted = false " +
            "AND ms.submittedAt < :cutoffDate " +
            "ORDER BY ms.submittedAt ASC")
     List<MissionSubmission> findPendingMissionsOlderThan(@Param("cutoffDate") ZonedDateTime cutoffDate);
@@ -152,4 +139,15 @@ public interface MissionSubmissionRepository extends JpaRepository<MissionSubmis
      * 캠페인 신청 존재 여부 확인
      */
     boolean existsByCampaignApplication(CampaignApplication campaignApplication);
+
+    /**
+     * 캠페인 신청별 미션 제출 조회 (단일)
+     */
+    Optional<MissionSubmission> findByCampaignApplication(CampaignApplication campaignApplication);
+
+    /**
+     * 캠페인 신청별 완료 상태 기반 미션 제출 존재 여부 확인
+     */
+    boolean existsByCampaignApplicationAndIsCompleted(CampaignApplication campaignApplication, Boolean isCompleted);
+
 }

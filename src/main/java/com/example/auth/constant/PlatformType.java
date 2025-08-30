@@ -1,43 +1,40 @@
 package com.example.auth.constant;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.Getter;
 
-@Schema(enumAsRef = true, description = "SNS 플랫폼 유형")
+@Getter
+@Schema(enumAsRef = true, description = "SNS Platform Type")
 public enum PlatformType {
-    @Schema(description = "네이버 블로그")
-    BLOG("blog", "네이버 블로그"),
-
-    @Schema(description = "페이스북")
-    FACEBOOK("facebook", "페이스북"),
-
-    @Schema(description = "인스타그램")
+    @Schema(description = "Instagram")
     INSTAGRAM("instagram", "인스타그램"),
 
-    @Schema(description = "유튜브")
-    YOUTUBE("youtube", "유튜브");
+    @Schema(description = "YouTube")
+    YOUTUBE("youtube", "유튜브"),
+
+    @Schema(description = "Naver Blog")
+    BLOG("blog", "네이버 블로그"),
+
+    @Schema(description = "TikTok")
+    TIKTOK("tiktok", "틱톡");
 
     private final String value;
-    private final String displayName;
+    private final String koreanName;
 
-    PlatformType(String value, String displayName) {
+    PlatformType(String value, String koreanName) {
         this.value = value;
-        this.displayName = displayName;
+        this.koreanName = koreanName;
     }
 
-    public String getValue() {
-        return value;
-    }
-
-    public String getDisplayName() {
-        return displayName;
-    }
-
+    /**
+     * Find PlatformType by string value
+     */
     public static PlatformType fromString(String value) {
         for (PlatformType type : PlatformType.values()) {
-            if (type.value.equalsIgnoreCase(value)) {
+            if (type.value.equalsIgnoreCase(value) || type.name().equalsIgnoreCase(value)) {
                 return type;
             }
         }
-        throw new IllegalArgumentException("알 수 없는 플랫폼 유형: " + value);
+        throw new IllegalArgumentException("Unknown platform type: " + value);
     }
 }

@@ -387,4 +387,22 @@ public interface CampaignApplicationRepository extends JpaRepository<CampaignApp
      * @return 해당 상태 신청 존재 여부
      */
     boolean existsByUserIdAndApplicationStatus(Long userId, ApplicationStatus applicationStatus);
+
+    @Query("SELECT CASE WHEN COUNT(ca) > 0 THEN true ELSE false END " +
+            "FROM CampaignApplication ca " +
+            "WHERE ca.campaign.id = :campaignId " +
+            "AND ca.user.id = :userId")
+    boolean existsByCampaignIdAndUserId(
+            @Param("campaignId") Long campaignId,
+            @Param("userId") Long userId);
+
+    @Query("SELECT CASE WHEN COUNT(ca) > 0 THEN true ELSE false END " +
+            "FROM CampaignApplication ca " +
+            "WHERE ca.campaign.id = :campaignId " +
+            "AND ca.user.id = :userId " +
+            "AND ca.applicationStatus = :status")
+    boolean existsByCampaignIdAndUserIdAndApplicationStatus(
+            @Param("campaignId") Long campaignId,
+            @Param("userId") Long userId,
+            @Param("status") ApplicationStatus status);
 }

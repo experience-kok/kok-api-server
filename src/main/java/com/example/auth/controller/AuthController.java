@@ -1,5 +1,6 @@
 package com.example.auth.controller;
 
+import com.example.auth.service.*;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import com.example.auth.common.BaseResponse;
 import com.example.auth.dto.auth.EmailLoginRequest;
@@ -18,10 +19,6 @@ import com.example.auth.domain.User;
 import com.example.auth.exception.JwtValidationException;
 import com.example.auth.exception.TokenErrorType;
 import com.example.auth.exception.TokenRefreshException;
-import com.example.auth.service.KakaoService;
-import com.example.auth.service.TokenService;
-import com.example.auth.service.UserService;
-import com.example.auth.service.UserWithdrawalService;
 import com.example.auth.security.JwtUtil;
 import com.example.auth.util.TokenUtils;
 import io.jsonwebtoken.Claims;
@@ -47,7 +44,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.beans.factory.annotation.Value;
 
-
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -66,6 +62,7 @@ public class AuthController {
     private final TokenUtils tokenUtils;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
     private final UserWithdrawalService userWithdrawalService;
+    private final AuthCodeCacheService authCodeCacheService;
 
     @Value("${kakao.client-id}")
     private String kakaoClientId;
@@ -78,7 +75,6 @@ public class AuthController {
                             mediaType = "application/json",
                             schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
     })
-
     @GetMapping("/login-redirect")
     public void redirectToKakaoLogin(
             @RequestParam("redirectUri") String redirectUri,
@@ -105,6 +101,7 @@ public class AuthController {
         log.info("카카오 로그인 페이지로 리다이렉트: redirectUri={}", redirectUri);
         response.sendRedirect(kakaoUrl);
     }
+
     @Operation(
         summary = "카카오 로그인",
         description = "카카오 OAuth 인가 코드를 통해 로그인하고 JWT 토큰을 발급받습니다.\n\n" +
@@ -196,10 +193,10 @@ public class AuthController {
                 )
             )
     })
-
     @PostMapping("/kakao")
     public ResponseEntity<?> kakaoLogin(@RequestBody @Valid KakaoAuthRequest request) {
-        log.info("카카오 로그인 요청: redirectUri={}", request.getRedirectUri());
+        long startTime = System.currentTimeMillis();
+        log.info("카카오 로그인 요청 시작: redirectUri={}, timestamp={}", request.getRedirectUri(), startTime);
 
         // 허용된 리다이렉트 URI인지 검증
         List<String> allowedUris = List.of(
@@ -213,9 +210,39 @@ public class AuthController {
                     .body(BaseResponse.fail("허용되지 않은 redirectUri입니다.", "VALIDATION_ERROR", HttpStatus.BAD_REQUEST.value()));
         }
 
+        // 인가 코드 기본 검증
+        String authCode = request.getAuthorizationCode();
+        if (authCode == null || authCode.trim().isEmpty()) {
+            log.warn("빈 인가 코드로 카카오 로그인 시도");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(BaseResponse.fail("유효하지 않은 인가 코드입니다.", "INVALID_AUTH_CODE", HttpStatus.BAD_REQUEST.value()));
+        }
+
+        // 인가 코드 길이 검증 (카카오 인가 코드는 일반적으로 30자 이상)
+        if (authCode.length() < 20) {
+            log.warn("너무 짧은 인가 코드: length={}", authCode.length());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(BaseResponse.fail("유효하지 않은 인가 코드 형식입니다.", "INVALID_AUTH_CODE_FORMAT", HttpStatus.BAD_REQUEST.value()));
+        }
+
+        // 인가 코드 중복 사용 검증
+        if (authCodeCacheService.isAuthCodeUsed(authCode)) {
+            log.warn("이미 사용된 인가 코드로 로그인 시도: code={}", authCode);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(BaseResponse.fail("이미 사용된 인가 코드입니다. 다시 로그인해주세요.", "AUTH_CODE_ALREADY_USED", HttpStatus.BAD_REQUEST.value()));
+        }
+
         try {
+            log.debug("카카오 토큰 요청 시작: timestamp={}", System.currentTimeMillis());
             KakaoTokenResponse kakaoToken = kakaoService.requestToken(request.getAuthorizationCode(), request.getRedirectUri());
+            log.debug("카카오 토큰 요청 완료: timestamp={}", System.currentTimeMillis());
+            
+            // 인가 코드 사용 처리 (성공 시에만)
+            authCodeCacheService.markAuthCodeAsUsed(authCode);
+            
+            log.debug("카카오 사용자 정보 요청 시작: timestamp={}", System.currentTimeMillis());
             KakaoUserInfo userInfo = kakaoService.requestUserInfo(kakaoToken.accessToken());
+            log.debug("카카오 사용자 정보 요청 완료: timestamp={}", System.currentTimeMillis());
             
             // 재가입 제한 체크
             String email = null;
@@ -237,7 +264,8 @@ public class AuthController {
             String refreshToken = jwtUtil.createRefreshToken(user.getId());
             tokenService.saveRefreshToken(user.getId(), refreshToken);
 
-            log.info("카카오 로그인 성공: userId={}, loginType={}", user.getId(), loginType);
+            log.info("카카오 로그인 성공: userId={}, loginType={}, 총 소요시간={}ms", 
+                    user.getId(), loginType, System.currentTimeMillis() - startTime);
 
             // UserDTO를 사용하여 응답 데이터 생성
             UserDTO userDTO = UserDTO.fromEntity(user);
@@ -254,6 +282,31 @@ public class AuthController {
             log.warn("재가입 제한으로 카카오 로그인 거부: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(BaseResponse.fail(e.getMessage(), "REJOIN_RESTRICTED", HttpStatus.FORBIDDEN.value()));
+        } catch (RuntimeException e) {
+            // KakaoService에서 발생하는 타임아웃 및 연결 오류 처리
+            if (e.getMessage().contains("응답 시간이 초과") || e.getMessage().contains("timeout") || e.getMessage().contains("408")) {
+                log.error("카카오 로그인 타임아웃 오류: {}", e.getMessage());
+                return ResponseEntity.status(HttpStatus.REQUEST_TIMEOUT)
+                        .body(BaseResponse.fail("카카오 로그인 처리 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.", "REQUEST_TIMEOUT", HttpStatus.REQUEST_TIMEOUT.value()));
+            } else if (e.getMessage().contains("인가 코드가 만료") || e.getMessage().contains("이미 사용된 코드")) {
+                log.error("카카오 인가 코드 만료/중복 사용: {}", e.getMessage());
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(BaseResponse.fail("카카오 로그인 세션이 만료되었습니다. 다시 로그인해주세요.", "AUTHORIZATION_CODE_EXPIRED", HttpStatus.BAD_REQUEST.value()));
+            } else if (e.getMessage().contains("앱 설정에 오류") || e.getMessage().contains("관리자에게 문의")) {
+                log.error("카카오 앱 설정 오류: {}", e.getMessage());
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(BaseResponse.fail("카카오 로그인 설정에 문제가 있습니다. 관리자에게 문의해주세요.", "KAKAO_CONFIG_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
+            } else if (e.getMessage().contains("요청 형식이 잘못")) {
+                log.error("카카오 요청 형식 오류: {}", e.getMessage());
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(BaseResponse.fail("로그인 요청 형식에 오류가 있습니다. 다시 시도해주세요.", "INVALID_REQUEST_FORMAT", HttpStatus.BAD_REQUEST.value()));
+            } else if (e.getMessage().contains("카카오 인증 서버")) {
+                log.error("카카오 서버 연결 오류: {}", e.getMessage());
+                return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                        .body(BaseResponse.fail("카카오 로그인 서비스에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해주세요.", "SERVICE_UNAVAILABLE", HttpStatus.BAD_GATEWAY.value()));
+            }
+            log.error("카카오 로그인 런타임 오류: {}", e.getMessage(), e);
+            throw e; // 다른 RuntimeException은 일반 Exception 핸들러로 전달
         } catch (Exception e) {
             log.error("카카오 로그인 처리 중 오류: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -286,7 +339,6 @@ public class AuthController {
                 )
             )
     })
-
     @PostMapping("/logout")
     public ResponseEntity<?> logout(@RequestHeader("Authorization") String bearerToken) {
         // 토큰 형식 확인
@@ -373,7 +425,6 @@ public class AuthController {
                 )
             )
     })
-
     @PostMapping("/refresh")
     public ResponseEntity<?> refresh(
             @RequestHeader("Authorization") String bearerToken,
@@ -713,7 +764,6 @@ public class AuthController {
         }
     }
 
-
     @Operation(summary = "USER 권한 검사", description = "현재 사용자가 USER 권한을 가지고 있는지 확인합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "권한 검사 완료",
@@ -764,12 +814,12 @@ public class AuthController {
                         .body(BaseResponse.fail("존재하지 않는 사용자입니다.", "USER_NOT_FOUND", HttpStatus.UNAUTHORIZED.value()));
             }
 
-            // CLIENT 권한 확인
-            boolean isClient = "USER".equals(user.getRole());
+            // USER 권한 확인
+            boolean isUser = "USER".equals(user.getRole());
 
-            log.info("USER 권한 검사 완료: userId={}, isClient={}, userRole={}", userId, isClient, user.getRole());
+            log.info("USER 권한 검사 완료: userId={}, isUser={}, userRole={}", userId, isUser, user.getRole());
 
-            if (!isClient) {
+            if (!isUser) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(BaseResponse.fail("USER 권한이 필요합니다.", "INSUFFICIENT_PERMISSION", HttpStatus.FORBIDDEN.value()));
             }

@@ -81,8 +81,9 @@ public class MyCampaignService {
         // 기본값 설정
         int selectedCount = 0;
         int completedCount = 0;
+        int rejectedCount = 0;
 
-        // SELECTED, COMPLETED 카운트 설정 (기존 APPROVED를 SELECTED로 변경)
+        // SELECTED, COMPLETED, REJECTED 카운트 설정
         for (Object[] row : statusCounts) {
             ApplicationStatus status = (ApplicationStatus) row[0];
             Long count = (Long) row[1];
@@ -93,6 +94,9 @@ public class MyCampaignService {
                     break;
                 case COMPLETED:
                     completedCount = count.intValue();
+                    break;
+                case REJECTED:
+                    rejectedCount = count.intValue();
                     break;
                 // APPLIED, PENDING은 따로 처리하므로 제외
             }
@@ -105,6 +109,8 @@ public class MyCampaignService {
                         .count(pendingCount.intValue()).label("대기중").build()) // 모집 기간 끝난 PENDING
                 .selected(UserCampaignSummaryResponse.CategorySummary.builder()
                         .count(selectedCount).label("선정").build())
+                .rejected(UserCampaignSummaryResponse.CategorySummary.builder()
+                        .count(rejectedCount).label("반려").build())
                 .completed(UserCampaignSummaryResponse.CategorySummary.builder()
                         .count(completedCount).label("완료").build());
 
@@ -136,7 +142,7 @@ public class MyCampaignService {
 
         // 실제 카운트 설정
         for (Object[] row : statusCounts) {
-            Campaign.ApprovalStatus status = (Campaign.ApprovalStatus) row[0];
+            Campaign.ApprovalStatus status = (Campaign.ApprovalStatus) row[0];  // ApprovalStatus enum으로 받음
             Long count = (Long) row[1];
 
             switch (status) {
@@ -182,6 +188,10 @@ public class MyCampaignService {
                 break;
             case "selected":
                 applications = applicationRepository.findByUserIdAndStatus(userId, ApplicationStatus.SELECTED, pageable);
+                break;
+            case "rejected":
+                // REJECTED 상태 신청 조회
+                applications = applicationRepository.findByUserIdAndStatus(userId, ApplicationStatus.REJECTED, pageable);
                 break;
             case "completed":
                 applications = applicationRepository.findByUserIdAndStatus(userId, ApplicationStatus.COMPLETED, pageable);
@@ -378,6 +388,10 @@ public class MyCampaignService {
                 // 모집 기간 끝난 APPLIED 상태 신청  
                 Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
                 applications = applicationRepository.findPendingByUserId(userId, currentDate, pageable);
+            } else if ("REJECTED".equals(statusUpper)) {
+                // REJECTED 상태 신청 조회
+                Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "updatedAt"));
+                applications = applicationRepository.findByUserIdAndStatus(userId, ApplicationStatus.REJECTED, pageable);
             } else {
                 // 기존 로직: SELECTED, REJECTED, COMPLETED
                 try {
@@ -452,6 +466,8 @@ public class MyCampaignService {
                         displayStatus = "SELECTED"; // 선정됨
                     } else if (application.getApplicationStatus() == ApplicationStatus.COMPLETED) {
                         displayStatus = "COMPLETED"; // 완료됨
+                    } else if (application.isRejected()) {
+                        displayStatus = "REJECTED"; // 반려됨
                     } else {
                         displayStatus = application.getApplicationStatus().toString(); // 기타
                     }
@@ -476,8 +492,8 @@ public class MyCampaignService {
      * 캠페인 상태 계산 (CLIENT용) - 상시 캠페인 고려
      */
     private String calculateCampaignStatus(Campaign campaign) {
-        if (!"APPROVED".equals(campaign.getApprovalStatus().toString())) {
-            return campaign.getApprovalStatus().toString();
+        if (!Campaign.ApprovalStatus.APPROVED.equals(campaign.getApprovalStatus())) {
+            return campaign.getApprovalStatus().name();
         }
 
         // 상시 캠페인인 경우 항상 ACTIVE 상태

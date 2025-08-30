@@ -35,6 +35,7 @@ public class CategoryInitializer implements CommandLineRunner {
         createCategoryIfNotExists(CampaignCategory.CategoryType.방문, "맛집");
         createCategoryIfNotExists(CampaignCategory.CategoryType.방문, "뷰티");
         createCategoryIfNotExists(CampaignCategory.CategoryType.방문, "숙박");
+        createCategoryIfNotExists(CampaignCategory.CategoryType.방문, "기타");
 
         // 배송형 카테고리 생성
         createCategoryIfNotExists(CampaignCategory.CategoryType.배송, "식품");

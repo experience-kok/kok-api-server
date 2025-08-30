@@ -543,7 +543,7 @@ public class CampaignUpdateService {
         }
 
         // 승인된 캠페인은 삭제 제한
-        if (campaign.getApprovalStatus() == Campaign.ApprovalStatus.APPROVED) {
+        if (Campaign.ApprovalStatus.APPROVED.equals(campaign.getApprovalStatus())) {
             throw new IllegalArgumentException("승인된 캠페인은 삭제할 수 없어요. 관리자에게 문의해주세요.");
         }
 

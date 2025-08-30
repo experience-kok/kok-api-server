@@ -31,12 +31,6 @@ public class MissionSubmission {
     @Column(name = "submission_url", nullable = false, columnDefinition = "TEXT")
     private String submissionUrl;
 
-    @Column(name = "submission_title", length = 200)
-    private String submissionTitle;
-
-    @Column(name = "submission_description", columnDefinition = "TEXT")
-    private String submissionDescription;
-
     @Column(name = "platform_type", nullable = false, length = 50)
     private String platformType;
 
@@ -47,17 +41,12 @@ public class MissionSubmission {
     @Column(name = "reviewed_at")
     private ZonedDateTime reviewedAt;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "review_status", nullable = false, length = 20)
+    @Column(name = "is_completed", nullable = false)
     @Builder.Default
-    private ReviewStatus reviewStatus = ReviewStatus.PENDING;
+    private Boolean isCompleted = false;
 
     @Column(name = "client_feedback", columnDefinition = "TEXT")
     private String clientFeedback;
-
-    @Column(name = "revision_count", nullable = false)
-    @Builder.Default
-    private Integer revisionCount = 0;
 
     @Column(name = "created_at", nullable = false)
     @Builder.Default
@@ -70,25 +59,6 @@ public class MissionSubmission {
     @OneToMany(mappedBy = "missionSubmission", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<MissionRevision> revisions = new ArrayList<>();
-
-    /**
-     * 미션 검토 상태 열거형
-     */
-    public enum ReviewStatus {
-        PENDING("검토 대기"),
-        APPROVED("승인됨"),
-        REVISION_REQUESTED("수정 요청");
-
-        private final String description;
-
-        ReviewStatus(String description) {
-            this.description = description;
-        }
-
-        public String getDescription() {
-            return description;
-        }
-    }
 
     @PrePersist
     protected void onCreate() {
@@ -111,32 +81,36 @@ public class MissionSubmission {
     /**
      * 미션을 승인합니다
      */
-    public void approve(String feedback) {
-        this.reviewStatus = ReviewStatus.APPROVED;
+    public void approve(String feedback, Integer rating) {
+        this.isCompleted = true;
         this.reviewedAt = ZonedDateTime.now();
         this.clientFeedback = feedback;
         this.updatedAt = ZonedDateTime.now();
+    }
+
+    /**
+     * 미션을 승인합니다 (평점 없이)
+     */
+    public void approve(String feedback) {
+        approve(feedback, null);
     }
 
     /**
      * 미션 수정을 요청합니다
      */
     public void requestRevision(String feedback) {
-        this.reviewStatus = ReviewStatus.REVISION_REQUESTED;
+        this.isCompleted = false;
         this.reviewedAt = ZonedDateTime.now();
         this.clientFeedback = feedback;
-        this.revisionCount++;
         this.updatedAt = ZonedDateTime.now();
     }
 
     /**
-     * 수정된 미션을 재제출합니다
+     * 수정된 미션을 재제출합니다 (URL만)
      */
-    public void resubmit(String newUrl, String newTitle, String newDescription) {
+    public void resubmit(String newUrl) {
         this.submissionUrl = newUrl;
-        this.submissionTitle = newTitle;
-        this.submissionDescription = newDescription;
-        this.reviewStatus = ReviewStatus.PENDING;
+        this.isCompleted = false;
         this.submittedAt = ZonedDateTime.now();
         this.reviewedAt = null;
         this.updatedAt = ZonedDateTime.now();
@@ -165,26 +139,48 @@ public class MissionSubmission {
     }
 
     /**
-     * 최종 승인 여부 확인
+     * 미션 완료 여부 확인
      */
     @Transient
     public boolean isApproved() {
-        return reviewStatus == ReviewStatus.APPROVED;
+        return this.isCompleted != null && this.isCompleted;
     }
 
     /**
-     * 수정 요청 중인지 확인
+     * 수정 요청 중인지 확인 (완료되지 않았고 검토 완료된 상태)
      */
     @Transient
     public boolean isRevisionRequested() {
-        return reviewStatus == ReviewStatus.REVISION_REQUESTED;
+        return !isCompleted() && reviewedAt != null;
     }
 
     /**
-     * 검토 대기 중인지 확인
+     * 검토 대기 중인지 확인 (아직 검토되지 않은 상태)
      */
     @Transient
     public boolean isPending() {
-        return reviewStatus == ReviewStatus.PENDING;
+        return reviewedAt == null && !isCompleted();
+    }
+
+    /**
+     * 현재 미션 상태를 문자열로 반환
+     */
+    @Transient
+    public String getStatusDescription() {
+        if (isCompleted()) {
+            return "완료됨";
+        } else if (isRevisionRequested()) {
+            return "수정 요청";
+        } else {
+            return "검토 대기";
+        }
+    }
+
+    /**
+     * 미션 완료 여부 확인 헬퍼 메서드
+     */
+    @Transient
+    public boolean isCompleted() {
+        return this.isCompleted != null && this.isCompleted;
     }
 }

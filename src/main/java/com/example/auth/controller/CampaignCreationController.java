@@ -53,14 +53,15 @@ public class CampaignCreationController {
                       "캠페인의 각 단계별 날짜를 올바른 순서로 설정해주세요:\n\n" +
                       " **recruitmentStartDate** (모집 시작일)\n" +
                       "   └ 캠페인이 공개되어 인플루언서들이 신청을 시작할 수 있는 날짜\n\n" +
-                      " **recruitmentEndDate** (모집 종료일)\n" +
+                      " **recruitmentEndDate** (모집 종료일) 상시 캠페인 일경우 x\n" +
                       "   └ 캠페인 모집 공고가 마감되는 날짜\n" +
                       "   └  신청 마감일과 같거나 이후여야 함\n\n" +
-                      " **selectionDate** (참여자 선정일)\n" +
+                      " **selectionDate** (참여자 선정일) 상시 캠페인 일경우 x\n" +
                       "   └ 신청자 중에서 최종 참여자를 선정하여 발표하는 날짜\n" +
                       "   └  모집 종료일 이후여야 함\n\n" +
-                      "- **방문형**: 맛집, 카페, 뷰티, 숙박\n" +
-                      "- **배송형**: 식품, 화장품, 생활용품, 패션, 잡화\n\n" ,
+                      "- **방문형**: 맛집, 카페, 뷰티, 숙박, 기타\n" +
+                      "- **배송형**: 식품, 화장품, 생활용품, 패션, 잡화\n\n" +
+                      "titleKeywords 방문 캠페인 일시 선택 ",
         requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
             content = @Content(
                 mediaType = "application/json",

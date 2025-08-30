@@ -76,7 +76,7 @@ public class CampaignCreationService {
         // 카테고리 조회 (type과 name으로)
         CampaignCategory category = findCategoryByTypeAndName(request.getCategory());
 
-        // 사용자의 기존 업체 정보 조회 (CLIENT라면 반드시 있어야 함)
+        // 사용자의 기존 업체 정보 조회 (없어도 캠페인 등록 가능)
         Optional<Company> existingCompany = companyService.findByUserId(userId);
         Company company = null;
 
@@ -94,23 +94,8 @@ public class CampaignCreationService {
                         userId, request.getCompanyInfo().getContactPerson());
             }
         } else {
-            // CLIENT 권한인데 업체 정보가 없다면 오류
-            if ("CLIENT".equals(user.getRole())) {
-                throw new IllegalStateException("CLIENT 권한 사용자는 사업자 정보가 등록되어 있어야 해요.");
-            }
-
-            // USER 권한이라면 담당자 정보로 임시 업체 생성 (하위 호환성)
-            if (request.getCompanyInfo() != null) {
-                company = Company.builder()
-                        .user(user)
-                        .companyName("임시 업체명") // 나중에 사업자 정보 등록 시 업데이트
-                        .contactPerson(request.getCompanyInfo().getContactPerson())
-                        .phoneNumber(request.getCompanyInfo().getPhoneNumber())
-                        .build();
-                company = companyService.saveCompany(company);
-                log.info("USER 권한으로 임시 업체를 생성했습니다. 사용자 ID: {}, 담당자: {}",
-                        userId, request.getCompanyInfo().getContactPerson());
-            }
+            // 업체 정보가 없는 경우: Company를 생성하지 않고 null로 둠
+            log.info("업체 정보 없이 캠페인을 등록합니다. 사용자 ID: {}", userId);
         }
 
         // Campaign 엔티티 생성
@@ -263,7 +248,7 @@ public class CampaignCreationService {
         // 상시 캠페인에서 허용되는 카테고리 확인
         String categoryName = request.getCategory().getName();
         if (!isValidAlwaysOpenCategory(categoryName)) {
-            throw new IllegalArgumentException("상시 캠페인은 카페, 맛집, 뷰티, 숙박 카테고리만 가능해요.");
+            throw new IllegalArgumentException("상시 캠페인은 카페, 맛집, 뷰티, 숙박, 기타 카테고리만 가능해요.");
         }
 
         // 상시 캠페인에서는 방문 정보가 필수
@@ -281,7 +266,8 @@ public class CampaignCreationService {
         return "카페".equals(categoryName) || 
                "맛집".equals(categoryName) || 
                "뷰티".equals(categoryName) || 
-               "숙박".equals(categoryName);
+               "숙박".equals(categoryName) ||
+                "기타".equals(categoryName);
     }
 
     /**

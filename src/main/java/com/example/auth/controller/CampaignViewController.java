@@ -3,8 +3,11 @@ package com.example.auth.controller;
 import com.example.auth.common.BaseResponse;
 import com.example.auth.dto.campaign.*;
 import com.example.auth.dto.common.PageResponse;
+import com.example.auth.exception.ResourceNotFoundException;
 import com.example.auth.service.CampaignViewService;
 import com.example.auth.service.SearchAnalyticsService;
+import com.example.auth.util.AuthUtil;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -15,8 +18,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.sql.init.dependency.AbstractBeansOfTypeDatabaseInitializerDetector;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -65,57 +70,57 @@ public class CampaignViewController {
                             mediaType = "application/json",
                             schema = @Schema(ref = "#/components/schemas/CampaignV1ListSuccessResponse"),
                             examples = @ExampleObject(
-                                name = "인기 캠페인 목록 조회 성공",
-                                summary = "인기순으로 정렬된 캠페인 목록",
-                                value = """
-                                {
-                                  "success": true,
-                                  "message": "배송 캠페인 목록 조회 성공",
-                                  "status": 200,
-                                  "data": {
-                                    "campaigns": [
-                                      {
-                                        "id": 28,
-                                        "isAlwaysOpen": true,
-                                        "campaignType": "인스타그램",
-                                        "title": "상시 모집 뷰티 제품 체험단",
-                                        "productShortInfo": "립스틱 + 파운데이션 세트",
-                                        "currentApplicants": 25,
-                                        "maxApplicants": 50,
-                                        "recruitmentEndDate": null,
-                                        "thumbnailUrl": "https://ckokservice.s3.ap-northeast-2.amazonaws.com/campaign-images/beauty.jpg",
-                                        "category": {
-                                          "type": "배송",
-                                          "name": "화장품"
-                                        }
-                                      },
-                                      {
-                                        "id": 27,
-                                        "isAlwaysOpen": false,
-                                        "campaignType": "블로그",
-                                        "title": "프리미엄 스킨케어 세트 체험단",
-                                        "productShortInfo": "토너 + 에센스 + 크림 세트",
-                                        "currentApplicants": 15,
-                                        "maxApplicants": 20,
-                                        "recruitmentEndDate": "2027-12-20",
-                                        "thumbnailUrl": "https://ckokservice.s3.ap-northeast-2.amazonaws.com/campaign-images/skincare.jpg",
-                                        "category": {
-                                          "type": "배송",
-                                          "name": "화장품"
-                                        }
-                                      }
-                                    ],
-                                    "pagination": {
-                                      "pageNumber": 1,
-                                      "pageSize": 10,
-                                      "totalPages": 1,
-                                      "totalElements": 2,
-                                      "first": true,
-                                      "last": true
-                                    }
-                                  }
-                                }
-                                """
+                                    name = "인기 캠페인 목록 조회 성공",
+                                    summary = "인기순으로 정렬된 캠페인 목록",
+                                    value = """
+                                            {
+                                              "success": true,
+                                              "message": "배송 캠페인 목록 조회 성공",
+                                              "status": 200,
+                                              "data": {
+                                                "campaigns": [
+                                                  {
+                                                    "id": 28,
+                                                    "isAlwaysOpen": true,
+                                                    "campaignType": "인스타그램",
+                                                    "title": "상시 모집 뷰티 제품 체험단",
+                                                    "productShortInfo": "립스틱 + 파운데이션 세트",
+                                                    "currentApplicants": 25,
+                                                    "maxApplicants": 50,
+                                                    "recruitmentEndDate": null,
+                                                    "thumbnailUrl": "https://ckokservice.s3.ap-northeast-2.amazonaws.com/campaign-images/beauty.jpg",
+                                                    "category": {
+                                                      "type": "배송",
+                                                      "name": "화장품"
+                                                    }
+                                                  },
+                                                  {
+                                                    "id": 27,
+                                                    "isAlwaysOpen": false,
+                                                    "campaignType": "블로그",
+                                                    "title": "프리미엄 스킨케어 세트 체험단",
+                                                    "productShortInfo": "토너 + 에센스 + 크림 세트",
+                                                    "currentApplicants": 15,
+                                                    "maxApplicants": 20,
+                                                    "recruitmentEndDate": "2027-12-20",
+                                                    "thumbnailUrl": "https://ckokservice.s3.ap-northeast-2.amazonaws.com/campaign-images/skincare.jpg",
+                                                    "category": {
+                                                      "type": "배송",
+                                                      "name": "화장품"
+                                                    }
+                                                  }
+                                                ],
+                                                "pagination": {
+                                                  "pageNumber": 1,
+                                                  "pageSize": 10,
+                                                  "totalPages": 1,
+                                                  "totalElements": 2,
+                                                  "first": true,
+                                                  "last": true
+                                                }
+                                              }
+                                            }
+                                            """
                             ))),
             @ApiResponse(responseCode = "500", description = "서버 오류",
                     content = @Content(
@@ -177,6 +182,24 @@ public class CampaignViewController {
         }
     }
 
+    @Hidden
+    @GetMapping("/{campaignId}/keywords")
+    public void getCampaignKeywords(
+            @Parameter(description = "캠페인 ID")
+            @PathVariable Long campaignId
+    ) {
+        try {
+            log.info("캠페인 필수 키워드 조회 요청 - campaignId: {}", campaignId);
+
+            //CampaignKeywordsResponse response = viewService.getCampaignKeywords(campaignId);
+            //return ResponseEntity.ok(BaseResponse.success(response, "캠페인 필수 키워드 조회 성공"));
+        } catch (Exception e) {
+            log.error("캠페인 필수 키워드 조회 중 오류 발생: {}", e.getMessage(), e);
+            //return ResponseEntity.status(HttpStatus.NOT_FOUND)
+            //.body(BaseResponse.fail("캠페인을 찾을 수 없습니다.", "NOT_FOUND", HttpStatus.NOT_FOUND.value()));
+        }
+    }
+
     @Operation(
             summary = "마감 임박 캠페인 목록 조회",
             description = "신청 마감일이 가까운 순으로 캠페인을 조회합니다. **상시 캠페인은 제외**됩니다."
@@ -195,42 +218,42 @@ public class CampaignViewController {
                             mediaType = "application/json",
                             schema = @Schema(ref = "#/components/schemas/CampaignV1ListSuccessResponse"),
                             examples = @ExampleObject(
-                                name = "마감 캠페인 목록 조회 성공",
-                                summary = "마감순으로 정렬된 캠페인 목록",
-                                value = """
-                                {
-                                  "success": true,
-                                  "message": "마감 캠페인 목록 조회 성공",
-                                  "status": 200,
-                                  "data": {
-                                    "campaigns": [
-                                      {
-                                        "id": 25,
-                                        "isAlwaysOpen": false,
-                                        "campaignType": "인스타그램",
-                                        "title": "이탈리안 레스토랑 신메뉴 체험단",
-                                        "productShortInfo": "파스타 2인분 + 와인 1병 무료 제공",
-                                        "currentApplicants": 8,
-                                        "maxApplicants": 15,
-                                        "recruitmentEndDate": "2027-12-12",
-                                        "thumbnailUrl": "https://ckokservice.s3.ap-northeast-2.amazonaws.com/campaign-images/%ED%8C%8C%EC%8A%A4%ED%83%80.jpg",
-                                        "category": {
-                                          "type": "방문",
-                                          "name": "맛집"
-                                        }
-                                      }
-                                    ],
-                                    "pagination": {
-                                      "pageNumber": 1,
-                                      "pageSize": 10,
-                                      "totalPages": 1,
-                                      "totalElements": 1,
-                                      "first": true,
-                                      "last": true
-                                    }
-                                  }
-                                }
-                                """
+                                    name = "마감 캠페인 목록 조회 성공",
+                                    summary = "마감순으로 정렬된 캠페인 목록",
+                                    value = """
+                                            {
+                                              "success": true,
+                                              "message": "마감 캠페인 목록 조회 성공",
+                                              "status": 200,
+                                              "data": {
+                                                "campaigns": [
+                                                  {
+                                                    "id": 25,
+                                                    "isAlwaysOpen": false,
+                                                    "campaignType": "인스타그램",
+                                                    "title": "이탈리안 레스토랑 신메뉴 체험단",
+                                                    "productShortInfo": "파스타 2인분 + 와인 1병 무료 제공",
+                                                    "currentApplicants": 8,
+                                                    "maxApplicants": 15,
+                                                    "recruitmentEndDate": "2027-12-12",
+                                                    "thumbnailUrl": "https://ckokservice.s3.ap-northeast-2.amazonaws.com/campaign-images/%ED%8C%8C%EC%8A%A4%ED%83%80.jpg",
+                                                    "category": {
+                                                      "type": "방문",
+                                                      "name": "맛집"
+                                                    }
+                                                  }
+                                                ],
+                                                "pagination": {
+                                                  "pageNumber": 1,
+                                                  "pageSize": 10,
+                                                  "totalPages": 1,
+                                                  "totalElements": 1,
+                                                  "first": true,
+                                                  "last": true
+                                                }
+                                              }
+                                            }
+                                            """
                             ))),
             @ApiResponse(responseCode = "500", description = "서버 오류",
                     content = @Content(
@@ -248,7 +271,7 @@ public class CampaignViewController {
             @Parameter(description = "카테고리 타입 (방문, 배송)")
             @RequestParam(required = false) String categoryType,
 
-            @Parameter(description = "카테고리명 (맛집, 카페, 뷰티, 숙박, 식품, 화장품 등)")
+            @Parameter(description = "카테고리명 (맛집, 카페, 뷰티, 숙박, 식품, 화장품  등)")
             @RequestParam(required = false) String categoryName,
 
             @Parameter(description = "캠페인 타입 (인스타그램, 블로그, 유튜브 등)")
@@ -309,57 +332,57 @@ public class CampaignViewController {
                             mediaType = "application/json",
                             schema = @Schema(ref = "#/components/schemas/CampaignV1ListSuccessResponse"),
                             examples = @ExampleObject(
-                                name = "최신 캠페인 목록 조회 성공",
-                                summary = "최신순으로 정렬된 캠페인 목록",
-                                value = """
-                                {
-                                  "success": true,
-                                  "message": "최신 캠페인 목록 조회 성공",
-                                  "status": 200,
-                                  "data": {
-                                    "campaigns": [
-                                      {
-                                        "id": 26,
-                                        "isAlwaysOpen": true,
-                                        "campaignType": "블로그",
-                                        "title": "상시 모집 카페 체험단",
-                                        "productShortInfo": "음료 1잔 + 디저트 무료 제공",
-                                        "currentApplicants": 12,
-                                        "maxApplicants": 30,
-                                        "recruitmentEndDate": null,
-                                        "thumbnailUrl": "https://ckokservice.s3.ap-northeast-2.amazonaws.com/campaign-images/cafe.jpg",
-                                        "category": {
-                                          "type": "방문",
-                                          "name": "카페"
-                                        }
-                                      },
-                                      {
-                                        "id": 25,
-                                        "isAlwaysOpen": false,
-                                        "campaignType": "인스타그램",
-                                        "title": "이탈리안 레스토랑 신메뉴 체험단",
-                                        "productShortInfo": "파스타 2인분 + 와인 1병 무료 제공",
-                                        "currentApplicants": 8,
-                                        "maxApplicants": 15,
-                                        "recruitmentEndDate": "2027-12-12",
-                                        "thumbnailUrl": "https://ckokservice.s3.ap-northeast-2.amazonaws.com/campaign-images/%ED%8C%8C%EC%8A%A4%ED%83%80.jpg",
-                                        "category": {
-                                          "type": "방문",
-                                          "name": "맛집"
-                                        }
-                                      }
-                                    ],
-                                    "pagination": {
-                                      "pageNumber": 1,
-                                      "pageSize": 10,
-                                      "totalPages": 1,
-                                      "totalElements": 2,
-                                      "first": true,
-                                      "last": true
-                                    }
-                                  }
-                                }
-                                """
+                                    name = "최신 캠페인 목록 조회 성공",
+                                    summary = "최신순으로 정렬된 캠페인 목록",
+                                    value = """
+                                            {
+                                              "success": true,
+                                              "message": "최신 캠페인 목록 조회 성공",
+                                              "status": 200,
+                                              "data": {
+                                                "campaigns": [
+                                                  {
+                                                    "id": 26,
+                                                    "isAlwaysOpen": true,
+                                                    "campaignType": "블로그",
+                                                    "title": "상시 모집 카페 체험단",
+                                                    "productShortInfo": "음료 1잔 + 디저트 무료 제공",
+                                                    "currentApplicants": 12,
+                                                    "maxApplicants": 30,
+                                                    "recruitmentEndDate": null,
+                                                    "thumbnailUrl": "https://ckokservice.s3.ap-northeast-2.amazonaws.com/campaign-images/cafe.jpg",
+                                                    "category": {
+                                                      "type": "방문",
+                                                      "name": "카페"
+                                                    }
+                                                  },
+                                                  {
+                                                    "id": 25,
+                                                    "isAlwaysOpen": false,
+                                                    "campaignType": "인스타그램",
+                                                    "title": "이탈리안 레스토랑 신메뉴 체험단",
+                                                    "productShortInfo": "파스타 2인분 + 와인 1병 무료 제공",
+                                                    "currentApplicants": 8,
+                                                    "maxApplicants": 15,
+                                                    "recruitmentEndDate": "2027-12-12",
+                                                    "thumbnailUrl": "https://ckokservice.s3.ap-northeast-2.amazonaws.com/campaign-images/%ED%8C%8C%EC%8A%A4%ED%83%80.jpg",
+                                                    "category": {
+                                                      "type": "방문",
+                                                      "name": "맛집"
+                                                    }
+                                                  }
+                                                ],
+                                                "pagination": {
+                                                  "pageNumber": 1,
+                                                  "pageSize": 10,
+                                                  "totalPages": 1,
+                                                  "totalElements": 2,
+                                                  "first": true,
+                                                  "last": true
+                                                }
+                                              }
+                                            }
+                                            """
                             ))),
             @ApiResponse(responseCode = "500", description = "서버 오류",
                     content = @Content(
@@ -432,6 +455,7 @@ public class CampaignViewController {
                     + "\n- **카페**: categoryName=카페"
                     + "\n- **뷰티**: categoryName=뷰티"
                     + "\n- **숙박**: categoryName=숙박"
+                    + "\n- **기타**: categoryName=기타"
                     + "\n\n### 플랫폼 필터링:"
                     + "\n- **단일 플랫폼**: campaignTypes=블로그 또는 campaignTypes=인스타그램 또는 campaignTypes=유튜브"
                     + "\n- **복수 플랫폼**: campaignTypes=블로그,인스타그램 (쉼표로 구분)"
@@ -450,57 +474,57 @@ public class CampaignViewController {
                             mediaType = "application/json",
                             schema = @Schema(ref = "#/components/schemas/CampaignV1ListSuccessResponse"),
                             examples = @ExampleObject(
-                                name = "방문형 캠페인 목록 조회 성공",
-                                summary = "인기순으로 정렬된 캠페인 목록",
-                                value = """
-                                {
-                                  "success": true,
-                                  "message": "방문형 캠페인 목록 조회 성공",
-                                  "status": 200,
-                                  "data": {
-                                    "campaigns": [
-                                      {
-                                        "id": 26,
-                                        "isAlwaysOpen": true,
-                                        "campaignType": "블로그",
-                                        "title": "상시 모집 카페 체험단",
-                                        "productShortInfo": "음료 1잔 + 디저트 무료 제공",
-                                        "currentApplicants": 12,
-                                        "maxApplicants": 30,
-                                        "recruitmentEndDate": null,
-                                        "thumbnailUrl": "https://ckokservice.s3.ap-northeast-2.amazonaws.com/campaign-images/cafe.jpg",
-                                        "category": {
-                                          "type": "방문",
-                                          "name": "카페"
-                                        }
-                                      },
-                                      {
-                                        "id": 25,
-                                        "isAlwaysOpen": false,
-                                        "campaignType": "인스타그램",
-                                        "title": "이탈리안 레스토랑 신메뉴 체험단",
-                                        "productShortInfo": "파스타 2인분 + 와인 1병 무료 제공",
-                                        "currentApplicants": 8,
-                                        "maxApplicants": 15,
-                                        "recruitmentEndDate": "2027-12-12",
-                                        "thumbnailUrl": "https://ckokservice.s3.ap-northeast-2.amazonaws.com/campaign-images/%ED%8C%8C%EC%8A%A4%ED%83%80.jpg",
-                                        "category": {
-                                          "type": "방문",
-                                          "name": "맛집"
-                                        }
-                                      }
-                                    ],
-                                    "pagination": {
-                                      "pageNumber": 1,
-                                      "pageSize": 10,
-                                      "totalPages": 1,
-                                      "totalElements": 2,
-                                      "first": true,
-                                      "last": true
-                                    }
-                                  }
-                                }
-                                """
+                                    name = "방문형 캠페인 목록 조회 성공",
+                                    summary = "인기순으로 정렬된 캠페인 목록",
+                                    value = """
+                                            {
+                                              "success": true,
+                                              "message": "방문형 캠페인 목록 조회 성공",
+                                              "status": 200,
+                                              "data": {
+                                                "campaigns": [
+                                                  {
+                                                    "id": 26,
+                                                    "isAlwaysOpen": true,
+                                                    "campaignType": "블로그",
+                                                    "title": "상시 모집 카페 체험단",
+                                                    "productShortInfo": "음료 1잔 + 디저트 무료 제공",
+                                                    "currentApplicants": 12,
+                                                    "maxApplicants": 30,
+                                                    "recruitmentEndDate": null,
+                                                    "thumbnailUrl": "https://ckokservice.s3.ap-northeast-2.amazonaws.com/campaign-images/cafe.jpg",
+                                                    "category": {
+                                                      "type": "방문",
+                                                      "name": "카페"
+                                                    }
+                                                  },
+                                                  {
+                                                    "id": 25,
+                                                    "isAlwaysOpen": false,
+                                                    "campaignType": "인스타그램",
+                                                    "title": "이탈리안 레스토랑 신메뉴 체험단",
+                                                    "productShortInfo": "파스타 2인분 + 와인 1병 무료 제공",
+                                                    "currentApplicants": 8,
+                                                    "maxApplicants": 15,
+                                                    "recruitmentEndDate": "2027-12-12",
+                                                    "thumbnailUrl": "https://ckokservice.s3.ap-northeast-2.amazonaws.com/campaign-images/%ED%8C%8C%EC%8A%A4%ED%83%80.jpg",
+                                                    "category": {
+                                                      "type": "방문",
+                                                      "name": "맛집"
+                                                    }
+                                                  }
+                                                ],
+                                                "pagination": {
+                                                  "pageNumber": 1,
+                                                  "pageSize": 10,
+                                                  "totalPages": 1,
+                                                  "totalElements": 2,
+                                                  "first": true,
+                                                  "last": true
+                                                }
+                                              }
+                                            }
+                                            """
                             ))),
             @ApiResponse(responseCode = "500", description = "서버 오류",
                     content = @Content(
@@ -551,7 +575,7 @@ public class CampaignViewController {
             } else {
                 // 최신순, 인기순은 통합 메서드 사용
                 pageResponse = viewService.getCampaignListWithAllFilters(
-                        Math.max(0, page - 1), size, convertSortParameter(sort), true, 
+                        Math.max(0, page - 1), size, convertSortParameter(sort), true,
                         "방문", categoryName, campaignTypeList);
             }
 
@@ -613,57 +637,57 @@ public class CampaignViewController {
                             mediaType = "application/json",
                             schema = @Schema(ref = "#/components/schemas/CampaignV1ListSuccessResponse"),
                             examples = @ExampleObject(
-                                name = "배송형 캠페인 목록 조회 성공",
-                                summary = "인기순으로 정렬된 캠페인 목록",
-                                value = """
-                                {
-                                  "success": true,
-                                  "message": "배송 캠페인 목록 조회 성공",
-                                  "status": 200,
-                                  "data": {
-                                    "campaigns": [
-                                      {
-                                        "id": 28,
-                                        "isAlwaysOpen": true,
-                                        "campaignType": "인스타그램",
-                                        "title": "상시 모집 뷰티 제품 체험단",
-                                        "productShortInfo": "립스틱 + 파운데이션 세트",
-                                        "currentApplicants": 25,
-                                        "maxApplicants": 50,
-                                        "recruitmentEndDate": null,
-                                        "thumbnailUrl": "https://ckokservice.s3.ap-northeast-2.amazonaws.com/campaign-images/beauty.jpg",
-                                        "category": {
-                                          "type": "배송",
-                                          "name": "화장품"
-                                        }
-                                      },
-                                      {
-                                        "id": 27,
-                                        "isAlwaysOpen": false,
-                                        "campaignType": "블로그",
-                                        "title": "프리미엄 스킨케어 세트 체험단",
-                                        "productShortInfo": "토너 + 에센스 + 크림 세트",
-                                        "currentApplicants": 15,
-                                        "maxApplicants": 20,
-                                        "recruitmentEndDate": "2027-12-20",
-                                        "thumbnailUrl": "https://ckokservice.s3.ap-northeast-2.amazonaws.com/campaign-images/skincare.jpg",
-                                        "category": {
-                                          "type": "배송",
-                                          "name": "화장품"
-                                        }
-                                      }
-                                    ],
-                                    "pagination": {
-                                      "pageNumber": 1,
-                                      "pageSize": 10,
-                                      "totalPages": 1,
-                                      "totalElements": 2,
-                                      "first": true,
-                                      "last": true
-                                    }
-                                  }
-                                }
-                                """
+                                    name = "배송형 캠페인 목록 조회 성공",
+                                    summary = "인기순으로 정렬된 캠페인 목록",
+                                    value = """
+                                            {
+                                              "success": true,
+                                              "message": "배송 캠페인 목록 조회 성공",
+                                              "status": 200,
+                                              "data": {
+                                                "campaigns": [
+                                                  {
+                                                    "id": 28,
+                                                    "isAlwaysOpen": true,
+                                                    "campaignType": "인스타그램",
+                                                    "title": "상시 모집 뷰티 제품 체험단",
+                                                    "productShortInfo": "립스틱 + 파운데이션 세트",
+                                                    "currentApplicants": 25,
+                                                    "maxApplicants": 50,
+                                                    "recruitmentEndDate": null,
+                                                    "thumbnailUrl": "https://ckokservice.s3.ap-northeast-2.amazonaws.com/campaign-images/beauty.jpg",
+                                                    "category": {
+                                                      "type": "배송",
+                                                      "name": "화장품"
+                                                    }
+                                                  },
+                                                  {
+                                                    "id": 27,
+                                                    "isAlwaysOpen": false,
+                                                    "campaignType": "블로그",
+                                                    "title": "프리미엄 스킨케어 세트 체험단",
+                                                    "productShortInfo": "토너 + 에센스 + 크림 세트",
+                                                    "currentApplicants": 15,
+                                                    "maxApplicants": 20,
+                                                    "recruitmentEndDate": "2027-12-20",
+                                                    "thumbnailUrl": "https://ckokservice.s3.ap-northeast-2.amazonaws.com/campaign-images/skincare.jpg",
+                                                    "category": {
+                                                      "type": "배송",
+                                                      "name": "화장품"
+                                                    }
+                                                  }
+                                                ],
+                                                "pagination": {
+                                                  "pageNumber": 1,
+                                                  "pageSize": 10,
+                                                  "totalPages": 1,
+                                                  "totalElements": 2,
+                                                  "first": true,
+                                                  "last": true
+                                                }
+                                              }
+                                            }
+                                            """
                             ))),
             @ApiResponse(responseCode = "500", description = "서버 오류",
                     content = @Content(
@@ -714,7 +738,7 @@ public class CampaignViewController {
             } else {
                 // 최신순, 인기순은 통합 메서드 사용
                 pageResponse = viewService.getCampaignListWithAllFilters(
-                        Math.max(0, page - 1), size, convertSortParameter(sort), true, 
+                        Math.max(0, page - 1), size, convertSortParameter(sort), true,
                         "배송", categoryName, campaignTypeList);
             }
 
@@ -761,19 +785,19 @@ public class CampaignViewController {
                             mediaType = "application/json",
                             schema = @Schema(ref = "#/components/schemas/CampaignThumbnailResponse"),
                             examples = @ExampleObject(
-                                name = "캠페인 썸네일 조회 성공",
-                                summary = "캠페인 썸네일 조회 성공",
-                                value = """
-                                        {
-                                          "success": true,
-                                          "message": "캠페인 썸네일 조회 성공",
-                                          "status": 200,
-                                          "data": {
-                                            "campaignId": 32,
-                                            "thumbnailUrl": "https://drxgfm74s70w1.cloudfront.net/campaign-images/%EB%A9%94%EC%9D%B4%ED%81%AC%EC%97%85.jpg"
-                                          }
-                                        }
-                                """
+                                    name = "캠페인 썸네일 조회 성공",
+                                    summary = "캠페인 썸네일 조회 성공",
+                                    value = """
+                                                    {
+                                                      "success": true,
+                                                      "message": "캠페인 썸네일 조회 성공",
+                                                      "status": 200,
+                                                      "data": {
+                                                        "campaignId": 32,
+                                                        "thumbnailUrl": "https://drxgfm74s70w1.cloudfront.net/campaign-images/%EB%A9%94%EC%9D%B4%ED%81%AC%EC%97%85.jpg"
+                                                      }
+                                                    }
+                                            """
                             ))),
             @ApiResponse(responseCode = "404", description = "캠페인을 찾을 수 없음",
                     content = @Content(
@@ -812,26 +836,26 @@ public class CampaignViewController {
                             mediaType = "application/json",
                             schema = @Schema(ref = "#/components/schemas/CampaignBasicInfoResponse"),
                             examples = @ExampleObject(
-                                name = "캠페인 기본 정보 조회 성공",
-                                summary = "캠페인 기본 정보 조회 성공",
-                                value = """
-                                        {
-                                          "success": true,
-                                          "message": "캠페인 기본 정보 조회 성공",
-                                          "status": 200,
-                                          "data": {
-                                            "campaignId": 32,
-                                            "campaignType": "블로그",
-                                            "categoryType": "배송",
-                                            "categoryName": "화장품",
-                                            "title": "프리미엄 메이크업 팔레트 체험단",
-                                            "maxApplicants": 60,
-                                            "currentApplicants": 0,
-                                            "recruitmentStartDate": "2025-06-09",
-                                            "recruitmentEndDate": "2027-12-12"
-                                          }
-                                        }
-                                """
+                                    name = "캠페인 기본 정보 조회 성공",
+                                    summary = "캠페인 기본 정보 조회 성공",
+                                    value = """
+                                                    {
+                                                      "success": true,
+                                                      "message": "캠페인 기본 정보 조회 성공",
+                                                      "status": 200,
+                                                      "data": {
+                                                        "campaignId": 32,
+                                                        "campaignType": "블로그",
+                                                        "categoryType": "배송",
+                                                        "categoryName": "화장품",
+                                                        "title": "프리미엄 메이크업 팔레트 체험단",
+                                                        "maxApplicants": 60,
+                                                        "currentApplicants": 0,
+                                                        "recruitmentStartDate": "2025-06-09",
+                                                        "recruitmentEndDate": "2027-12-12"
+                                                      }
+                                                    }
+                                            """
                             ))),
             @ApiResponse(responseCode = "404", description = "캠페인을 찾을 수 없음",
                     content = @Content(
@@ -873,20 +897,20 @@ public class CampaignViewController {
                                     name = "캠페인 상세 정보 조회 성공",
                                     summary = "캠페인 상세 정보 조회 성공",
                                     value = """
-                                           {
-                                             "success": true,
-                                             "message": "캠페인 상세 정보 조회 성공",
-                                             "status": 200,
-                                             "data": {
-                                               "campaignId": 32,
-                                               "isAlwaysOpen": false,
-                                               "productShortInfo": "아이섀도우 팔레트 + 립 제품 세트",
-                                               "productDetails": "18색 아이섀도우 팔레트와 립스틱, 립글로스로 구성된 메이크업 세트를 제공합니다. 다양한 룩을 연출하며 발색과 지속력을 테스트해보세요.",
-                                               "selectionCriteria": "메이크업 관련 블로그 운영, 뷰티 포스팅 경험 필수",
-                                               "selectionDate": "2027-12-13"
-                                             }
-                                           }
-                                   """
+                                                    {
+                                                      "success": true,
+                                                      "message": "캠페인 상세 정보 조회 성공",
+                                                      "status": 200,
+                                                      "data": {
+                                                        "campaignId": 32,
+                                                        "isAlwaysOpen": false,
+                                                        "productShortInfo": "아이섀도우 팔레트 + 립 제품 세트",
+                                                        "productDetails": "18색 아이섀도우 팔레트와 립스틱, 립글로스로 구성된 메이크업 세트를 제공합니다. 다양한 룩을 연출하며 발색과 지속력을 테스트해보세요.",
+                                                        "selectionCriteria": "메이크업 관련 블로그 운영, 뷰티 포스팅 경험 필수",
+                                                        "selectionDate": "2027-12-13"
+                                                      }
+                                                    }
+                                            """
                             ))),
             @ApiResponse(responseCode = "404", description = "캠페인을 찾을 수 없음",
                     content = @Content(
@@ -916,7 +940,7 @@ public class CampaignViewController {
 
     @Operation(
             summary = "캠페인 미션 가이드 및 정보 조회",
-            description = "캠페인의 미션 가이드와 상세 미션 정보를 조회합니다."
+            description = "캠페인의 미션 가이드와 미션 정보를 조회합니다."
                     + "\n\n**반환 정보:**"
                     + "\n- **미션 가이드**: 인플루언서가 수행해야 할 미션 안내"
                     + "\n- **키워드 정보**: 제목, 본문, 지역 키워드"
@@ -930,30 +954,29 @@ public class CampaignViewController {
                             mediaType = "application/json",
                             schema = @Schema(ref = "#/components/schemas/CampaignMissionGuideResponse"),
                             examples = @ExampleObject(
-                                name = "캠페인 미션 가이드 및 정보 조회 성공",
-                                summary = "캠페인의 미션 가이드와 상세 정보 조회 성공",
-                                value = """
-                                {
-                                  "success": true,
-                                  "message": "캠페인 미션 가이드 조회 성공",
-                                  "status": 200,
-                                  "data": {
-                                    "campaignId": 22,
-                                    "missionInfo": {
-                                      "missionGuide": "인스타그램에 멋진 포스팅을 남겨주세요.",
-                                      "titleKeywords": ["맛집", "체험단", "후기"],
-                                      "bodyKeywords": ["맛있는", "추천", "방문후기"],
-                                      "locationKeywords": ["강남", "서울"],
-                                      "numberOfVideo": 1,
-                                      "numberOfImage": 5,
-                                      "numberOfText": 500,
-                                      "isMap": true,
-                                      "missionStartDate": "2024-01-15",
-                                      "missionDeadlineDate": "2024-01-30"
-                                    }
-                                  }
-                                }
-                                """
+                                    name = "캠페인 미션 가이드 및 정보 조회 성공",
+                                    summary = "캠페인의 미션 가이드와 미션 정보 조회 성공",
+                                    value = """
+                                            {
+                                              "success": true,
+                                              "message": "캠페인 미션 가이드 조회 성공",
+                                              "status": 200,
+                                              "data": {
+                                                "campaignId": 22,
+                                                "missionInfo": {
+                                                  "missionGuide": "인스타그램에 멋진 포스팅을 남겨주세요.",
+                                                  "titleKeywords": ["맛집", "체험단", "후기"],
+                                                  "bodyKeywords": ["맛있는", "추천", "방문후기"],
+                                                  "numberOfVideo": 1,
+                                                  "numberOfImage": 5,
+                                                  "numberOfText": 500,
+                                                  "isMap": true,
+                                                  "missionStartDate": "2024-01-15",
+                                                  "missionDeadlineDate": "2024-01-30"
+                                                }
+                                              }
+                                            }
+                                            """
                             ))),
             @ApiResponse(responseCode = "404", description = "캠페인을 찾을 수 없음",
                     content = @Content(
@@ -1005,41 +1028,41 @@ public class CampaignViewController {
                             mediaType = "application/json",
                             schema = @Schema(ref = "#/components/schemas/CampaignV1ListSuccessResponse"),
                             examples = @ExampleObject(
-                                name = "캠페인 검색 성공",
-                                summary = "검색 키워드에 맞는 캠페인 목록 조회",
-                                value = """
-                                {
-                                  "success": true,
-                                  "message": "캠페인 검색 성공",
-                                  "status": 200,
-                                  "data": {
-                                    "campaigns": [
-                                      {
-                                        "id": 25,
-                                        "campaignType": "인스타그램",
-                                        "title": "이탈리안 레스토랑 신메뉴 체험단",
-                                        "productShortInfo": "파스타 2인분 + 와인 1병 무료 제공",
-                                        "currentApplicants": 8,
-                                        "maxApplicants": 15,
-                                        "recruitmentEndDate": "2027-12-12",
-                                        "thumbnailUrl": "https://ckokservice.s3.ap-northeast-2.amazonaws.com/campaign-images/%ED%8C%8C%EC%8A%A4%ED%83%80.jpg",
-                                        "category": {
-                                          "type": "방문",
-                                          "name": "맛집"
-                                        }
-                                      }
-                                    ],
-                                    "pagination": {
-                                      "pageNumber": 1,
-                                      "pageSize": 10,
-                                      "totalPages": 1,
-                                      "totalElements": 1,
-                                      "first": true,
-                                      "last": true
-                                    }
-                                  }
-                                }
-                                """
+                                    name = "캠페인 검색 성공",
+                                    summary = "검색 키워드에 맞는 캠페인 목록 조회",
+                                    value = """
+                                            {
+                                              "success": true,
+                                              "message": "캠페인 검색 성공",
+                                              "status": 200,
+                                              "data": {
+                                                "campaigns": [
+                                                  {
+                                                    "id": 25,
+                                                    "campaignType": "인스타그램",
+                                                    "title": "이탈리안 레스토랑 신메뉴 체험단",
+                                                    "productShortInfo": "파스타 2인분 + 와인 1병 무료 제공",
+                                                    "currentApplicants": 8,
+                                                    "maxApplicants": 15,
+                                                    "recruitmentEndDate": "2027-12-12",
+                                                    "thumbnailUrl": "https://ckokservice.s3.ap-northeast-2.amazonaws.com/campaign-images/%ED%8C%8C%EC%8A%A4%ED%83%80.jpg",
+                                                    "category": {
+                                                      "type": "방문",
+                                                      "name": "맛집"
+                                                    }
+                                                  }
+                                                ],
+                                                "pagination": {
+                                                  "pageNumber": 1,
+                                                  "pageSize": 10,
+                                                  "totalPages": 1,
+                                                  "totalElements": 1,
+                                                  "first": true,
+                                                  "last": true
+                                                }
+                                              }
+                                            }
+                                            """
                             ))),
             @ApiResponse(responseCode = "400", description = "잘못된 요청 (키워드 누락)",
                     content = @Content(
@@ -1129,6 +1152,4 @@ public class CampaignViewController {
                     .body(BaseResponse.fail("캠페인 검색 중 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
         }
     }
-
-
 }

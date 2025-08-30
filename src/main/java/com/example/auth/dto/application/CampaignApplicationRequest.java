@@ -39,3 +39,5 @@ public class CampaignApplicationRequest {
     private String previousExperience;
     */
 }
+
+
