@@ -92,12 +92,17 @@ public class CampaignApplicationService {
             throw new IllegalStateException("프로필을 설정해주세요. 캠페인 신청을 위해 프로필 정보가 필요해요.");
         }
 
-        // 2. 나이 확인
+        // 2. 이메일 확인
+        if (user.getEmail() == null || user.getEmail().trim().isEmpty()) {
+            throw new IllegalStateException("프로필을 설정해주세요. 캠페인 신청을 위해 이메일 정보가 필요해요.");
+        }
+
+        // 3. 나이 확인
         if (user.getAge() == null) {
             throw new IllegalStateException("프로필을 설정해주세요. 캠페인 신청을 위해 프로필 정보가 필요해요.");
         }
 
-        // 3. 성별 확인
+        // 4. 성별 확인
         if (user.getGender() == null || user.getGender() == com.example.auth.constant.Gender.UNKNOWN) {
             throw new IllegalStateException("프로필을 설정해주세요. 캠페인 신청을 위해 프로필 정보가 필요해요.");
         }

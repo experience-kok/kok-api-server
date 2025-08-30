@@ -62,7 +62,7 @@ public class CampaignApplicationController {
                     "- 신청 마감일이 지난 캠페인은 신청할 수 없습니다.\n\n" +
                     "### 신청 조건\n" +
                     "- **USER(인플루언서) 권한** 필요\n" +
-                    "- **프로필 완성도**: 닉네임, 나이, 성별 정보 필수\n" +
+                    "- **프로필 완성도**: 닉네임, 이메일, 나이, 성별 정보 필수\n" +
                     "- **SNS 연동**: 캠페인 타입에 맞는 SNS 계정 연동 필수\n" +
                     "  - 인스타그램 캠페인 → 인스타그램 계정 연동\n" +
                     "  - 유튜브 캠페인 → 유튜브 계정 연동\n" +
@@ -76,7 +76,7 @@ public class CampaignApplicationController {
                     "- **REJECTED**: 거절된 신청\n" +
                     "- **COMPLETED**: 체험 및 리뷰까지 완료한 신청\n\n" +
                     "### 주요 에러 케이스\n" +
-                    "- **PROFILE_INCOMPLETE**: (닉네임/나이/성별 미설정)\n" +
+                    "- **PROFILE_INCOMPLETE**: (닉네임/이메일/나이/성별 미설정)\n" +
                     "- **SNS_CONNECTION_REQUIRED**:  (SNS 계정 연동 없음)\n" +
                     "- **PLATFORM_MISMATCH**:  (캠페인 요구 플랫폼 불일치)"
     )
@@ -139,7 +139,7 @@ public class CampaignApplicationController {
                                                     """
                                     ),
                                     @ExampleObject(
-                                            name = "프로필 미설정",
+                                            name = "프로필 미설정 (닉네임/이메일/나이/성별)",
                                             value = """
                                                     {
                                                       "success": false,

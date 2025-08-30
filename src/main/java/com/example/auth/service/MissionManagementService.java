@@ -71,11 +71,26 @@ public class MissionManagementService {
                 application.select();
                 campaignApplicationRepository.save(application);
 
-                // 선정 알림 발송
+                // 선정 알림 발송 (SSE)
                 notificationService.sendInfluencerSelectedNotification(
                         application.getUser().getId(),
                         application.getCampaign().getTitle()
                 );
+
+                // 🔥 선정 이메일 발송 추가
+                try {
+                    sesService.sendCampaignSelectedEmail(
+                            application.getUser().getEmail(),
+                            application.getUser().getNickname(),
+                            campaign.getTitle()
+                    );
+                    log.info("캠페인 선정 이메일 전송 성공: userId={}, campaignId={}, email={}", 
+                            application.getUser().getId(), campaignId, application.getUser().getEmail());
+                } catch (Exception emailException) {
+                    log.error("캠페인 선정 이메일 전송 실패: userId={}, campaignId={}, email={}, error={}", 
+                            application.getUser().getId(), campaignId, application.getUser().getEmail(), emailException.getMessage());
+                    // 이메일 실패가 선정 프로세스를 중단시키지 않도록 예외를 잡아서 로그만 기록
+                }
 
                 successfulSelections.add(applicationId);
 
