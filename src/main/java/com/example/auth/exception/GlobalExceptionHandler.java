@@ -107,6 +107,30 @@ public class GlobalExceptionHandler {
                 .body(BaseResponse.fail(ex.getMessage(), ex.getErrorCode(), status.value()));
     }
 
+    // 비즈니스 로직 예외
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<?> handleBusinessException(BusinessException ex) {
+        log.warn("비즈니스 로직 오류: {}, 코드: {}", ex.getMessage(), ex.getErrorCode());
+        
+        HttpStatus status = switch (ex.getErrorCode()) {
+            case "UNDER_REVIEW" -> HttpStatus.CONFLICT;
+            case "ALREADY_COMPLETED" -> HttpStatus.CONFLICT;
+            case "DUPLICATE_SUBMISSION" -> HttpStatus.TOO_MANY_REQUESTS;
+            default -> HttpStatus.BAD_REQUEST;
+        };
+        
+        return ResponseEntity.status(status)
+                .body(BaseResponse.fail(ex.getMessage(), ex.getErrorCode(), status.value()));
+    }
+
+    // 리소스를 찾을 수 없는 경우
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<?> handleResourceNotFound(ResourceNotFoundException ex) {
+        log.warn("리소스 없음: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(BaseResponse.fail(ex.getMessage(), "RESOURCE_NOT_FOUND", HttpStatus.NOT_FOUND.value()));
+    }
+
     //  기타 예외
     @ExceptionHandler(Exception.class)
     public ResponseEntity<?> handleOther(Exception ex) {

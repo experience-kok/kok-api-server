@@ -17,6 +17,9 @@ public enum ApplicationStatus {
     @Schema(description = "선정됨")
     SELECTED("선정됨"),
 
+    @Schema(description = "반려됨")
+    REJECTED("반려됨"),
+
     @Schema(description = "체험 및 리뷰 완료")
     COMPLETED("완료됨");
 

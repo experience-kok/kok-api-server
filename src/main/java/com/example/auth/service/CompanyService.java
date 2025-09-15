@@ -133,6 +133,40 @@ public class CompanyService {
     }
 
     /**
+     * 사업자 정보를 신규 등록만 허용합니다. (CLIENT 심사용 - 수정 불가)
+     * @param user 사용자
+     * @param request 사업자 정보 요청
+     * @return 생성된 업체 엔티티
+     * @throws IllegalArgumentException 이미 등록된 사업자 정보가 있거나 중복된 사업자등록번호인 경우
+     */
+    @Transactional
+    public Company createBusinessInfoOnly(User user, BusinessInfoRequest request) {
+        // 이미 등록된 사업자 정보가 있는지 확인
+        Optional<Company> existingCompany = companyRepository.findByUserId(user.getId());
+        if (existingCompany.isPresent()) {
+            throw new IllegalArgumentException("이미 사업자 정보가 등록되어 있습니다.");
+        }
+        
+        // 사업자등록번호 중복 확인
+        if (request.getBusinessRegistrationNumber() != null) {
+            Optional<Company> duplicateCompany = companyRepository.findByBusinessRegistrationNumber(request.getBusinessRegistrationNumber());
+            if (duplicateCompany.isPresent()) {
+                throw new IllegalArgumentException("이미 등록된 사업자등록번호입니다.");
+            }
+        }
+        
+        // 새 업체 생성
+        Company company = Company.builder()
+                .user(user)
+                .companyName(request.getCompanyName())
+                .businessRegistrationNumber(request.getBusinessRegistrationNumber())
+                .build();
+        Company savedCompany = companyRepository.save(company);
+        log.info("사업자 정보가 신규 등록되었습니다. userId={}, companyName={}", user.getId(), request.getCompanyName());
+        return savedCompany;
+    }
+
+    /**
      * 사용자의 업체 정보를 삭제합니다.
      * @param userId 사용자 ID
      */

@@ -87,24 +87,17 @@ public class BusinessInfoController {
     }
 
     @Operation(
-        summary = "사업자 정보 등록/수정",
-        description = "CLIENT 권한 심사를 위한 사업자 정보를 등록하거나 수정합니다."
+        summary = "사업자 정보 등록",
+        description = "CLIENT 권한 심사를 위한 사업자 정보를 등록합니다. \n\n이미 등록된 사업자 정보가 있는 경우 등록할 수 없습니다.\n"+
+                "ALREADY_REGISTERED 등록을 또 요청 한 경우"
     )
     @ApiResponses(value = {
             @ApiResponse(
                 responseCode = "200", 
-                description = "사업자 정보 등록/수정 성공",
+                description = "사업자 정보 등록 성공",
                 content = @Content(
                     mediaType = "application/json",
                     schema = @Schema(implementation = BusinessInfoResponse.class)
-                )
-            ),
-            @ApiResponse(
-                responseCode = "400", 
-                description = "유효하지 않은 요청",
-                content = @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")
                 )
             ),
             @ApiResponse(
@@ -126,21 +119,33 @@ public class BusinessInfoController {
             
             if (user == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(BaseResponse.fail("사용자를 찾을 수 없습니다.", "USER_NOT_FOUND", HttpStatus.NOT_FOUND.value()));
+                        .body(BaseResponse.fail("사용자를 찾을 수 없어요.", "USER_NOT_FOUND", HttpStatus.NOT_FOUND.value()));
             }
             
-            // Company 엔티티에 사업자 정보 저장/업데이트
-            Company company = companyService.createOrUpdateBusinessInfo(user, request);
+            // 이미 사업자 정보가 등록되어 있는지 확인
+            Optional<Company> existingCompany = companyService.findByUserId(userId);
+            if (existingCompany.isPresent()) {
+                log.warn("사업자 정보 등록/수정 차단: userId={}, 이미 등록된 사업자 정보가 존재함", userId);
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(BaseResponse.fail("이미 사업자 정보가 등록되어 있어요. 등록된 사업자 정보는 수정할 수 없어요.", "ALREADY_REGISTERED", HttpStatus.BAD_REQUEST.value()));
+            }
+            
+            // Company 엔티티에 사업자 정보 저장 (신규 등록만 허용)
+            Company company = companyService.createBusinessInfoOnly(user, request);
             BusinessInfoResponse response = BusinessInfoResponse.fromCompany(company);
             
-            log.info("사업자 정보 업데이트 성공: userId={}, companyName={}", userId, request.getCompanyName());
+            log.info("사업자 정보 등록 성공: userId={}, companyName={}", userId, request.getCompanyName());
             
-            return ResponseEntity.ok(BaseResponse.success(response, "사업자 정보가 성공적으로 등록/수정되었습니다."));
+            return ResponseEntity.ok(BaseResponse.success(response, "사업자 정보가 성공적으로 등록되었어요."));
             
+        } catch (IllegalArgumentException e) {
+            log.warn("사업자 정보 등록 실패: userId={}, 사유: {}", tokenUtils.getUserIdFromToken(bearerToken), e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(BaseResponse.fail(e.getMessage(), "BUSINESS_INFO_REGISTRATION_FAILED", HttpStatus.BAD_REQUEST.value()));
         } catch (Exception e) {
-            log.error("사업자 정보 업데이트 중 오류: {}", e.getMessage(), e);
+            log.error("사업자 정보 등록 중 오류: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(BaseResponse.fail("사업자 정보 등록/수정 중 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
+                    .body(BaseResponse.fail("사업자 정보 등록 중 오류가 발생했어요.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
         }
     }
 

@@ -295,14 +295,23 @@ public class MissionManagementService {
                 .orElse(null);
 
         if (existingSubmission != null) {
-            // 기존 제출이 있는 경우 - 완료되지 않은 상태에서만 재제출 가능
-            if (!existingSubmission.getIsCompleted()) {
-                // 미완료 상태 → 재제출 (기존 미션 업데이트)
+            // 이미 완료된 미션인 경우
+            if (existingSubmission.getIsCompleted()) {
+                throw new BusinessException("이미 완료된 미션은 재제출할 수 없어요.");
+            }
+            
+            // 검토 대기 중인 미션인 경우 (검토 전 중복 제출 방지)
+            if (existingSubmission.isPending()) {
+                throw new BusinessException("이미 제출한 미션이 검토중이에요", "UNDER_REVIEW");
+            }
+            
+            // 수정 요청된 상태에서만 재제출 허용
+            if (existingSubmission.isRevisionRequested()) {
                 existingSubmission.resubmit(request.getMissionUrl());
                 existingSubmission.setPlatformType(detectPlatformType(request.getMissionUrl()));
                 
-                // 수정 요청된 상태에서 재제출하는 경우, 가장 최근 revision을 완료 처리
-                if (existingSubmission.isRevisionRequested() && !existingSubmission.getRevisions().isEmpty()) {
+                // 가장 최근 revision을 완료 처리
+                if (!existingSubmission.getRevisions().isEmpty()) {
                     MissionRevision latestRevision = existingSubmission.getRevisions().stream()
                             .sorted((r1, r2) -> r2.getRequestedAt().compareTo(r1.getRequestedAt()))
                             .findFirst()
@@ -318,10 +327,6 @@ public class MissionManagementService {
                 log.info("미션 재제출 완료 - submissionId: {}, applicationId: {}",
                         existingSubmission.getId(), applicationId);
                 return InfluencerMissionSubmissionResponse.fromEntity(existingSubmission);
-
-            } else {
-                // 이미 완료된 미션
-                throw new BusinessException("이미 완료된 미션은 재제출할 수 없어요.");
             }
         }
 

@@ -277,18 +277,8 @@ public class SESService {
                 </div>
             </body>
             </html>
-            """, 
-            nickname, 
-            campaignTitle,
-            clientFeedback != null && !clientFeedback.trim().isEmpty() ? 
-                String.format("""
-                    <div style="background-color: #fff3e0; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #FF9800;">
-                        <h3 style="margin-top: 0; color: #F57C00;">👏 클라이언트 피드백</h3>
-                        <p style="color: #666; font-style: italic; margin-bottom: 0;">"%s"</p>
-                    </div>
-                    """, clientFeedback) : ""
+            """
         );
-            
         sendHtmlEmail(toEmail, subject, htmlBody);
     }
 
