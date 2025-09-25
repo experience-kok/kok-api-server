@@ -2,8 +2,10 @@ package com.example.auth.controller;
 
 import com.example.auth.common.ApiResponse;
 import com.example.auth.constant.SortOption;
+import com.example.auth.dto.KokPostDetailResponse;
 import com.example.auth.dto.KokPostListResponse;
 import com.example.auth.service.KokPostService;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -16,15 +18,50 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@Tag(name = "체험콕 아티클 API", description = "체험콕 아티클 API (목록조회/검색 전용)")
+@Tag(name = "체험콕 아티클 API", description = "체험콕 아티클 API")
 @Slf4j
 @RestController
-@RequestMapping("/api/kokposts")
+@RequestMapping("/api/kok-article")
 @RequiredArgsConstructor
 public class KokPostController {
 
     private final KokPostService kokPostService;
 
+    @Operation(
+            summary = "캠페인별 체험콕 아티클 상세 조회",
+            description = "특정 캠페인의 체험콕 아티클 상세 정보를 조회합니다."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "체험콕 아티클 상세 조회 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = KokPostDetailResponse.class)
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "해당 캠페인의 체험콕 글을 찾을 수 없음"
+            )
+    })
+    @GetMapping("/{campaignId}")
+    public ApiResponse<KokPostDetailResponse> getKokPostByCampaign(
+            @Parameter(description = "캠페인 ID", example = "1")
+            @PathVariable Long campaignId
+    ) {
+        log.info("캠페인별 체험콕 글 상세 조회 API 호출 - campaignId: {}", campaignId);
+
+        KokPostDetailResponse response = kokPostService.getKokPostDetailByCampaignId(campaignId);
+
+        return ApiResponse.success(
+                String.format("캠페인 ID %d의 체험콕 글을 성공적으로 조회했습니다.", campaignId),
+                response
+        );
+    }
+
+
+    @Hidden
     @Operation(
             summary = "체험콕 글 전체 목록 조회",
             description = "모든 체험콕 홍보글의 목록을 조회합니다.\n\n" +
@@ -54,6 +91,7 @@ public class KokPostController {
         return ApiResponse.success("체험콕 글 목록을 성공적으로 조회했습니다.", response);
     }
 
+    @Hidden
     @Operation(
             summary = "체험콕 글 제목 검색",
             description = "제목으로 체험콕 글을 검색합니다.\n\n" +

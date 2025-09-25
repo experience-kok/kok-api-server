@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface KokPostRepository extends JpaRepository<KokPost, Long> {
@@ -22,6 +23,11 @@ public interface KokPostRepository extends JpaRepository<KokPost, Long> {
      * 캠페인별 콕포스트 목록 조회 (최신순)
      */
     List<KokPost> findByCampaignIdOrderByCreatedAtDesc(Long campaignId);
+
+    /**
+     * 캠페인별 단일 콕포스트 조회
+     */
+    Optional<KokPost> findByCampaignId(Long campaignId);
 
     /**
      * 제목으로 콕포스트 검색 (대소문자 구분 없이, Sort 옵션)
