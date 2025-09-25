@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@Tag(name = "홍보글 API", description = "홍보글 관리 API (목록조회/검색 전용)")
+@Tag(name = "체험콕 아티클 API", description = "체험콕 아티클 API (목록조회/검색 전용)")
 @Slf4j
 @RestController
 @RequestMapping("/api/kokposts")

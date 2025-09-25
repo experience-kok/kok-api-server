@@ -9,6 +9,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 @Getter
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -42,13 +43,13 @@ public class KokPostListResponse {
     @Schema(description = "캠페인 모집 중 여부", example = "true")
     private Boolean isCampaignOpen;
 
-    @Schema(description = "생성일시", example = "2025-08-27T10:30:00")
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    private LocalDateTime createdAt;
+    @Schema(description = "생성일시", example = "2025-08-27")
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private String createdAt;
 
-    @Schema(description = "수정일시", example = "2025-08-27T15:45:00")
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    private LocalDateTime updatedAt;
+    @Schema(description = "수정일시", example = "2025-08-27")
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private String updatedAt;
 
     @Builder
     private KokPostListResponse(Long id, String title, Long viewCount, Long campaignId,
@@ -63,7 +64,26 @@ public class KokPostListResponse {
         this.contactPhone = contactPhone;
         this.businessAddress = businessAddress;
         this.isCampaignOpen = isCampaignOpen;
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
+        this.createdAt = createdAt != null ? createdAt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) : null;
+        this.updatedAt = updatedAt != null ? updatedAt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) : null;
+    }
+
+    /**
+     * 엔티티에서 DTO로 변환하는 정적 팩토리 메서드
+     */
+    public static KokPostListResponse fromEntity(KokPost kokPost) {
+        return KokPostListResponse.builder()
+                .id(kokPost.getId())
+                .title(kokPost.getTitle())
+                .viewCount(kokPost.getViewCount())
+                .campaignId(kokPost.getCampaignId())
+                .authorId(kokPost.getAuthorId())
+                .authorName(kokPost.getAuthorName())
+                .contactPhone(kokPost.getVisitInfo() != null ? kokPost.getVisitInfo().getContactPhone() : null)
+                .businessAddress(kokPost.getVisitInfo() != null ? kokPost.getVisitInfo().getBusinessAddress() : null)
+                .isCampaignOpen(true) // 기본값 또는 비즈니스 로직에 따라 설정
+                .createdAt(kokPost.getCreatedAt())
+                .updatedAt(kokPost.getUpdatedAt())
+                .build();
     }
 }
