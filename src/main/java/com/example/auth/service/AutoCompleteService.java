@@ -9,6 +9,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.time.LocalDate;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -77,8 +78,8 @@ public class AutoCompleteService {
         try {
             log.info("캠페인 제목 캐시 갱신 시작");
             
-            // DB에서 승인된 캠페인 제목만 조회 (성능 최적화)
-            List<String> campaignTitles = campaignRepository.findApprovedTitles(Campaign.ApprovalStatus.APPROVED);
+            // DB에서 승인된 활성 캠페인 제목만 조회 (만료된 캠페인 제외)
+            List<String> campaignTitles = campaignRepository.findApprovedTitles(Campaign.ApprovalStatus.APPROVED, LocalDate.now());
             
             log.info("캐시할 캠페인 제목 수: {}", campaignTitles.size());
             

@@ -85,9 +85,9 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
     @Query("SELECT c FROM Campaign c WHERE c.creator.id = :creatorId AND c.recruitmentEndDate < :date AND c.isAlwaysOpen = false")
     Page<Campaign> findExpiredByCreatorId(@Param("creatorId") Long creatorId, @Param("date") LocalDate date, Pageable pageable);
 
-    // 자동완성용 메서드 (승인된 캠페인만)
-    @Query("SELECT DISTINCT c.title FROM Campaign c WHERE c.approvalStatus = :approvalStatus")
-    List<String> findApprovedTitles(@Param("approvalStatus") ApprovalStatus approvalStatus);
+    // 자동완성용 메서드 (승인된 활성 캠페인만)
+    @Query("SELECT DISTINCT c.title FROM Campaign c WHERE c.approvalStatus = :approvalStatus AND (c.recruitmentEndDate >= :currentDate OR c.isAlwaysOpen = true)")
+    List<String> findApprovedTitles(@Param("approvalStatus") ApprovalStatus approvalStatus, @Param("currentDate") LocalDate currentDate);
 
     // 신청자 수 관련 메서드들
     @Query("SELECT COUNT(ca) FROM CampaignApplication ca WHERE ca.campaign.id = :campaignId AND ca.applicationStatus IN ('APPLIED', 'SELECTED')")
