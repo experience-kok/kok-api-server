@@ -25,6 +25,13 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
     @Query("SELECT c FROM Campaign c WHERE c.id = :id AND c.approvalStatus IN :statuses")
     Optional<Campaign> findByIdAndApprovalStatusIn(@Param("id") Long id, @Param("statuses") List<ApprovalStatus> statuses);
 
+    // 승인된 활성 캠페인 조회 (상시 캠페인 포함)
+    @Query("SELECT c FROM Campaign c WHERE c.approvalStatus = :approvalStatus AND (c.recruitmentEndDate >= :currentDate OR c.isAlwaysOpen = true)")
+    Page<Campaign> findByApprovalStatusAndRecruitmentEndDateGreaterThanEqual(
+            @Param("approvalStatus") ApprovalStatus approvalStatus, 
+            @Param("currentDate") LocalDate currentDate, 
+            Pageable pageable);
+
     // Creator 관련 메서드들 (Enum 사용)
     List<Campaign> findByCreatorId(Long creatorId);
     List<Campaign> findByCreator(User creator);
@@ -78,9 +85,9 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
     @Query("SELECT c FROM Campaign c WHERE c.creator.id = :creatorId AND c.recruitmentEndDate < :date AND c.isAlwaysOpen = false")
     Page<Campaign> findExpiredByCreatorId(@Param("creatorId") Long creatorId, @Param("date") LocalDate date, Pageable pageable);
 
-    // 자동완성용 메서드
-    @Query("SELECT DISTINCT c.title FROM Campaign c WHERE c.approvalStatus = 'APPROVED'")
-    List<String> findAllTitles();
+    // 자동완성용 메서드 (승인된 캠페인만)
+    @Query("SELECT DISTINCT c.title FROM Campaign c WHERE c.approvalStatus = :approvalStatus")
+    List<String> findApprovedTitles(@Param("approvalStatus") ApprovalStatus approvalStatus);
 
     // 신청자 수 관련 메서드들
     @Query("SELECT COUNT(ca) FROM CampaignApplication ca WHERE ca.campaign.id = :campaignId AND ca.applicationStatus IN ('APPLIED', 'SELECTED')")
@@ -95,20 +102,6 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
            "FROM CampaignApplication ca WHERE ca.campaign.id = :campaignId")
     Object[] getCampaignStatistics(@Param("campaignId") Long campaignId);
 
-    // 승인 상태별 조회 (Enum 사용)
-    List<Campaign> findByApprovalStatus(ApprovalStatus approvalStatus);
-    Page<Campaign> findByApprovalStatus(ApprovalStatus approvalStatus, Pageable pageable);
-
-    // 승인된 활성 캠페인 조회 (상시 캠페인 포함)
-    @Query("SELECT c FROM Campaign c WHERE c.approvalStatus = :approvalStatus AND (c.recruitmentEndDate >= :currentDate OR c.isAlwaysOpen = true)")
-    List<Campaign> findByApprovalStatusAndRecruitmentEndDateGreaterThanEqual(@Param("approvalStatus") ApprovalStatus approvalStatus, @Param("currentDate") LocalDate currentDate);
-    
-    @Query("SELECT c FROM Campaign c WHERE c.approvalStatus = :approvalStatus AND (c.recruitmentEndDate >= :currentDate OR c.isAlwaysOpen = true)")
-    Page<Campaign> findByApprovalStatusAndRecruitmentEndDateGreaterThanEqual(@Param("approvalStatus") ApprovalStatus approvalStatus, @Param("currentDate") LocalDate currentDate, Pageable pageable);
-
-    // 카테고리별 조회 (상시 캠페인 포함)
-    Page<Campaign> findByApprovalStatusAndCategoryCategoryType(ApprovalStatus approvalStatus, CampaignCategory.CategoryType categoryType, Pageable pageable);
-    
     @Query("SELECT c FROM Campaign c WHERE c.approvalStatus = :approvalStatus AND c.category.categoryType = :categoryType AND (c.recruitmentEndDate >= :currentDate OR c.isAlwaysOpen = true)")
     Page<Campaign> findByApprovalStatusAndCategoryCategoryTypeAndRecruitmentEndDateGreaterThanEqual(
             @Param("approvalStatus") ApprovalStatus approvalStatus, 
@@ -203,10 +196,10 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
             WHERE ca.application_status IN ('APPLIED', 'SELECTED')
             GROUP BY ca.campaign_id
         ) app_count ON c.id = app_count.campaign_id
-        WHERE c.approval_status = :approvalStatus
-        AND (:currentDate IS NULL OR c.recruitment_end_date >= :currentDate OR c.is_always_open = true)
-        AND (:categoryType IS NULL OR cc.category_type = :categoryType)
-        AND (:categoryName IS NULL OR cc.category_name = :categoryName)
+        WHERE c.approval_status = CAST(:approvalStatus AS text)
+        AND (CAST(:currentDate AS date) IS NULL OR c.recruitment_end_date >= CAST(:currentDate AS date) OR c.is_always_open = true)
+        AND (CAST(:categoryType AS text) IS NULL OR cc.category_type = CAST(:categoryType AS text))
+        AND (CAST(:categoryName AS text) IS NULL OR cc.category_name = CAST(:categoryName AS text))
         ORDER BY c.created_at DESC
         """, nativeQuery = true)
     Page<Object[]> findOptimizedCampaignListByLatest(
@@ -231,10 +224,10 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
             WHERE ca.application_status IN ('APPLIED', 'SELECTED')
             GROUP BY ca.campaign_id
         ) app_count ON c.id = app_count.campaign_id
-        WHERE c.approval_status = :approvalStatus
-        AND (:currentDate IS NULL OR c.recruitment_end_date >= :currentDate OR c.is_always_open = true)
-        AND (:categoryType IS NULL OR cc.category_type = :categoryType)
-        AND (:categoryName IS NULL OR cc.category_name = :categoryName)
+        WHERE c.approval_status = CAST(:approvalStatus AS text)
+        AND (CAST(:currentDate AS date) IS NULL OR c.recruitment_end_date >= CAST(:currentDate AS date) OR c.is_always_open = true)
+        AND (CAST(:categoryType AS text) IS NULL OR cc.category_type = CAST(:categoryType AS text))
+        AND (CAST(:categoryName AS text) IS NULL OR cc.category_name = CAST(:categoryName AS text))
         AND (:campaignTypesSize = 0 OR c.campaign_type = ANY(CAST(:campaignTypesArray AS text[])))
         ORDER BY current_applicants DESC, c.created_at DESC
         """, nativeQuery = true)
@@ -261,10 +254,10 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
             WHERE ca.application_status IN ('APPLIED', 'SELECTED')
             GROUP BY ca.campaign_id
         ) app_count ON c.id = app_count.campaign_id
-        WHERE c.approval_status = :approvalStatus
-        AND (:currentDate IS NULL OR c.recruitment_end_date >= :currentDate OR c.is_always_open = true)
-        AND (:categoryType IS NULL OR cc.category_type = :categoryType)
-        AND (:categoryName IS NULL OR cc.category_name = :categoryName)
+        WHERE c.approval_status = CAST(:approvalStatus AS text)
+        AND (CAST(:currentDate AS date) IS NULL OR c.recruitment_end_date >= CAST(:currentDate AS date) OR c.is_always_open = true)
+        AND (CAST(:categoryType AS text) IS NULL OR cc.category_type = CAST(:categoryType AS text))
+        AND (CAST(:categoryName AS text) IS NULL OR cc.category_name = CAST(:categoryName AS text))
         AND (:campaignTypesSize = 0 OR c.campaign_type = ANY(CAST(:campaignTypesArray AS text[])))
         ORDER BY c.created_at DESC
         """, nativeQuery = true)
@@ -383,20 +376,9 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
             @Param("categoryType") CampaignCategory.CategoryType categoryType, @Param("campaignTypes") List<String> campaignTypes, 
             Pageable pageable);
 
-    @Query("SELECT c FROM Campaign c WHERE c.approvalStatus = :approvalStatus AND (c.recruitmentEndDate >= :currentDate OR c.isAlwaysOpen = true) AND c.category.categoryType = :categoryType AND c.campaignType IN :campaignTypes ORDER BY (SELECT COUNT(ca) FROM CampaignApplication ca WHERE ca.campaign = c AND ca.applicationStatus IN ('APPLIED', 'SELECTED')) DESC")
-    Page<Campaign> findApprovedActiveByCategoryTypeAndCampaignTypesOrderByCurrentApplicantsDesc(
-            @Param("approvalStatus") ApprovalStatus approvalStatus, @Param("currentDate") LocalDate currentDate, 
-            @Param("categoryType") CampaignCategory.CategoryType categoryType, @Param("campaignTypes") List<String> campaignTypes, 
-            Pageable pageable);
 
     @Query("SELECT c FROM Campaign c WHERE c.approvalStatus = :approvalStatus AND (c.recruitmentEndDate >= :currentDate OR c.isAlwaysOpen = true) AND c.category.categoryType = :categoryType AND c.category.categoryName = :categoryName AND c.campaignType IN :campaignTypes ORDER BY c.createdAt DESC")
     Page<Campaign> findApprovedActiveByCategoryTypeAndNameAndCampaignTypesOrderByLatest(
-            @Param("approvalStatus") ApprovalStatus approvalStatus, @Param("currentDate") LocalDate currentDate, 
-            @Param("categoryType") CampaignCategory.CategoryType categoryType, @Param("categoryName") String categoryName, 
-            @Param("campaignTypes") List<String> campaignTypes, Pageable pageable);
-
-    @Query("SELECT c FROM Campaign c WHERE c.approvalStatus = :approvalStatus AND (c.recruitmentEndDate >= :currentDate OR c.isAlwaysOpen = true) AND c.category.categoryType = :categoryType AND c.category.categoryName = :categoryName AND c.campaignType IN :campaignTypes ORDER BY (SELECT COUNT(ca) FROM CampaignApplication ca WHERE ca.campaign = c AND ca.applicationStatus IN ('APPLIED', 'SELECTED')) DESC")
-    Page<Campaign> findApprovedActiveByCategoryTypeAndNameAndCampaignTypesOrderByCurrentApplicantsDesc(
             @Param("approvalStatus") ApprovalStatus approvalStatus, @Param("currentDate") LocalDate currentDate, 
             @Param("categoryType") CampaignCategory.CategoryType categoryType, @Param("categoryName") String categoryName, 
             @Param("campaignTypes") List<String> campaignTypes, Pageable pageable);

@@ -77,8 +77,8 @@ public class AutoCompleteService {
         try {
             log.info("캠페인 제목 캐시 갱신 시작");
             
-            // DB에서 캠페인 제목만 조회 (성능 최적화)
-            List<String> campaignTitles = campaignRepository.findAllTitles();
+            // DB에서 승인된 캠페인 제목만 조회 (성능 최적화)
+            List<String> campaignTitles = campaignRepository.findApprovedTitles(Campaign.ApprovalStatus.APPROVED);
             
             log.info("캐시할 캠페인 제목 수: {}", campaignTitles.size());
             
