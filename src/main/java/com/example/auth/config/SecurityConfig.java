@@ -48,7 +48,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/brands/**").permitAll()
                 // 공지사항 및 체험콕 글 조회 - 인증 불필요
                 .requestMatchers("GET", "/api/notices/**").permitAll()
-                .requestMatchers("GET", "/api/kokposts/**").permitAll()
+                // 체험콕 아티클 API 조회 - 인증 불필요
+                .requestMatchers("GET", "/api/kok-article/**").permitAll()
                 // Swagger UI 관련 경로 모두 허용
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .requestMatchers("/v3/api-docs/**", "/v3/api-docs").permitAll()
