@@ -1229,7 +1229,7 @@ public class SwaggerConfig {
                         """);
     }
 
-    // ========== 공지사항 및 홍보글 API 스키마 생성 메서드 ==========
+    // ========== 공지사항 및 체험콕 아티클 API 스키마 생성 메서드 ==========
 
     private Schema<?> createNoticeListSuccessResponseSchema() {
         return new Schema<>()
@@ -1280,10 +1280,10 @@ public class SwaggerConfig {
                                                 .example("관리자"))
                                         .addProperty("createdAt", new StringSchema()
                                                 .description("생성 시간")
-                                                .example("2025-08-27T10:30:00"))
+                                                .example("2025-08-27"))
                                         .addProperty("updatedAt", new StringSchema()
                                                 .description("수정 시간")
-                                                .example("2025-08-27T15:45:00"))))
+                                                .example("2025-08-27"))))
                         .addProperty("pagination", new Schema<>()
                                 .type("object")
                                 .description("페이징 정보")
@@ -1371,10 +1371,10 @@ public class SwaggerConfig {
                                         .example(true))
                                 .addProperty("createdAt", new StringSchema()
                                         .description("생성 시간")
-                                        .example("2025-08-27T10:30:00"))
+                                        .example("2025-08-27"))
                                 .addProperty("updatedAt", new StringSchema()
                                         .description("수정 시간")
-                                        .example("2025-08-27T15:45:00"))));
+                                        .example("2025-08-27"))));
     }
 
     private Example createCreatedExample() {
@@ -1395,7 +1395,7 @@ public class SwaggerConfig {
                             "currentApplicants": 0,
                             "recruitmentStartDate": "2025-08-01",
                             "recruitmentEndDate": "2025-08-15",
-                            "createdAt": "2025-07-10T15:30:00Z"
+                            "createdAt": "2025-07-10"
                           }
                         }
                         """);
