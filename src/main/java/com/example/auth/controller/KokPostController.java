@@ -3,6 +3,7 @@ package com.example.auth.controller;
 import com.example.auth.common.ApiResponse;
 import com.example.auth.constant.SortOption;
 import com.example.auth.dto.KokPostDetailResponse;
+import com.example.auth.dto.KokPostDetailWrapper;
 import com.example.auth.dto.KokPostListResponse;
 import com.example.auth.service.KokPostService;
 import io.swagger.v3.oas.annotations.Hidden;
@@ -37,7 +38,7 @@ public class KokPostController {
                     description = "체험콕 아티클 상세 조회 성공",
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(implementation = KokPostDetailResponse.class)
+                            schema = @Schema(implementation = KokPostDetailWrapper.class)
                     )
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -46,17 +47,18 @@ public class KokPostController {
             )
     })
     @GetMapping("/{campaignId}")
-    public ApiResponse<KokPostDetailResponse> getKokPostByCampaign(
+    public ApiResponse<KokPostDetailWrapper> getKokPostByCampaign(
             @Parameter(description = "캠페인 ID", example = "1")
             @PathVariable Long campaignId
     ) {
         log.info("캠페인별 체험콕 글 상세 조회 API 호출 - campaignId: {}", campaignId);
 
         KokPostDetailResponse response = kokPostService.getKokPostDetailByCampaignId(campaignId);
+        KokPostDetailWrapper wrapper = KokPostDetailWrapper.of(response);
 
         return ApiResponse.success(
-                String.format("캠페인 ID %d의 체험콕 글을 성공적으로 조회했습니다.", campaignId),
-                response
+                String.format("캠페인 ID %d의 체험콕 글을 성공적으로 조회했어요.", campaignId),
+                wrapper
         );
     }
 
