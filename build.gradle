@@ -29,20 +29,28 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
 	compileOnly 'org.projectlombok:lombok'
 	implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
 	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
 	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5' // Jackson serializer for JWT
 	runtimeOnly 'org.postgresql:postgresql'
+	implementation 'com.h2database:h2' // H2 데이터베이스 추가
 	annotationProcessor 'org.projectlombok:lombok'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-	testRuntimeOnly 'com.h2database:h2' // H2 데이터베이스 추가
 	implementation 'org.springframework.boot:spring-boot-starter-webflux'
 	implementation 'org.springdoc:springdoc-openapi-starter-common:2.3.0'
-	
+
 	// AWS SDK for Java
 	implementation 'io.awspring.cloud:spring-cloud-starter-aws:2.4.4'
+
+	// AWS SES 추가
+	implementation 'com.amazonaws:aws-java-sdk-ses:1.12.500'
+
+	// JavaMail API for encoding
+	implementation 'com.sun.mail:jakarta.mail:2.0.1'
+
 }
 
 tasks.named('test') {
