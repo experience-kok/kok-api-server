@@ -50,4 +50,11 @@ public interface KokPostRepository extends JpaRepository<KokPost, Long> {
     @Modifying
     @Query("UPDATE KokPost k SET k.viewCount = k.viewCount + 1 WHERE k.id = :id")
     void incrementViewCount(@Param("id") Long id);
+
+    /**
+     * 조회수를 특정 양만큼 증가
+     */
+    @Modifying
+    @Query("UPDATE KokPost k SET k.viewCount = k.viewCount + :incrementAmount WHERE k.id = :id")
+    void incrementViewCountByAmount(@Param("id") Long id, @Param("incrementAmount") Long incrementAmount);
 }

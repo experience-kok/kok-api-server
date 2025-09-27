@@ -10,8 +10,11 @@ import com.example.auth.repository.CampaignRepository;
 import com.example.auth.repository.KokPostRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Duration;
 
 import java.util.List;
 import java.util.Map;
@@ -26,6 +29,55 @@ public class KokPostService {
 
     private final KokPostRepository kokPostRepository;
     private final CampaignRepository campaignRepository;
+    private final RedisTemplate<String, String> redisTemplate;
+
+    private static final String VIEW_COUNT_KEY_PREFIX = "view_count:";
+    private static final String DAILY_VIEW_COUNT_KEY_PREFIX = "daily_view_count:";
+    private static final int VIEW_COUNT_EXPIRE_HOURS = 24;
+
+    /**
+     * 조회수 증가 처리 (Redis 캐시만 업데이트)
+     */
+    @Transactional
+    private void processViewCountIncrease(Long postId, String clientIP) {
+        String duplicateCheckKey = VIEW_COUNT_KEY_PREFIX + postId + ":" + clientIP;
+        
+        // 24시간 내 중복 조회 체크
+        if (!redisTemplate.hasKey(duplicateCheckKey)) {
+            // 1. 중복 방지용 키 생성 (24시간 TTL)
+            redisTemplate.opsForValue().set(duplicateCheckKey, "viewed", Duration.ofHours(VIEW_COUNT_EXPIRE_HOURS));
+            
+            // 2. Redis에 일일 조회수 누적 (DB 업데이트 전까지 임시 저장)
+            String dailyCountKey = DAILY_VIEW_COUNT_KEY_PREFIX + postId;
+            redisTemplate.opsForValue().increment(dailyCountKey, 1);
+            
+            log.info("Redis 조회수 증가 - postId: {}, clientIP: {}", postId, clientIP);
+        } else {
+            log.debug("24시간 내 중복 조회 차단 - postId: {}, clientIP: {}", postId, clientIP);
+        }
+    }
+
+    /**
+     * Redis에서 현재 누적된 조회수 조회
+     */
+    public Long getRedisViewCount(Long postId) {
+        String dailyCountKey = DAILY_VIEW_COUNT_KEY_PREFIX + postId;
+        String count = redisTemplate.opsForValue().get(dailyCountKey);
+        return count != null ? Long.parseLong(count) : 0L;
+    }
+
+    /**
+     * 실제 조회수 반환 (DB 조회수 + Redis 누적 조회수)
+     */
+    public Long getTotalViewCount(Long postId) {
+        KokPost kokPost = kokPostRepository.findById(postId)
+                .orElseThrow(() -> new ResourceNotFoundException("포스트를 찾을 수 없습니다."));
+        
+        Long dbViewCount = kokPost.getViewCount();
+        Long redisViewCount = getRedisViewCount(postId);
+        
+        return dbViewCount + redisViewCount;
+    }
 
     /**
      * 콕포스트 전체 목록 조회 (정렬 옵션 포함)
@@ -83,12 +135,18 @@ public class KokPostService {
     /**
      * 캠페인별 콕포스트 상세 조회 (단일 조회)
      */
-    public KokPostDetailResponse getKokPostDetailByCampaignId(Long campaignId) {
+    public KokPostDetailResponse getKokPostDetailByCampaignId(Long campaignId, String clientIP) {
         log.info("캠페인별 콕포스트 상세 조회 요청 - campaignId: {}", campaignId);
 
         // 캠페인 ID로 체험콕 글 조회
         KokPost kokPost = kokPostRepository.findByCampaignId(campaignId)
                 .orElseThrow(() -> new ResourceNotFoundException("해당 캠페인의 체험콕 글을 찾을 수 없습니다."));
+
+        // 조회수 증가 처리 (Redis에만)
+        processViewCountIncrease(kokPost.getId(), clientIP);
+
+        // 실시간 총 조회수 계산 (DB + Redis)
+        Long totalViewCount = getTotalViewCount(kokPost.getId());
 
         // 캠페인 모집 상태 확인
         Boolean isCampaignOpen = campaignRepository.findById(campaignId)
@@ -97,7 +155,7 @@ public class KokPostService {
 
         log.info("캠페인별 콕포스트 상세 조회 완료 - campaignId: {}, kokPostId: {}", campaignId, kokPost.getId());
 
-        return KokPostDetailResponse.fromEntity(kokPost, isCampaignOpen);
+        return KokPostDetailResponse.fromEntityWithViewCount(kokPost, isCampaignOpen, totalViewCount);
     }
 
     /**

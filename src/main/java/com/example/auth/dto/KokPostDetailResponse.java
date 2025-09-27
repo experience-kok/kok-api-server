@@ -127,4 +127,34 @@ public class KokPostDetailResponse {
                 .visitInfo(visitInfo)
                 .build();
     }
+
+    /**
+     * 엔티티에서 DTO로 변환하는 정적 팩토리 메서드 (총 조회수 포함)
+     */
+    public static KokPostDetailResponse fromEntityWithViewCount(KokPost kokPost, Boolean isCampaignOpen, Long totalViewCount) {
+        VisitInfo visitInfo = null;
+        if (kokPost.getVisitInfo() != null) {
+            visitInfo = VisitInfo.builder()
+                    .contactPhone(kokPost.getVisitInfo().getContactPhone())
+                    .homepage(kokPost.getVisitInfo().getHomepage())
+                    .businessAddress(kokPost.getVisitInfo().getBusinessAddress())
+                    .businessDetailAddress(kokPost.getVisitInfo().getBusinessDetailAddress())
+                    .lat(kokPost.getVisitInfo().getLat())
+                    .lng(kokPost.getVisitInfo().getLng())
+                    .build();
+        }
+
+        return KokPostDetailResponse.builder()
+                .id(kokPost.getId())
+                .title(kokPost.getTitle())
+                .content(kokPost.getContent())
+                .viewCount(totalViewCount) // DB + Redis 합계
+                .campaignId(kokPost.getCampaignId())
+                .isCampaignOpen(isCampaignOpen)
+                .createdAt(kokPost.getCreatedAt())
+                .updatedAt(kokPost.getUpdatedAt())
+                .authorName(kokPost.getAuthorName())
+                .visitInfo(visitInfo)
+                .build();
+    }
 }

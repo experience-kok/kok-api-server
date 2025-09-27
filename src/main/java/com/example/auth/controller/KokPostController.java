@@ -17,6 +17,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 import java.util.List;
 
 @Tag(name = "체험콕 아티클 API", description = "체험콕 아티클 API")
@@ -49,17 +51,43 @@ public class KokPostController {
     @GetMapping("/{campaignId}")
     public ApiResponse<KokPostDetailWrapper> getKokPostByCampaign(
             @Parameter(description = "캠페인 ID", example = "1")
-            @PathVariable Long campaignId
+            @PathVariable Long campaignId,
+            HttpServletRequest request
     ) {
         log.info("캠페인별 체험콕 글 상세 조회 API 호출 - campaignId: {}", campaignId);
 
-        KokPostDetailResponse response = kokPostService.getKokPostDetailByCampaignId(campaignId);
+        // 클라이언트 IP 추출
+        String clientIP = getClientIP(request);
+
+        // 서비스 호출 시 IP 전달
+        KokPostDetailResponse response = kokPostService.getKokPostDetailByCampaignId(campaignId, clientIP);
         KokPostDetailWrapper wrapper = KokPostDetailWrapper.of(response);
 
         return ApiResponse.success(
                 String.format("캠페인 ID %d의 체험콕 글을 성공적으로 조회했어요.", campaignId),
                 wrapper
         );
+    }
+
+    /**
+     * 클라이언트 실제 IP 주소 추출
+     */
+    private String getClientIP(HttpServletRequest request) {
+        String[] headers = {
+            "X-Forwarded-For",
+            "X-Real-IP", 
+            "Proxy-Client-IP",
+            "WL-Proxy-Client-IP"
+        };
+        
+        for (String header : headers) {
+            String ip = request.getHeader(header);
+            if (ip != null && !ip.isEmpty() && !"unknown".equalsIgnoreCase(ip)) {
+                return ip.split(",")[0].trim();
+            }
+        }
+        
+        return request.getRemoteAddr();
     }
 
 
