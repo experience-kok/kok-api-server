@@ -225,7 +225,7 @@ public class ViewCountBatchScheduler {
     }
 
     /**
-     * 🔒 안전한 백업 생성
+     * 백업 생성
      */
     private boolean createSafetyBackup(String originalKey, Long postId, String batchId) {
         try {
@@ -253,7 +253,7 @@ public class ViewCountBatchScheduler {
     }
 
     /**
-     * 🏦 안전한 DB 업데이트 (ACID 보장)
+     *  DB 업데이트
      */
     @Transactional(rollbackFor = Exception.class)
     private boolean performSafeDbUpdate(Long postId, Long incrementCount, String batchId) {
@@ -298,7 +298,7 @@ public class ViewCountBatchScheduler {
     }
 
     /**
-     * ⏰ 지연 삭제 마킹 (즉시 삭제 방지)
+     * 지연 삭제 마킹 (즉시 삭제 방지)
      */
     private void markForSafeDeletion(String originalKey, Long postId, String batchId) {
         try {
@@ -349,7 +349,7 @@ public class ViewCountBatchScheduler {
     }
 
     /**
-     * 🗑️ 잘못된 데이터 격리
+     * 잘못된 데이터 격리
      */
     private void quarantineBadData(String key, String batchId) {
         try {
@@ -371,7 +371,7 @@ public class ViewCountBatchScheduler {
     }
 
     /**
-     * 📝 성공 로그 기록
+     * 성공 로그 기록
      */
     private void recordSuccessfulUpdate(Long postId, Long incrementCount, Long oldCount, Long newCount, String batchId) {
         try {
@@ -388,7 +388,7 @@ public class ViewCountBatchScheduler {
     }
 
     /**
-     * 🧹 백업 정리
+     *  백업 정리
      */
     private void cleanupBackup(Long postId, String batchId) {
         try {
