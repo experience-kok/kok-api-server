@@ -25,7 +25,7 @@ public class MissionSubmissionResponse {
     private Long id;
 
     @Schema(description = "인플루언서 정보", required = true)
-    private UserInfo user;
+    private InfluencerInfo  user;
 
     @Schema(description = "캠페인 정보", required = true)
     private CampaignInfo campaign;
@@ -41,7 +41,7 @@ public class MissionSubmissionResponse {
     @NoArgsConstructor
     @AllArgsConstructor
     @Schema(description = "인플루언서 정보")
-    public static class UserInfo {
+    public static class InfluencerInfo  {
         @Schema(description = "유저 ID", example = "45", required = true)
         private Long id;
 
@@ -109,7 +109,7 @@ public class MissionSubmissionResponse {
 
         return MissionSubmissionResponse.builder()
                 .id(entity.getId())
-                .user(UserInfo.builder()
+                .user(InfluencerInfo.builder()
                         .id(entity.getCampaignApplication().getUser().getId())
                         .nickname(entity.getCampaignApplication().getUser().getNickname())
                         .gender(entity.getCampaignApplication().getUser().getGender() != null ?
