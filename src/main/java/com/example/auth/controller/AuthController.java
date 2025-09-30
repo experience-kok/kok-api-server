@@ -13,9 +13,6 @@ import com.example.auth.dto.RefreshTokenRequest;
 import com.example.auth.dto.UserDTO;
 import com.example.auth.dto.UserLoginResult;
 import com.example.auth.dto.response.ApiResponseSchemas;
-import com.example.auth.common.ErrorResponseDTO;
-import com.example.auth.common.LoginResponseDTO;
-import com.example.auth.common.TokenRefreshResponseDTO;
 import com.example.auth.domain.User;
 import com.example.auth.exception.JwtValidationException;
 import com.example.auth.exception.TokenErrorType;
@@ -137,7 +134,7 @@ public class AuthController {
                                   "email": "newuser@example.com",
                                   "nickname": "신규사용자123",
                                   "role": "USER",
-                                  "profileImageUrl": "https://k.kakaocdn.net/dn/profile/image.jpg"
+                                  "profileImage": "https://k.kakaocdn.net/dn/profile/image.jpg"
                                 }
                               }
                             }
@@ -160,7 +157,7 @@ public class AuthController {
                                   "email": "existinguser@example.com",
                                   "nickname": "기존사용자456",
                                   "role": "CLIENT",
-                                  "profileImageUrl": "https://example.com/custom-profile.jpg"
+                                  "profileImage": "https://example.com/custom-profile.jpg"
                                 }
                               }
                             }
