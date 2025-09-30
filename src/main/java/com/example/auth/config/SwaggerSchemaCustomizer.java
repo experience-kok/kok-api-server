@@ -151,7 +151,7 @@ public class SwaggerSchemaCustomizer implements OpenApiCustomizer {
                       "id": 123,
                       "email": "user@example.com",
                       "nickname": "홍길동",
-                      "profileImg": "https://drxgfm74s70w1.cloudfront.net/profile-images/user123.jpg",
+                      "profileImage": "https://drxgfm74s70w1.cloudfront.net/profile-images/user123.jpg",
                       "phone": "010-1234-5678",
                       "gender": "MALE",
                       "age": 30,

@@ -654,6 +654,18 @@ public class SwaggerConfig {
         return new Schema<>()
                 .type("object")
                 .description("사용자 정보 - 로그인 및 프로필 조회 시 반환되는 사용자 데이터")
+                .example("""
+                        {
+                          "id": 123,
+                          "email": "user@example.com",
+                          "nickname": "사용자123",
+                          "profileImage": "https://drxgfm74s70w1.cloudfront.net/profile-images/user123.jpg",
+                          "phone": "010-1234-5678",
+                          "gender": "MALE",
+                          "age": 30,
+                          "role": "USER"
+                        }
+                        """)
                 .addProperty("id", new Schema<>()
                         .type("integer")
                         .format("int64")
@@ -664,8 +676,8 @@ public class SwaggerConfig {
                         .example("user@example.com"))
                 .addProperty("nickname", new StringSchema()
                         .description("닉네임 - 플랫폼 내에서 표시되는 사용자의 별명 (2~8자)")
-                        .example("홍길동"))
-                .addProperty("profileImg", new StringSchema()
+                        .example("사용자123"))
+                .addProperty("profileImage", new StringSchema()
                         .description("프로필 이미지 URL - 사용자의 프로필 사진 (CloudFront CDN을 통해 제공)")
                         .example("https://drxgfm74s70w1.cloudfront.net/profile-images/user123.jpg"))
                 .addProperty("phone", new StringSchema()

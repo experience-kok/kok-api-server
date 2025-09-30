@@ -1,6 +1,7 @@
 package com.example.auth.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.Builder;
 import lombok.Data;
 
 /**
@@ -23,7 +24,7 @@ public class ApiResponseSchemas {
               "email": "user@example.com",
               "nickname": "사용자123",
               "role": "USER",
-              "profileImg": "https://drxgfm74s70w1.cloudfront.net/profile-images/user123.jpg",
+              "profileImage": "https://drxgfm74s70w1.cloudfront.net/profile-images/user123.jpg",
               "phone": "010-1234-5678",
               "gender": "MALE",
               "age": 30
@@ -61,6 +62,7 @@ public class ApiResponseSchemas {
         }
 
         @Data
+        @Builder
         @Schema(description = "사용자 정보")
         public static class UserInfo {
             @Schema(description = "사용자 ID", example = "123")
