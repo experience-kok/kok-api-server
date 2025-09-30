@@ -1,7 +1,6 @@
 package com.example.auth.service;
 
-import com.amazonaws.auth.AWSStaticCredentialsProvider;
-import com.amazonaws.auth.BasicAWSCredentials;
+
 import com.amazonaws.services.simpleemail.AmazonSimpleEmailService;
 import com.amazonaws.services.simpleemail.AmazonSimpleEmailServiceClientBuilder;
 import com.amazonaws.services.simpleemail.model.*;
@@ -20,18 +19,16 @@ public class SESService {
     
     @Value("${aws.ses.from-name:ChkokTeam}")
     private String fromName;
-    
-    public SESService(
-            @Value("${aws.accessKey}") String accessKey,
-            @Value("${aws.secretKey}") String secretKey,
-            @Value("${aws.ses.region:us-east-1}") String region
-    ) {
-        BasicAWSCredentials awsCredentials = new BasicAWSCredentials(accessKey, secretKey);
-        this.sesClient = AmazonSimpleEmailServiceClientBuilder.standard()
-                .withCredentials(new AWSStaticCredentialsProvider(awsCredentials))
-                .withRegion(region)
-                .build();
-    }
+
+public SESService(
+        @Value("${aws.ses.region:us-east-1}") String region
+) {
+
+
+    this.sesClient = AmazonSimpleEmailServiceClientBuilder.standard()
+            .withRegion(region)
+            .build();
+}
 
     /**
      * 텍스트 이메일 발송

@@ -8,7 +8,6 @@ import com.example.auth.domain.Campaign;
 import com.example.auth.domain.User;
 import com.example.auth.repository.CampaignRepository;
 import com.example.auth.repository.UserRepository;
-import com.example.auth.util.ImageUrlUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,7 +32,6 @@ public class S3CleanupService {
     private final CampaignRepository campaignRepository;
     private final UserRepository userRepository;
     private final S3Service s3Service;
-    private final ImageUrlUtils imageUrlUtils;
 
     @Value("${aws.s3.bucket}")
     private String bucketName;
