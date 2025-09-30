@@ -1,6 +1,7 @@
 package com.example.auth.controller;
 
 import com.example.auth.service.*;
+import com.example.auth.dto.consent.ConsentRequest;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import com.example.auth.common.BaseResponse;
 import com.example.auth.dto.auth.EmailLoginRequest;
@@ -29,6 +30,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -63,6 +65,7 @@ public class AuthController {
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
     private final UserWithdrawalService userWithdrawalService;
     private final AuthCodeCacheService authCodeCacheService;
+    private final ConsentService consentService;
 
     @Value("${kakao.client-id}")
     private String kakaoClientId;
@@ -101,96 +104,94 @@ public class AuthController {
         log.info("카카오 로그인 페이지로 리다이렉트: redirectUri={}", redirectUri);
         response.sendRedirect(kakaoUrl);
     }
-
     @Operation(
-        summary = "카카오 로그인",
-        description = "카카오 OAuth 인가 코드를 통해 로그인하고 JWT 토큰을 발급받습니다.\n\n" +
-                      "### 사용법:\n" +
-                      "1. 카카오 로그인 페이지에서 사용자 인증\n" +
-                      "2. 리다이렉트 URI로 인가 코드 수신\n" +
-                      "3. 인가 코드와 리다이렉트 URI를 이 API에 전송\n" +
-                      "4. 응답으로 JWT 토큰과 사용자 정보 수신"
+            summary = "카카오 로그인",
+            description = "카카오 OAuth 인가 코드를 통해 로그인하고 JWT 토큰을 발급받습니다.\n\n" +
+                    "### 사용법:\n" +
+                    "1. 카카오 로그인 페이지에서 사용자 인증\n" +
+                    "2. 리다이렉트 URI로 인가 코드 수신\n" +
+                    "3. 인가 코드와 리다이렉트 URI를 이 API에 전송\n" +
+                    "4. 응답으로 JWT 토큰과 사용자 정보 수신"
     )
     @ApiResponses(value = {
             @ApiResponse(
-                responseCode = "200", 
-                description = "카카오 로그인 성공",
-                content = @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = ApiResponseSchemas.LoginSuccessResponse.class),
-                    examples = {
-                        @io.swagger.v3.oas.annotations.media.ExampleObject(
-                            name = "첫 로그인 (회원가입)",
-                            summary = "신규 사용자가 처음 로그인하는 경우",
-                            value = """
-                                {
-                                  "success": true,
-                                  "message": "카카오 로그인 성공",
-                                  "status": 200,
-                                  "data": {
-                                    "loginType": "registration",
-                                    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjMiLCJpYXQiOjE2NzAyNjUyMDAsImV4cCI6MTY3MDI2ODgwMH0.abc123",
-                                    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjMiLCJpYXQiOjE2NzAyNjUyMDAsImV4cCI6MTY3MTEyOTIwMH0.def456",
-                                    "user": {
-                                      "id": 123,
-                                      "email": "newuser@example.com",
-                                      "nickname": "신규사용자123",
-                                      "role": "USER",
-                                      "profileImageUrl": "https://k.kakaocdn.net/dn/profile/image.jpg"
-                                    }
-                                  }
+                    responseCode = "200",
+                    description = "카카오 로그인 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ApiResponseSchemas.LoginSuccessResponse.class),
+                            examples = {
+                                    @io.swagger.v3.oas.annotations.media.ExampleObject(
+                                            name = "신규 회원 (동의 필요)",
+                                            summary = "신규 사용자가 처음 로그인하는 경우",
+                                            value = """
+                            {
+                              "success": true,
+                              "message": "동의가 필요합니다",
+                              "status": 200,
+                              "data": {
+                                "loginType": "consentRequired",
+                                "tempToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjMiLCJpYXQiOjE2NzAyNjUyMDAsImV4cCI6MTY3MDI2ODgwMH0.abc123",
+                                "user": {
+                                  "id": 123,
+                                  "email": "newuser@example.com",
+                                  "nickname": "신규사용자123",
+                                  "role": "USER",
+                                  "profileImageUrl": "https://k.kakaocdn.net/dn/profile/image.jpg"
                                 }
-                                """
-                        ),
-                        @io.swagger.v3.oas.annotations.media.ExampleObject(
-                            name = "기존 사용자 로그인",
-                            summary = "기존 사용자가 로그인하는 경우",
-                            value = """
-                                {
-                                  "success": true,
-                                  "message": "카카오 로그인 성공",
-                                  "status": 200,
-                                  "data": {
-                                    "loginType": "login",
-                                    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0NTYiLCJpYXQiOjE2NzAyNjUyMDAsImV4cCI6MTY3MDI2ODgwMH0.xyz789",
-                                    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0NTYiLCJpYXQiOjE2NzAyNjUyMDAsImV4cCI6MTY3MTEyOTIwMH0.abc987",
-                                    "user": {
-                                      "id": 456,
-                                      "email": "existinguser@example.com",
-                                      "nickname": "기존사용자456",
-                                      "role": "CLIENT",
-                                      "profileImageUrl": "https://example.com/custom-profile.jpg"
-                                    }
-                                  }
+                              }
+                            }
+                            """
+                                    ),
+                                    @io.swagger.v3.oas.annotations.media.ExampleObject(
+                                            name = "기존 사용자 로그인",
+                                            summary = "기존 사용자가 로그인하는 경우",
+                                            value = """
+                            {
+                              "success": true,
+                              "message": "카카오 로그인 성공",
+                              "status": 200,
+                              "data": {
+                                "loginType": "login",
+                                "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0NTYiLCJpYXQiOjE2NzAyNjUyMDAsImV4cCI6MTY3MDI2ODgwMH0.xyz789",
+                                "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0NTYiLCJpYXQiOjE2NzAyNjUyMDAsImV4cCI6MTY3MTEyOTIwMH0.abc987",
+                                "user": {
+                                  "id": 456,
+                                  "email": "existinguser@example.com",
+                                  "nickname": "기존사용자456",
+                                  "role": "CLIENT",
+                                  "profileImageUrl": "https://example.com/custom-profile.jpg"
                                 }
-                                """
-                        )
-                    }
-                )
+                              }
+                            }
+                            """
+                                    )
+                            }
+                    )
             ),
             @ApiResponse(
-                responseCode = "400", 
-                description = "유효하지 않은 요청 (허용되지 않은 redirectUri 등)",
-                content = @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")
-                )
+                    responseCode = "400",
+                    description = "유효하지 않은 요청 (허용되지 않은 redirectUri 등)",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")
+                    )
             ),
             @ApiResponse(
-                responseCode = "401", 
-                description = "인증 실패 (잘못된 인가 코드 등)",
-                content = @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")
-                )
+                    responseCode = "401",
+                    description = "인증 실패 (잘못된 인가 코드 등)",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")
+                    )
             ),
             @ApiResponse(
-                responseCode = "500", 
-                description = "서버 오류",
-                content = @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")
-                )
+                    responseCode = "500",
+                    description = "서버 오류",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")
+                    )
             )
     })
     @PostMapping("/kakao")
@@ -236,42 +237,67 @@ public class AuthController {
             log.debug("카카오 토큰 요청 시작: timestamp={}", System.currentTimeMillis());
             KakaoTokenResponse kakaoToken = kakaoService.requestToken(request.getAuthorizationCode(), request.getRedirectUri());
             log.debug("카카오 토큰 요청 완료: timestamp={}", System.currentTimeMillis());
-            
+
             // 인가 코드 사용 처리 (성공 시에만)
             authCodeCacheService.markAuthCodeAsUsed(authCode);
-            
+
             log.debug("카카오 사용자 정보 요청 시작: timestamp={}", System.currentTimeMillis());
             KakaoUserInfo userInfo = kakaoService.requestUserInfo(kakaoToken.accessToken());
             log.debug("카카오 사용자 정보 요청 완료: timestamp={}", System.currentTimeMillis());
-            
+
             // 재가입 제한 체크
             String email = null;
             if (userInfo.kakao_account() != null) {
                 email = (String) userInfo.kakao_account().get("email");
             }
-            
+
             userWithdrawalService.checkWithdrawalRestriction(
-                email, 
-                String.valueOf(userInfo.id()), 
-                "kakao"
+                    email,
+                    String.valueOf(userInfo.id()),
+                    "kakao"
             );
-            
+
+            // 사용자 조회 또는 생성
             UserLoginResult result = userService.findOrCreateUser("kakao", userInfo);
             User user = result.user();
-            String loginType = result.isNew() ? "registration" : "login";
+
+
+            // 신규 회원인 경우 동의가 필요함
+            if (result.isNew()) {
+                log.info("신규 회원 - 동의 필요: tempUserId={}", result.tempUserId());
+
+                // 임시 토큰 생성 (tempUserId 사용, 10분 유효)
+                String tempToken = jwtUtil.createTempToken(result.tempUserId());
+
+                UserDTO userDTO = UserDTO.fromEntity(user);
+
+                Map<String, Object> responseData = Map.of(
+                        "loginType", "consentRequired",
+                        "tempToken", tempToken,
+                        "user", userDTO
+                );
+
+                log.info("신규 회원 임시 토큰 발급 완료: tempUserId={}, 총 소요시간={}ms",
+                        result.tempUserId(), System.currentTimeMillis() - startTime);
+
+                return ResponseEntity.ok(BaseResponse.success(responseData, "동의가 필요합니다"));
+            }
+
+            // 기존 회원인 경우 바로 로그인
+            log.info("기존 회원 로그인: userId={}", user.getId());
 
             String accessToken = jwtUtil.createAccessToken(user.getId());
             String refreshToken = jwtUtil.createRefreshToken(user.getId());
             tokenService.saveRefreshToken(user.getId(), refreshToken);
 
-            log.info("카카오 로그인 성공: userId={}, loginType={}, 총 소요시간={}ms", 
-                    user.getId(), loginType, System.currentTimeMillis() - startTime);
+            log.info("카카오 로그인 성공: userId={}, loginType=login, 총 소요시간={}ms",
+                    user.getId(), System.currentTimeMillis() - startTime);
 
             // UserDTO를 사용하여 응답 데이터 생성
             UserDTO userDTO = UserDTO.fromEntity(user);
 
             Map<String, Object> responseData = Map.of(
-                    "loginType", loginType,
+                    "loginType", "login",
                     "accessToken", accessToken,
                     "refreshToken", refreshToken,
                     "user", userDTO
@@ -844,6 +870,115 @@ public class AuthController {
             log.error("USER 권한 검사 중 오류: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(BaseResponse.fail("권한 검사 중 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
+        }
+    }
+    @Operation(
+            summary = "동의 완료",
+            description = "신규 회원의 약관 동의를 처리하고 정식 토큰을 발급합니다."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "동의 완료 및 회원가입 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ApiResponseSchemas.LoginSuccessResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "필수 동의 항목 미체크",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "유효하지 않거나 만료된 임시 토큰",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")
+                    )
+            )
+    })
+    @PostMapping("/consent")
+    public ResponseEntity<?> completeConsent(
+            @RequestBody @Valid ConsentRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        log.info("동의 완료 요청");
+
+        try {
+            // 1. 임시 토큰 검증
+            String tempToken = request.getTempToken();
+            Claims claims;
+            try {
+                claims = jwtUtil.getClaims(tempToken);
+            } catch (Exception e) {
+                log.warn("유효하지 않은 임시 토큰: {}", e.getMessage());
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(BaseResponse.fail("유효하지 않거나 만료된 임시 토큰입니다.", "INVALID_TEMP_TOKEN", HttpStatus.UNAUTHORIZED.value()));
+            }
+
+            // 2. tempUserId 추출 (String 타입!)
+            String tempUserId = claims.getSubject();
+
+            log.info("임시 토큰 검증 성공: tempUserId={}", tempUserId);
+
+            // 3. 필수 동의 항목 검증
+            Map<String, Boolean> agreements = request.getAgreements();
+            Boolean termsAgreed = agreements.get("termsAgreed");
+            Boolean privacyPolicyAgreed = agreements.get("privacyPolicyAgreed");
+
+            if (termsAgreed == null || !termsAgreed) {
+                log.warn("서비스 이용약관 미동의: tempUserId={}", tempUserId);
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(BaseResponse.fail("서비스 이용약관에 동의해주세요.", "TERMS_NOT_AGREED", HttpStatus.BAD_REQUEST.value()));
+            }
+
+            if (privacyPolicyAgreed == null || !privacyPolicyAgreed) {
+                log.warn("개인정보 처리방침 미동의: tempUserId={}", tempUserId);
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(BaseResponse.fail("개인정보 처리방침에 동의해주세요.", "PRIVACY_NOT_AGREED", HttpStatus.BAD_REQUEST.value()));
+            }
+
+            // 4. Redis에서 임시 데이터 가져와서 DB에 정식 사용자 생성
+            User savedUser = consentService.createUserFromTempData(tempUserId, agreements, httpRequest);
+
+            // 5. 정식 JWT 토큰 발급
+            String accessToken = jwtUtil.createAccessToken(savedUser.getId());
+            String refreshToken = jwtUtil.createRefreshToken(savedUser.getId());
+            tokenService.saveRefreshToken(savedUser.getId(), refreshToken);
+
+            log.info("동의 완료 및 회원가입 성공: userId={}, tempUserId={}", savedUser.getId(), tempUserId);
+
+            UserDTO userDTO = UserDTO.fromEntity(savedUser);
+
+            Map<String, Object> responseData = Map.of(
+                    "accessToken", accessToken,
+                    "refreshToken", refreshToken,
+                    "user", userDTO
+            );
+
+            return ResponseEntity.ok(BaseResponse.success(responseData, "동의 완료"));
+
+        } catch (ExpiredJwtException e) {
+            log.warn("만료된 임시 토큰: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(BaseResponse.fail("임시 토큰이 만료되었습니다. 다시 로그인해주세요.", "TEMP_TOKEN_EXPIRED", HttpStatus.UNAUTHORIZED.value()));
+        } catch (RuntimeException e) {
+            // Redis에 데이터 없음 (만료됨)
+            if (e.getMessage().contains("세션이 만료")) {
+                log.warn("Redis 임시 데이터 만료: {}", e.getMessage());
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(BaseResponse.fail("세션이 만료되었습니다. 다시 로그인해주세요.", "TEMP_SESSION_EXPIRED", HttpStatus.UNAUTHORIZED.value()));
+            }
+            throw e;
+        } catch (Exception e) {
+            log.error("동의 처리 중 오류: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(BaseResponse.fail("동의 처리 중 오류가 발생했습니다.", "INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR.value()));
         }
     }
 }

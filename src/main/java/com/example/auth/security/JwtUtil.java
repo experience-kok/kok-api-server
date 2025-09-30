@@ -41,6 +41,20 @@ public class JwtUtil {
         return createToken(userId, refreshExpiration);
     }
 
+    public String createTempToken(String tempUserId) {
+        // 임시 토큰은 10분 유효 (600000ms)
+        Instant now = Instant.now();
+        Instant expiry = now.plusMillis(600000L);
+
+        return Jwts.builder()
+                .setSubject(tempUserId)  // tempUserId를 subject로
+                .claim("type", "temp")   // 토큰 타입 구분
+                .setIssuedAt(Date.from(now))
+                .setExpiration(Date.from(expiry))
+                .signWith(key)
+                .compact();
+    }
+
     private String createToken(Long userId, long expiration) {
         Instant now = Instant.now();
         Instant expiry = now.plusMillis(expiration);

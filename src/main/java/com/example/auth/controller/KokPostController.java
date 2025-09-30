@@ -23,7 +23,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
 
-@Tag(name = "체험콕 아티클 API (개선된 버전)", description = "실시간 조회수 처리가 개선된 체험콕 아티클 API")
+@Tag(name = "체험콕 아티클 API", description = "체험콕 아티클 API")
 @Slf4j
 @RestController
 @RequestMapping("/api/kok-article")

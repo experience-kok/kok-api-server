@@ -9,7 +9,6 @@ import com.example.auth.repository.UserSnsPlatformRepository;
 import com.example.auth.service.InstagramConnectService;
 import com.example.auth.service.NaverBlogConnectService;
 import com.example.auth.service.SnsCrawlService;
-import com.example.auth.service.TikTokConnectService;
 import com.example.auth.service.YouTubeConnectService;
 import com.example.auth.util.TokenUtils;
 import io.swagger.v3.oas.annotations.Hidden;
@@ -47,7 +46,6 @@ public class UserSnsPlatformController {
     private final NaverBlogConnectService naverBlogConnectService;
     private final InstagramConnectService instagramConnectService;
     private final YouTubeConnectService youtubeConnectService;
-    private final TikTokConnectService tikTokConnectService;
 
     // 전체 플랫폼 목록 조회 API (연동된 것 + 연동 안된 것 모두)
     @Operation(
@@ -309,9 +307,6 @@ public class UserSnsPlatformController {
                 case YOUTUBE:
                     platformId = youtubeConnectService.connect(userId, request.getUrl());
                     break;
-                case TIKTOK:
-                    platformId = tikTokConnectService.connect(userId, request.getUrl());
-                    break;
                 default:
                     return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                             .body(BaseResponse.fail("지원하지 않는 플랫폼 타입입니다.", "UNSUPPORTED_PLATFORM", HttpStatus.BAD_REQUEST.value()));
@@ -418,9 +413,6 @@ public class UserSnsPlatformController {
                     break;
                 case YOUTUBE:
                     youtubeConnectService.disconnect(userId, platformId);
-                    break;
-                case TIKTOK:
-                    tikTokConnectService.disconnect(userId, platformId);
                     break;
                 default:
                     throw new IllegalArgumentException("지원하지 않는 플랫폼 타입입니다: " + platformType);

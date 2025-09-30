@@ -3,6 +3,7 @@ package com.example.auth.service;
 import com.example.auth.domain.User;
 import com.example.auth.dto.KakaoUserInfo;
 import com.example.auth.dto.UserLoginResult;
+import com.example.auth.dto.TempUserData;
 import com.example.auth.repository.UserRepository;
 import com.example.auth.repository.CampaignRepository;
 import com.example.auth.repository.CampaignApplicationRepository;
@@ -29,6 +30,7 @@ public class UserService {
     private final CampaignApplicationRepository campaignApplicationRepository;
     private final UserSnsPlatformRepository userSnsPlatformRepository;
     private final CompanyRepository companyRepository;
+    private final TempUserService tempUserService;
 
     // UserService.java
     public UserLoginResult findOrCreateUser(String provider, KakaoUserInfo info) {
@@ -37,6 +39,7 @@ public class UserService {
         log.debug("카카오 사용자 정보 처리: id={}, properties={}, kakao_account={}", 
                   info.id(), info.properties(), info.kakao_account());
 
+        // 기존 사용자 확인 (DB)
         Optional<User> existingUser = userRepository.findByProviderAndSocialId(provider, socialId);
 
         if (existingUser.isPresent()) {
@@ -65,19 +68,33 @@ public class UserService {
             email = (String) info.kakao_account().get("email");
         }
 
-        User newUser = userRepository.save(User.builder()
+        // ========== 수정된 부분: Redis에 임시 저장 ==========
+        TempUserData tempUserData = TempUserData.fromKakaoInfo(
+                null,  // tempUserId는 서비스에서 생성
+                provider,
+                socialId,
+                email,
+                nickname,
+                profile
+        );
+
+        String tempUserId = tempUserService.saveTempUser(tempUserData);
+        
+        log.info("신규 사용자 임시 저장 완료 (Redis): tempUserId={}, socialId={}, nickname={}", 
+                 tempUserId, socialId, nickname);
+
+        // 임시 User 객체 생성 (ID는 tempUserId 사용)
+        // 주의: 이 객체는 DB에 저장되지 않음
+        User tempUser = User.builder()
                 .provider(provider)
                 .socialId(socialId)
                 .email(email)
                 .nickname(nickname)
                 .profileImg(profile)
                 .role("USER")
-                .build());
+                .build();
 
-        log.info("신규 사용자 생성 완료: userId={}, socialId={}, nickname={}", 
-                 newUser.getId(), socialId, nickname);
-
-        return new UserLoginResult(newUser, true); // 신규 회원
+        return new UserLoginResult(tempUser, true, tempUserId); // 신규 회원 + tempUserId
     }
     
     /**
