@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.ZonedDateTime;
 import java.util.Optional;
 
 /**
@@ -137,10 +138,15 @@ public class CompanyService {
      * @param user 사용자
      * @param request 사업자 정보 요청
      * @return 생성된 업체 엔티티
-     * @throws IllegalArgumentException 이미 등록된 사업자 정보가 있거나 중복된 사업자등록번호인 경우
+     * @throws IllegalArgumentException 이미 등록된 사업자 정보가 있거나 중복된 사업자등록번호인 경우, 약관 미동의인 경우
      */
     @Transactional
     public Company createBusinessInfoOnly(User user, BusinessInfoRequest request) {
+        // 약관 동의 여부 확인
+        if (request.getTermsAgreed() == null || !request.getTermsAgreed()) {
+            throw new IllegalArgumentException("약관에 동의해야 사업자 정보를 등록할 수 있습니다.");
+        }
+        
         // 이미 등록된 사업자 정보가 있는지 확인
         Optional<Company> existingCompany = companyRepository.findByUserId(user.getId());
         if (existingCompany.isPresent()) {
@@ -160,9 +166,12 @@ public class CompanyService {
                 .user(user)
                 .companyName(request.getCompanyName())
                 .businessRegistrationNumber(request.getBusinessRegistrationNumber())
+                .termsAgreed(request.getTermsAgreed())
+                .termsAgreedAt(ZonedDateTime.now())
                 .build();
         Company savedCompany = companyRepository.save(company);
-        log.info("사업자 정보가 신규 등록되었습니다. userId={}, companyName={}", user.getId(), request.getCompanyName());
+        log.info("사업자 정보가 신규 등록되었습니다. userId={}, companyName={}, termsAgreed={}", 
+                user.getId(), request.getCompanyName(), request.getTermsAgreed());
         return savedCompany;
     }
 

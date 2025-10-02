@@ -23,6 +23,12 @@ public class BusinessInfoResponse {
     @Schema(description = "사업자등록번호", example = "123-45-67890")
     private String businessRegistrationNumber;
 
+    @Schema(description = "약관 동의 여부", example = "true")
+    private Boolean termsAgreed;
+
+    @Schema(description = "약관 동의 일시", example = "2025-01-27T10:30:00+09:00")
+    private String termsAgreedAt;
+
     @Schema(description = "사업자 정보 등록 여부", example = "true")
     private Boolean hasBusinessInfo;
 
@@ -34,6 +40,8 @@ public class BusinessInfoResponse {
             return BusinessInfoResponse.builder()
                     .companyName(null)
                     .businessRegistrationNumber(null)
+                    .termsAgreed(null)
+                    .termsAgreedAt(null)
                     .hasBusinessInfo(false)
                     .build();
         }
@@ -41,6 +49,8 @@ public class BusinessInfoResponse {
         return BusinessInfoResponse.builder()
                 .companyName(company.getCompanyName())
                 .businessRegistrationNumber(company.getBusinessRegistrationNumber())
+                .termsAgreed(company.getTermsAgreed())
+                .termsAgreedAt(company.getTermsAgreedAt() != null ? company.getTermsAgreedAt().toString() : null)
                 .hasBusinessInfo(true)
                 .build();
     }

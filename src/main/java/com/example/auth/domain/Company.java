@@ -39,6 +39,12 @@ public class Company {
     @Column(name = "phone_number", length = 20)
     private String phoneNumber;
 
+    @Column(name = "terms_agreed")
+    private Boolean termsAgreed;
+
+    @Column(name = "terms_agreed_at", columnDefinition = "TIMESTAMP WITH TIME ZONE")
+    private ZonedDateTime termsAgreedAt;
+
     @Column(name = "created_at", columnDefinition = "TIMESTAMP WITH TIME ZONE")
     @Builder.Default
     private ZonedDateTime createdAt = ZonedDateTime.now();
