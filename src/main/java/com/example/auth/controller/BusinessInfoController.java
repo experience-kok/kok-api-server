@@ -88,8 +88,23 @@ public class BusinessInfoController {
 
     @Operation(
         summary = "사업자 정보 등록",
-        description = "CLIENT 권한 심사를 위한 사업자 정보를 등록합니다. \n\n이미 등록된 사업자 정보가 있는 경우 등록할 수 없습니다.\n"+
-                "ALREADY_REGISTERED 등록을 또 요청 한 경우"
+        description = """
+            CLIENT 권한 심사를 위한 사업자 정보를 등록합니다.
+            
+            ### 필수 정보
+            - companyName: 업체명
+            - businessRegistrationNumber: 사업자등록번호
+            - termsAgreed: 약관 동의 여부 (true 필수)
+            
+            ### 주의사항
+            - 이미 등록된 사업자 정보가 있는 경우 등록할 수 없습니다.
+            - 약관에 동의하지 않으면 등록할 수 없습니다.
+            - 약관 동의 시점이 자동으로 기록됩니다.
+            
+            ### 오류 코드
+            - ALREADY_REGISTERED: 이미 사업자 정보가 등록된 경우
+            - BUSINESS_INFO_REGISTRATION_FAILED: 약관 미동의 또는 기타 검증 실패
+            """
     )
     @ApiResponses(value = {
             @ApiResponse(
@@ -98,6 +113,19 @@ public class BusinessInfoController {
                 content = @Content(
                     mediaType = "application/json",
                     schema = @Schema(implementation = BusinessInfoResponse.class)
+                )
+            ),
+            @ApiResponse(
+                responseCode = "400",
+                description = """
+                    잘못된 요청
+                    - 약관 미동의
+                    - 필수 필드 누락
+                    - 이미 등록된 사업자 정보 존재
+                    """,
+                content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")
                 )
             ),
             @ApiResponse(
