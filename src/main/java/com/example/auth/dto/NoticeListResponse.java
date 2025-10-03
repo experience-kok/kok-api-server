@@ -27,9 +27,6 @@ public class NoticeListResponse {
     @Schema(description = "필독 여부", example = "true")
     private Boolean isMustRead;
 
-    @Schema(description = "작성자 ID", example = "1")
-    private Long authorId;
-
     @Schema(description = "작성자 이름", example = "관리자")
     private String authorName;
 
@@ -48,7 +45,6 @@ public class NoticeListResponse {
         this.title = title;
         this.viewCount = viewCount;
         this.isMustRead = isMustRead;
-        this.authorId = authorId;
         this.authorName = authorName;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -60,7 +56,6 @@ public class NoticeListResponse {
                 .title(notice.getTitle())
                 .viewCount(notice.getViewCount())
                 .isMustRead(notice.getIsMustRead())
-                .authorId(notice.getAuthorId())
                 .authorName(notice.getAuthorName())
                 .createdAt(notice.getCreatedAt())
                 .updatedAt(notice.getUpdatedAt())

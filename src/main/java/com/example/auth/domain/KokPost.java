@@ -33,11 +33,10 @@ public class KokPost {
 
     /**
      * 글 내용
+     *
      */
-    @Lob
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
-
     /**
      * 조회수
      */

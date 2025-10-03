@@ -14,7 +14,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "공지사항 API", description = "공지사항 API (목록조회/검색 전용)")
+@Tag(name = "공지사항 API", description = "공지사항 API")
 @Slf4j
 @RestController
 @RequestMapping("/api/notices")
@@ -62,6 +62,7 @@ public class NoticeController {
         return ApiResponse.success("목록 조회 성공 .", response);
     }
 
+/*
     @Operation(
             summary = "공지사항 제목 검색 (페이지네이션)",
             description = "제목으로 공지사항을 검색합니다.\n\n" +
@@ -102,5 +103,6 @@ public class NoticeController {
 
         return ApiResponse.success("공지사항 검색 성공.", response);
     }
+*/
 
 }

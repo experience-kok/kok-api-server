@@ -47,8 +47,23 @@ public class BusinessInfoController {
                 responseCode = "200", 
                 description = "사업자 정보 조회 성공",
                 content = @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = BusinessInfoResponse.class)
+                    mediaType = "application/json",schema = @Schema(implementation = BaseResponse.Success.class),
+                    examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
+                        value = """
+                        {
+                          "success": true,
+                          "message": "사업자 정보 조회 성공",
+                          "status": 200,
+                          "data": {
+                            "companyName": "맛있는 카페",
+                            "businessRegistrationNumber": "123-45-67890",
+                            "termsAgreed": true,
+                            "termsAgreedAt": "2025-01-27T10:30:00+09:00[Asia/Seoul]",
+                            "hasBusinessInfo": true
+                          }
+                        }
+                        """
+                    )
                 )
             ),
             @ApiResponse(
@@ -112,7 +127,23 @@ public class BusinessInfoController {
                 description = "사업자 정보 등록 성공",
                 content = @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = BusinessInfoResponse.class)
+                    schema = @Schema(implementation = BaseResponse.Success.class),
+                    examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
+                        value = """
+                        {
+                          "success": true,
+                          "message": "사업자 정보가 성공적으로 등록되었어요.",
+                          "status": 200,
+                          "data": {
+                            "companyName": "맛있는 카페",
+                            "businessRegistrationNumber": "123-45-67890",
+                            "termsAgreed": true,
+                            "termsAgreedAt": "2025-01-27T10:30:00+09:00[Asia/Seoul]",
+                            "hasBusinessInfo": true
+                          }
+                        }
+                        """
+                    )
                 )
             ),
             @ApiResponse(
@@ -125,7 +156,42 @@ public class BusinessInfoController {
                     """,
                 content = @Content(
                     mediaType = "application/json",
-                    schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")
+                    schema = @Schema(implementation = BaseResponse.Error.class),
+                    examples = {
+                        @io.swagger.v3.oas.annotations.media.ExampleObject(
+                            name = "약관 미동의",
+                            value = """
+                            {
+                              "success": false,
+                              "message": "약관에 동의해야 사업자 정보를 등록할 수 있습니다.",
+                              "errorCode": "BUSINESS_INFO_REGISTRATION_FAILED",
+                              "status": 400
+                            }
+                            """
+                        ),
+                        @io.swagger.v3.oas.annotations.media.ExampleObject(
+                            name = "이미 등록됨",
+                            value = """
+                            {
+                              "success": false,
+                              "message": "이미 사업자 정보가 등록되어 있어요. 등록된 사업자 정보는 수정할 수 없어요.",
+                              "errorCode": "ALREADY_REGISTERED",
+                              "status": 400
+                            }
+                            """
+                        ),
+                        @io.swagger.v3.oas.annotations.media.ExampleObject(
+                            name = "필수 필드 누락",
+                            value = """
+                            {
+                              "success": false,
+                              "message": "약관 동의 여부는 필수입니다.",
+                              "errorCode": "VALIDATION_ERROR",
+                              "status": 400
+                            }
+                            """
+                        )
+                    }
                 )
             ),
             @ApiResponse(
